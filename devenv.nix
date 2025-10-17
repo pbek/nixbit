@@ -1,4 +1,4 @@
-{ pkgs, lib, config, inputs, ... }:
+{ pkgs, lib, ... }:
 
 {
   # Development dependencies
@@ -32,15 +32,25 @@
   };
 
   enterShell = ''
-    echo "Nixbit NixOS Updater Development Environment"
-    echo "============================================"
+    echo "🚀 Nixbit NixOS Updater Development Environment"
+    echo "==============================================="
     echo "Available commands:"
-    echo "  just build  - Build the application"
-    echo "  just run    - Build and run the application"
-    echo "  just clean  - Clean build artifacts"
+    echo "  🔨 just build  - Build the application"
+    echo "  ▶️ just run    - Build and run the application"
+    echo "  🧹 just clean  - Clean build artifacts"
     echo ""
-    echo "CMake: $(cmake --version | head -n1)"
-    echo "Qt Version: ${pkgs.qt6.qtbase.version}"
-    echo "QML_IMPORT_PATH: $QML_IMPORT_PATH"
+    echo "📦 CMake: $(cmake --version | head -n1)"
+    echo "🎨 Qt Version: ${pkgs.qt6.qtbase.version}"
+    echo "📁 QML_IMPORT_PATH: $QML_IMPORT_PATH"
   '';
+
+  # https://devenv.sh/git-hooks/
+  git-hooks = {
+    hooks = {
+      cmake-format.enable = true;
+      clang-format = {
+        enable = true;
+      };
+    };
+  };
 }
