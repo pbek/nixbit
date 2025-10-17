@@ -1,153 +1,165 @@
-# Nixbit
+# NixBit
 
-A small KDE Plasma application built with QtQuick that displays a terminal running `git status`.
+A KDE Plasma application for managing Git repositories and NixOS system updates.
+
+## Overview
+
+NixBit is a Qt6/QML-based desktop application that provides a graphical interface for managing Git repositories, particularly designed for updating NixOS systems from Git repositories. Built with KDE Kirigami for a modern, responsive UI.
 
 ## Features
 
-- QtQuick-based user interface
-- Displays output of `git status` command in a terminal-like view
-- Refresh button to re-run the command
-- Built with CMake and KDE Frameworks
+### Git Repository Management
+
+- **Clone and Pull Operations**: Clone new repositories or pull updates from existing ones
+- **Repository URL Configuration**: Easy input field for Git repository URLs
+- **Status Monitoring**: Real-time Git repository status display
+- **Local Path Management**: Automatic handling of repository local paths
+
+### Process Management
+
+- **Command Execution**: Run arbitrary commands with arguments
+- **Directory-Aware Execution**: Execute commands in specific working directories
+- **Real-time Output**: Live terminal output display with both stdout and stderr
+- **Process Control**: Kill running processes when needed
+- **System Information**: Retrieve hostname and system details
+
+### User Interface
+
+- **Modern KDE Integration**: Built with Kirigami for native KDE Plasma look and feel
+- **Menu Bar**: File and Tools menus for application management
+- **Repository Configuration Panel**: Input field for repository URLs
+- **Action Buttons**: Quick access to Pull, Clone/Pull, and Rebuild System operations
+- **Terminal Output Panel**: Collapsible terminal window showing command output and status
+- **Status Feedback**: Visual indicators for busy states and operation results
+
+## Technology Stack
+
+- **Language**: C++ (Qt6)
+- **UI Framework**: QML with KDE Kirigami
+- **Build System**: CMake 3.20+
+- **Dependencies**:
+  - Qt6 (Core, Gui, Qml, Quick, Widgets)
+  - KDE Frameworks 6
+  - KF6 Kirigami
+  - Git (runtime dependency)
 
 ## Building
 
-### Using devenv (Recommended for Development)
-
-1. Enter the development environment:
+### Prerequisites
 
 ```bash
-devenv shell
-```
-
-2. Build and run:
-
-```bash
-just build
-just run
-```
-
-### Using Nix Package (Recommended for Deployment)
-
-Build and run the Nix package:
-
-```bash
-# Build the package
-just nix-build
-
-# Run the built package
-just nix-run
-
-# Or with nix-build directly
-nix-build -E 'with import <nixpkgs> { }; callPackage ./package.nix { }'
-./result/bin/nixbit
-```
-
-### Using Nix Flakes
-
-If you have flakes enabled:
-
-```bash
-# Build the package
-nix build
-
-# Run directly
-nix run
-
-# Enter development shell
+# On NixOS, you can use the provided flake:
 nix develop
 
-# Build using just
-just nix-build-flake
+# Or build directly:
+nix build
 ```
 
-### Manual build
-
-Requirements:
-
-- CMake 3.16+
-- Qt 6.5+
-- KDE Frameworks 6.0+
-- GCC or Clang with C++17 support
-
-Build commands:
+### Manual Build
 
 ```bash
 mkdir build
 cd build
-cmake .. -GNinja
-cmake --build .
-./bin/nixbit
+cmake ..
+make
 ```
 
-## Just Commands
+The executable will be created as `nixbit` in the build directory.
 
-### Development
+## Architecture
 
-- `just build` - Configure and build the application
-- `just run` - Build and run the application
-- `just clean` - Clean build artifacts
-- `just rebuild` - Clean and rebuild from scratch
+### Core Components
 
-### Nix Package
+#### GitManager
 
-- `just nix-build` - Build the Nix package
-- `just nix-run` - Build and run the Nix package
-- `just nix-install` - Install to user profile
-- `just nix-result` - Show the build result
+A QObject-based class that handles Git operations:
+
+- **Properties**:
+  - `repositoryUrl`: The Git repository URL
+  - `localPath`: Local filesystem path for the repository
+  - `status`: Current status messages
+  - `isBusy`: Indicates if an operation is in progress
+
+- **Methods**:
+  - `pullRepository()`: Pull updates from remote
+  - `cloneOrPullRepository()`: Clone if not exists, otherwise pull
+
+- **Signals**:
+  - `operationCompleted(bool success, QString message)`: Emitted when operations finish
+
+#### ProcessManager
+
+A QObject-based class for executing system commands:
+
+- **Properties**:
+  - `output`: Accumulated command output
+  - `isRunning`: Process execution state
+
+- **Methods**:
+  - `runCommand(program, args)`: Execute a command
+  - `runCommandInDirectory(program, args, workingDir)`: Execute in specific directory
+  - `killProcess()`: Terminate running process
+  - `getHostname()`: Retrieve system hostname
+
+- **Signals**:
+  - `commandFinished(int exitCode, QString output)`: Emitted when command completes
 
 ## Development
 
-The project uses:
+### Development Environment
 
-- **CMake** for build configuration
-- **Qt Quick** for the UI
-- **KDE Frameworks** for KDE integration
-- **devenv** for development environment management
-- **just** for convenient build commands
-- **Nix** for reproducible packaging
+This project uses `devenv` with Nix flakes for a reproducible development environment:
+
+```bash
+# Enter development shell
+devenv shell
+
+# Or use direnv (if configured)
+direnv allow
+```
+
+### Project Structure
+
+```
+nixbit/
+├── src/
+│   ├── main.cpp              # Application entry point
+│   ├── main.qml              # Main UI definition
+│   ├── gitmanager.h/cpp      # Git operations manager
+│   └── processmanager.h/cpp  # Process execution manager
+├── CMakeLists.txt            # Build configuration
+├── flake.nix                 # Nix flake definition
+├── package.nix               # Nix package definition
+└── devenv.nix                # Development environment
+```
+
+## Use Cases
+
+### NixOS System Updates
+
+1. Enter your NixOS configuration Git repository URL
+2. Click "Clone/Pull Repository" to fetch the latest configuration
+3. Click "Rebuild System" to apply the new configuration
+4. Monitor the process in the terminal output panel
+
+### General Git Repository Management
+
+- Use as a simple Git client for any repository
+- Monitor repository status
+- Execute custom commands in repository directories
 
 ## License
 
-This project is provided as-is for demonstration purposes.
-cmake_minimum_required(VERSION 3.16)
+See [LICENSE.md](LICENSE.md) for details.
 
-project(nixbit VERSION 1.0)
+## Version
 
-set(QT_MIN_VERSION "5.15.0")
-set(KF5_MIN_VERSION "5.82.0")
+Current version: 1.0.0
 
-find_package(ECM ${KF5_MIN_VERSION} REQUIRED NO_MODULE)
-set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
+## Contributing
 
-include(KDEInstallDirs)
-include(KDECMakeSettings)
-include(KDECompilerSettings NO_POLICY_SCOPE)
-include(FeatureSummary)
+This is an early-stage project. Contributions are welcome!
 
-find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS
-Core
-Quick
-Widgets
-)
+---
 
-find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
-CoreAddons
-I18n
-)
-
-add_executable(nixbit
-src/main.cpp
-)
-
-target_link_libraries(nixbit
-Qt5::Core
-Qt5::Quick
-Qt5::Widgets
-KF5::CoreAddons
-KF5::I18n
-)
-
-install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
-install(FILES src/main.qml DESTINATION ${KDE_INSTALL_DATADIR}/nixbit)
-
-feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)
+Built with ❤️ for the NixOS community
