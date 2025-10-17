@@ -20,7 +20,7 @@ clean:
 
 # Run the application
 run: build
-    ./build/bin/nixbit
+    ./build/nixbit
 
 # Rebuild from scratch
 rebuild: clean build
