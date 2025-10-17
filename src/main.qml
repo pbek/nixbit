@@ -6,8 +6,36 @@ import org.kde.kirigami as Kirigami
 Kirigami.ApplicationWindow {
     id: root
     title: "NixBit - Git Repository Manager"
-    width: 800
-    height: 600
+    width: 1000
+    height: 700
+
+    menuBar: MenuBar {
+        Menu {
+            title: "&File"
+            Action {
+                text: "&Refresh Terminal"
+                onTriggered: processManager.runCommand("gh", [])
+            }
+            MenuSeparator {}
+            Action {
+                text: "&Quit"
+                onTriggered: Qt.quit()
+            }
+        }
+
+        Menu {
+            title: "&Tools"
+            Action {
+                text: "&Update System"
+                onTriggered: processManager.runCommand("gh", [])
+            }
+            Action {
+                text: "&Clone/Pull Repository"
+                enabled: !gitManager.isBusy
+                onTriggered: gitManager.cloneOrPullRepository()
+            }
+        }
+    }
 
     pageStack.initialPage: Kirigami.Page {
         title: "Repository Manager"
@@ -15,8 +43,9 @@ Kirigami.ApplicationWindow {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Kirigami.Units.largeSpacing
-            spacing: Kirigami.Units.largeSpacing
+            spacing: Kirigami.Units.smallSpacing
 
+            // Repository Configuration Section
             Kirigami.FormLayout {
                 Layout.fillWidth: true
 
@@ -46,9 +75,20 @@ Kirigami.ApplicationWindow {
                 }
             }
 
+            // Action Buttons
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
+
+                Button {
+                    text: "Update System"
+                    icon.name: "system-software-update"
+                    enabled: !processManager.isRunning
+                    onClicked: {
+                        processManager.runCommand("gh", [])
+                    }
+                    Layout.fillWidth: true
+                }
 
                 Button {
                     text: "Clone/Pull Repository"
@@ -71,6 +111,7 @@ Kirigami.ApplicationWindow {
                 }
             }
 
+            // Status Messages
             Kirigami.InlineMessage {
                 id: messageBox
                 Layout.fillWidth: true
@@ -96,23 +137,77 @@ Kirigami.ApplicationWindow {
                 visible: gitManager.isBusy
             }
 
+            // Terminal Output Section
             GroupBox {
-                title: "Information"
+                title: "Terminal Output"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                ScrollView {
+                ColumnLayout {
                     anchors.fill: parent
+                    spacing: 5
 
-                    TextArea {
-                        readOnly: true
-                        wrapMode: TextArea.WordWrap
-                        text: "This application manages a Git repository in your application data directory.\n\n" +
-                              "Default repository: https://github.com/pbek/nixcfg.git\n\n" +
-                              "You can change the repository URL above. The repository will be cloned to:\n" +
-                              gitManager.localPath + "\n\n" +
-                              "Use 'Clone/Pull Repository' to clone a new repository or pull updates if it already exists.\n" +
-                              "Use 'Pull (Update)' to update an existing repository."
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        color: "#1e1e1e"
+                        border.color: "#3e3e3e"
+                        border.width: 1
+                        radius: 4
+
+                        ScrollView {
+                            anchors.fill: parent
+                            anchors.margins: 5
+                            clip: true
+
+                            TextArea {
+                                id: terminalOutput
+                                readOnly: true
+                                textFormat: TextEdit.PlainText
+                                wrapMode: TextEdit.Wrap
+                                font.family: "Monospace"
+                                font.pixelSize: 12
+                                color: "#00ff00"
+                                text: processManager.output
+                                background: Rectangle {
+                                    color: "transparent"
+                                }
+
+                                // Auto-scroll to bottom when output changes
+                                onTextChanged: {
+                                    cursorPosition = text.length
+                                }
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        Label {
+                            text: processManager.isRunning ? "Process running..." : "Ready"
+                            color: processManager.isRunning ? "#ffaa00" : "#00ff00"
+                            font.family: "Monospace"
+                            font.pixelSize: 10
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            text: "Clear"
+                            enabled: !processManager.isRunning
+                            onClicked: {
+                                processManager.runCommand("clear", [])
+                            }
+                        }
+
+                        Button {
+                            text: "Kill Process"
+                            enabled: processManager.isRunning
+                            onClicked: {
+                                processManager.killProcess()
+                            }
+                        }
                     }
                 }
             }

@@ -27,8 +27,14 @@ pkg_check_modules(LIBGIT2 REQUIRED libgit2)
 # Create a Qt resource file for the QML
 qt_add_resources(QML_RESOURCES src/qml.qrc)
 
-qt_add_executable(nixbit src/main.cpp src/gitmanager.cpp src/gitmanager.h
-                  ${QML_RESOURCES})
+qt_add_executable(
+  nixbit
+  src/main.cpp
+  src/gitmanager.cpp
+  src/gitmanager.h
+  src/processmanager.cpp
+  src/processmanager.h
+  ${QML_RESOURCES})
 
 target_link_libraries(
   nixbit

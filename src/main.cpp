@@ -1,4 +1,5 @@
 #include "gitmanager.h"
+#include "processmanager.h"
 #include <KLocalizedContext>
 #include <KLocalizedString>
 #include <QApplication>
@@ -25,6 +26,11 @@ int main(int argc, char *argv[]) {
   // Create and register GitManager
   GitManager gitManager;
   engine.rootContext()->setContextProperty("gitManager", &gitManager);
+
+  // Create and register ProcessManager
+  ProcessManager processManager;
+  engine.rootContext()->setContextProperty("processManager", &processManager);
+
   engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
 
   qDebug() << "Loading QML from qrc:/main.qml";
