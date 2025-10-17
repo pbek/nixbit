@@ -1,4 +1,4 @@
-# KNixOS Updater
+# Nixbit
 
 A small KDE Plasma application built with QtQuick that displays a terminal running `git status`.
 
@@ -37,7 +37,7 @@ just nix-run
 
 # Or with nix-build directly
 nix-build -E 'with import <nixpkgs> { }; callPackage ./package.nix { }'
-./result/bin/knixosupdater
+./result/bin/nixbit
 ```
 
 ### Using Nix Flakes
@@ -72,7 +72,7 @@ mkdir build
 cd build
 cmake .. -GNinja
 cmake --build .
-./bin/knixosupdater
+./bin/nixbit
 ```
 
 ## Just Commands
@@ -104,7 +104,7 @@ The project uses:
 This project is provided as-is for demonstration purposes.
 cmake_minimum_required(VERSION 3.16)
 
-project(knixosupdater VERSION 1.0)
+project(nixbit VERSION 1.0)
 
 set(QT_MIN_VERSION "5.15.0")
 set(KF5_MIN_VERSION "5.82.0")
@@ -128,11 +128,11 @@ find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
     I18n
 )
 
-add_executable(knixosupdater
+add_executable(nixbit
     src/main.cpp
 )
 
-target_link_libraries(knixosupdater
+target_link_libraries(nixbit
     Qt5::Core
     Qt5::Quick
     Qt5::Widgets
@@ -140,7 +140,7 @@ target_link_libraries(knixosupdater
     KF5::I18n
 )
 
-install(TARGETS knixosupdater ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
-install(FILES src/main.qml DESTINATION ${KDE_INSTALL_DATADIR}/knixosupdater)
+install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+install(FILES src/main.qml DESTINATION ${KDE_INSTALL_DATADIR}/nixbit)
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

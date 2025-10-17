@@ -1,4 +1,4 @@
-# Build and run commands for KNixOS Updater
+# Build and run commands for Nixbit
 
 # Default recipe - show available commands
 default:
@@ -23,7 +23,7 @@ run: build
     export QML_IMPORT_PATH="${QML_IMPORT_PATH}"
     export QT_PLUGIN_PATH="${QT_PLUGIN_PATH}"
     export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
-    exec ./build/bin/knixosupdater
+    exec ./build/bin/nixbit
 
 # Rebuild from scratch
 rebuild: clean build
@@ -42,15 +42,15 @@ nix-build:
 
 # Build the Nix package using flakes (if available)
 nix-build-flake:
-    nix build .#knixosupdater
+    nix build .#nixbit
 
 # Install the Nix package to user profile
 nix-install:
-    nix-env -f . -i knixosupdater
+    nix-env -f . -i nixbit
 
 # Run the Nix-built package
 nix-run:
-    nix-build -E 'with import <nixpkgs> { }; callPackage ./package.nix { }' && ./result/bin/knixosupdater
+    ./result/bin/nixbit
 
 # Show the build result
 nix-result:

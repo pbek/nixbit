@@ -12,11 +12,11 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    KLocalizedString::setApplicationDomain("knixosupdater");
+    KLocalizedString::setApplicationDomain("nixbit");
 
     QCoreApplication::setOrganizationName(QStringLiteral("KDE"));
     QCoreApplication::setOrganizationDomain(QStringLiteral("kde.org"));
-    QCoreApplication::setApplicationName(QStringLiteral("KNixOS Updater"));
+    QCoreApplication::setApplicationName(QStringLiteral("Nixbit"));
     QCoreApplication::setApplicationVersion(QStringLiteral("1.0"));
 
     QQmlApplicationEngine engine;
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 
     // Try to load from install location first, then from source
     QString qmlFile = QStandardPaths::locate(QStandardPaths::GenericDataLocation,
-                                              QStringLiteral("knixosupdater/main.qml"));
+                                              QStringLiteral("nixbit/main.qml"));
     if (qmlFile.isEmpty()) {
         qmlFile = QStringLiteral("src/main.qml");
     }

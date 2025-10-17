@@ -1,5 +1,5 @@
 {
-  description = "KNixOS Updater - A KDE Plasma application to display git status";
+  description = "Nixbit - A KDE Plasma application to display git status";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -13,20 +13,20 @@
       in
       {
         packages = {
-          knixosupdater = pkgs.callPackage ./package.nix { };
-          default = self.packages.${system}.knixosupdater;
+          nixbit = pkgs.callPackage ./package.nix { };
+          default = self.packages.${system}.nixbit;
         };
 
         apps = {
-          knixosupdater = {
+          nixbit = {
             type = "app";
-            program = "${self.packages.${system}.knixosupdater}/bin/knixosupdater";
+            program = "${self.packages.${system}.nixbit}/bin/nixbit";
           };
-          default = self.apps.${system}.knixosupdater;
+          default = self.apps.${system}.nixbit;
         };
 
         devShells.default = pkgs.mkShell {
-          inputsFrom = [ self.packages.${system}.knixosupdater ];
+          inputsFrom = [ self.packages.${system}.nixbit ];
           packages = with pkgs; [
             just
             git
@@ -35,4 +35,3 @@
       }
     );
 }
-

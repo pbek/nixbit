@@ -8,7 +8,7 @@ ApplicationWindow {
     visible: true
     width: 800
     height: 600
-    title: "KNixOS Updater - Git Status"
+    title: "Nixbit NixOS Updater - Git Status"
 
     menuBar: MenuBar {
         Menu {

@@ -32,8 +32,8 @@
   };
 
   enterShell = ''
-    echo "KNixOS Updater Development Environment"
-    echo "======================================"
+    echo "Nixbit NixOS Updater Development Environment"
+    echo "============================================"
     echo "Available commands:"
     echo "  just build  - Build the application"
     echo "  just run    - Build and run the application"

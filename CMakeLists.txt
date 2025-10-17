@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(knixosupdater VERSION 1.0 LANGUAGES CXX)
+project(nixbit VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,11 +27,11 @@ find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS
     I18n
 )
 
-add_executable(knixosupdater
+add_executable(nixbit
     src/main.cpp
 )
 
-target_link_libraries(knixosupdater
+target_link_libraries(nixbit
     Qt6::Core
     Qt6::Quick
     Qt6::Widgets
@@ -39,7 +39,7 @@ target_link_libraries(knixosupdater
     KF6::I18n
 )
 
-install(TARGETS knixosupdater ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
-install(FILES src/main.qml DESTINATION ${KDE_INSTALL_DATADIR}/knixosupdater)
+install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+install(FILES src/main.qml DESTINATION ${KDE_INSTALL_DATADIR}/nixbit)
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

@@ -7,7 +7,7 @@
 }:
 
 stdenv.mkDerivation {
-  pname = "knixosupdater";
+  pname = "nixbit";
   version = "1.0.0";
 
   src = ./.;
@@ -37,10 +37,10 @@ stdenv.mkDerivation {
 
   meta = with lib; {
     description = "A KDE Plasma application to display git status in a terminal-like interface";
-    homepage = "https://github.com/yourusername/knixosupdater";
+    homepage = "https://github.com/yourusername/nixbit";
     license = licenses.gpl3Plus;
     maintainers = [ ];
     platforms = platforms.linux;
-    mainProgram = "knixosupdater";
+    mainProgram = "nixbit";
   };
 }
