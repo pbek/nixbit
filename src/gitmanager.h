@@ -29,6 +29,9 @@ public:
   Q_INVOKABLE void pullRepository();
   Q_INVOKABLE void cloneOrPullRepository();
 
+  // Make setStatus public so callbacks can use it
+  void setStatus(const QString &status);
+
 signals:
   void repositoryUrlChanged();
   void localPathChanged();
@@ -39,7 +42,6 @@ signals:
 private:
   void loadSettings();
   void saveSettings();
-  void setStatus(const QString &status);
   void setIsBusy(bool busy);
 
   bool cloneRepository();
