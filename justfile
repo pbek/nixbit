@@ -35,3 +35,23 @@ install: build
 # Run tests (if any)
 test: build
     cd build && ctest --output-on-failure
+
+# Build the Nix package
+nix-build:
+    nix-build -E 'with import <nixpkgs> { }; callPackage ./package.nix { }'
+
+# Build the Nix package using flakes (if available)
+nix-build-flake:
+    nix build .#knixosupdater
+
+# Install the Nix package to user profile
+nix-install:
+    nix-env -f . -i knixosupdater
+
+# Run the Nix-built package
+nix-run:
+    nix-build -E 'with import <nixpkgs> { }; callPackage ./package.nix { }' && ./result/bin/knixosupdater
+
+# Show the build result
+nix-result:
+    @ls -la result/bin/

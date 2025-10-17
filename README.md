@@ -1,4 +1,4 @@
-# KNixOSUpdater
+# KNixOS Updater
 
 A small KDE Plasma application built with QtQuick that displays a terminal running `git status`.
 
@@ -11,7 +11,7 @@ A small KDE Plasma application built with QtQuick that displays a terminal runni
 
 ## Building
 
-### Using devenv (Recommended)
+### Using devenv (Recommended for Development)
 
 1. Enter the development environment:
 ```bash
@@ -24,12 +24,46 @@ just build
 just run
 ```
 
+### Using Nix Package (Recommended for Deployment)
+
+Build and run the Nix package:
+
+```bash
+# Build the package
+just nix-build
+
+# Run the built package
+just nix-run
+
+# Or with nix-build directly
+nix-build -E 'with import <nixpkgs> { }; callPackage ./package.nix { }'
+./result/bin/knixosupdater
+```
+
+### Using Nix Flakes
+
+If you have flakes enabled:
+
+```bash
+# Build the package
+nix build
+
+# Run directly
+nix run
+
+# Enter development shell
+nix develop
+
+# Build using just
+just nix-build-flake
+```
+
 ### Manual build
 
 Requirements:
 - CMake 3.16+
-- Qt 5.15+
-- KDE Frameworks 5.82+
+- Qt 6.5+
+- KDE Frameworks 6.0+
 - GCC or Clang with C++17 support
 
 Build commands:
@@ -38,16 +72,22 @@ mkdir build
 cd build
 cmake .. -GNinja
 cmake --build .
-./knixosupdater
+./bin/knixosupdater
 ```
 
 ## Just Commands
 
+### Development
 - `just build` - Configure and build the application
 - `just run` - Build and run the application
 - `just clean` - Clean build artifacts
 - `just rebuild` - Clean and rebuild from scratch
-- `just install` - Install the application system-wide
+
+### Nix Package
+- `just nix-build` - Build the Nix package
+- `just nix-run` - Build and run the Nix package
+- `just nix-install` - Install to user profile
+- `just nix-result` - Show the build result
 
 ## Development
 
@@ -57,6 +97,7 @@ The project uses:
 - **KDE Frameworks** for KDE integration
 - **devenv** for development environment management
 - **just** for convenient build commands
+- **Nix** for reproducible packaging
 
 ## License
 
@@ -103,4 +144,3 @@ install(TARGETS knixosupdater ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 install(FILES src/main.qml DESTINATION ${KDE_INSTALL_DATADIR}/knixosupdater)
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)
-
