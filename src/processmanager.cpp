@@ -1,5 +1,6 @@
 #include "processmanager.h"
 #include <QDebug>
+#include <QSysInfo>
 
 ProcessManager::ProcessManager(QObject *parent)
     : QObject(parent), m_process(nullptr), m_isRunning(false) {
@@ -47,6 +48,35 @@ void ProcessManager::runCommand(const QString &program,
   }
 }
 
+void ProcessManager::runCommandInDirectory(const QString &program,
+                                           const QStringList &arguments,
+                                           const QString &workingDirectory) {
+  if (m_isRunning) {
+    qDebug() << "Process already running, killing it first";
+    killProcess();
+  }
+
+  m_output.clear();
+  emit outputChanged();
+
+  QString commandLine = program;
+  if (!arguments.isEmpty()) {
+    commandLine += " " + arguments.join(" ");
+  }
+
+  appendOutput(QString("Working directory: %1\n").arg(workingDirectory));
+  appendOutput(QString("Running: %1\n\n").arg(commandLine));
+
+  m_process->setWorkingDirectory(workingDirectory);
+  setIsRunning(true);
+  m_process->start(program, arguments);
+
+  if (!m_process->waitForStarted(3000)) {
+    appendOutput(QString("\nError: Failed to start process\n"));
+    setIsRunning(false);
+  }
+}
+
 void ProcessManager::killProcess() {
   if (m_process && m_process->state() != QProcess::NotRunning) {
     m_process->kill();
@@ -54,6 +84,8 @@ void ProcessManager::killProcess() {
     appendOutput("\n\n=== Process killed ===\n");
   }
 }
+
+QString ProcessManager::getHostname() { return QSysInfo::machineHostName(); }
 
 void ProcessManager::onReadyReadStandardOutput() {
   QString output = QString::fromUtf8(m_process->readAllStandardOutput());

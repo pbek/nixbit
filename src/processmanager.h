@@ -19,7 +19,11 @@ public:
 
   Q_INVOKABLE void runCommand(const QString &program,
                               const QStringList &arguments = QStringList());
+  Q_INVOKABLE void runCommandInDirectory(const QString &program,
+                                         const QStringList &arguments,
+                                         const QString &workingDirectory);
   Q_INVOKABLE void killProcess();
+  Q_INVOKABLE QString getHostname();
 
 signals:
   void outputChanged();

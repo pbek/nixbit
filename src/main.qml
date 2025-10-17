@@ -85,7 +85,9 @@ Kirigami.ApplicationWindow {
                     icon.name: "system-software-update"
                     enabled: !processManager.isRunning
                     onClicked: {
-                        processManager.runCommand("gh", [])
+                        var hostname = processManager.getHostname()
+                        var flakePath = gitManager.localPath + "#" + hostname
+                        processManager.runCommand("pkexec", ["nixos-rebuild", "build", "--flake", flakePath, "-L"])
                     }
                     Layout.fillWidth: true
                 }
