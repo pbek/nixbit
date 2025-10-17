@@ -1,40 +1,54 @@
+#include "gitmanager.h"
 #include <KLocalizedContext>
 #include <KLocalizedString>
 #include <QApplication>
 #include <QDebug>
-#include <QProcess>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <QStandardPaths>
-#include <QUrl>
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
+  qDebug() << "Starting nixbit application...";
+
   KLocalizedString::setApplicationDomain("nixbit");
 
-  QCoreApplication::setOrganizationName(QStringLiteral("KDE"));
-  QCoreApplication::setOrganizationDomain(QStringLiteral("kde.org"));
-  QCoreApplication::setApplicationName(QStringLiteral("Nixbit"));
-  QCoreApplication::setApplicationVersion(QStringLiteral("1.0"));
+  QApplication::setOrganizationName("pbek");
+  QApplication::setOrganizationDomain("pbek");
+  QApplication::setApplicationName("nixbit");
+  QApplication::setApplicationDisplayName("NixBit");
+  QApplication::setWindowIcon(QIcon::fromTheme("git"));
 
   QQmlApplicationEngine engine;
 
+  // Create and register GitManager
+  GitManager gitManager;
+  engine.rootContext()->setContextProperty("gitManager", &gitManager);
   engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
 
-  // Try to load from install location first, then from source
-  QString qmlFile = QStandardPaths::locate(QStandardPaths::GenericDataLocation,
-                                           QStringLiteral("nixbit/main.qml"));
-  if (qmlFile.isEmpty()) {
-    qmlFile = QStringLiteral("src/main.qml");
-  }
+  qDebug() << "Loading QML from qrc:/main.qml";
 
-  engine.load(QUrl::fromLocalFile(qmlFile));
+  // Load QML
+  const QUrl url(QStringLiteral("qrc:/main.qml"));
+
+  QObject::connect(
+      &engine, &QQmlApplicationEngine::objectCreated, &app,
+      [url](QObject *obj, const QUrl &objUrl) {
+        if (!obj && url == objUrl) {
+          qCritical() << "ERROR: Failed to load QML file from" << url;
+          QCoreApplication::exit(-1);
+        }
+      },
+      Qt::QueuedConnection);
+
+  engine.load(url);
 
   if (engine.rootObjects().isEmpty()) {
-    qWarning() << "Failed to load QML file:" << qmlFile;
+    qCritical() << "ERROR: Failed to load QML file - no root objects created";
     return -1;
   }
 
+  qDebug() << "QML loaded successfully, starting application...";
   return app.exec();
 }

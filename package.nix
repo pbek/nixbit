@@ -3,8 +3,10 @@
   stdenv,
   cmake,
   ninja,
+  pkg-config,
   kdePackages,
   qt6,
+  libgit2,
 }:
 
 stdenv.mkDerivation {
@@ -16,6 +18,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     cmake
     ninja
+    pkg-config
     kdePackages.extra-cmake-modules
     qt6.wrapQtAppsHook
   ];
@@ -23,9 +26,12 @@ stdenv.mkDerivation {
   buildInputs = [
     kdePackages.kcoreaddons
     kdePackages.ki18n
+    kdePackages.kconfig
+    kdePackages.kirigami
     qt6.qtbase
     qt6.qtdeclarative
     qt6.qtwayland
+    libgit2
   ];
 
   preConfigure = ''

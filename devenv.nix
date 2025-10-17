@@ -10,10 +10,13 @@
     ninja
     git
     just
+    pkg-config
+    libgit2
     # KDE Frameworks and Qt6
     kdePackages.extra-cmake-modules
     kdePackages.kcoreaddons
     kdePackages.ki18n
+    kdePackages.kirigami
     qt6.qtbase
     qt6.qtdeclarative
     qt6.qtwayland

@@ -1,36 +1,46 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 
 project(
   nixbit
-  VERSION 1.0
+  VERSION 1.0.0
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 
-set(QT_MIN_VERSION "6.5.0")
-set(KF_MIN_VERSION "6.0.0")
-
-find_package(ECM ${KF_MIN_VERSION} REQUIRED NO_MODULE)
+find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 
 include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
-include(FeatureSummary)
 
-find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Core Quick
-                                                              Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
 
-find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS CoreAddons I18n)
+find_package(KF6 REQUIRED COMPONENTS CoreAddons I18n)
 
-add_executable(nixbit src/main.cpp)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBGIT2 REQUIRED libgit2)
 
-target_link_libraries(nixbit Qt6::Core Qt6::Quick Qt6::Widgets KF6::CoreAddons
-                      KF6::I18n)
+# Create a Qt resource file for the QML
+qt_add_resources(QML_RESOURCES src/qml.qrc)
+
+qt_add_executable(nixbit src/main.cpp src/gitmanager.cpp src/gitmanager.h
+                  ${QML_RESOURCES})
+
+target_link_libraries(
+  nixbit
+  PRIVATE Qt6::Core
+          Qt6::Gui
+          Qt6::Qml
+          Qt6::Quick
+          Qt6::Widgets
+          KF6::CoreAddons
+          KF6::I18n
+          ${LIBGIT2_LIBRARIES})
+
+target_include_directories(nixbit PRIVATE ${LIBGIT2_INCLUDE_DIRS})
 
 install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
-install(FILES src/main.qml DESTINATION ${KDE_INSTALL_DATADIR}/nixbit)
-
-feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES
-                         FATAL_ON_MISSING_REQUIRED_PACKAGES)
