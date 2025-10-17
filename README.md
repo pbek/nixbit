@@ -14,11 +14,13 @@ A small KDE Plasma application built with QtQuick that displays a terminal runni
 ### Using devenv (Recommended for Development)
 
 1. Enter the development environment:
+
 ```bash
 devenv shell
 ```
 
 2. Build and run:
+
 ```bash
 just build
 just run
@@ -61,12 +63,14 @@ just nix-build-flake
 ### Manual build
 
 Requirements:
+
 - CMake 3.16+
 - Qt 6.5+
 - KDE Frameworks 6.0+
 - GCC or Clang with C++17 support
 
 Build commands:
+
 ```bash
 mkdir build
 cd build
@@ -78,12 +82,14 @@ cmake --build .
 ## Just Commands
 
 ### Development
+
 - `just build` - Configure and build the application
 - `just run` - Build and run the application
 - `just clean` - Clean build artifacts
 - `just rebuild` - Clean and rebuild from scratch
 
 ### Nix Package
+
 - `just nix-build` - Build the Nix package
 - `just nix-run` - Build and run the Nix package
 - `just nix-install` - Install to user profile
@@ -92,6 +98,7 @@ cmake --build .
 ## Development
 
 The project uses:
+
 - **CMake** for build configuration
 - **Qt Quick** for the UI
 - **KDE Frameworks** for KDE integration
@@ -118,26 +125,26 @@ include(KDECompilerSettings NO_POLICY_SCOPE)
 include(FeatureSummary)
 
 find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS
-    Core
-    Quick
-    Widgets
+Core
+Quick
+Widgets
 )
 
 find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
-    CoreAddons
-    I18n
+CoreAddons
+I18n
 )
 
 add_executable(nixbit
-    src/main.cpp
+src/main.cpp
 )
 
 target_link_libraries(nixbit
-    Qt5::Core
-    Qt5::Quick
-    Qt5::Widgets
-    KF5::CoreAddons
-    KF5::I18n
+Qt5::Core
+Qt5::Quick
+Qt5::Widgets
+KF5::CoreAddons
+KF5::I18n
 )
 
 install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})

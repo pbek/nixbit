@@ -1,9 +1,10 @@
-{ lib
-, stdenv
-, cmake
-, ninja
-, kdePackages
-, qt6
+{
+  lib,
+  stdenv,
+  cmake,
+  ninja,
+  kdePackages,
+  qt6,
 }:
 
 stdenv.mkDerivation {
