@@ -56,7 +56,7 @@ Kirigami.ApplicationWindow {
                     placeholderText: "https://github.com/user/repo.git"
                     enabled: !gitManager.isBusy
                     onEditingFinished: {
-                        gitManager.repositoryUrl = text
+                        gitManager.repositoryUrl = text;
                     }
                 }
 
@@ -85,24 +85,13 @@ Kirigami.ApplicationWindow {
                     icon.name: "system-software-update"
                     enabled: !processManager.isRunning
                     onClicked: {
-                        var hostname = processManager.getHostname()
-                        var repoPath = gitManager.localPath
+                        var hostname = processManager.getHostname();
+                        var repoPath = gitManager.localPath;
                         // Write script to temp file and execute it with pkexec
-                        var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh"
+                        var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
                         // Copy repo to temp location owned by root, run rebuild, then clean up
-                        var cmd = "printf '#!/usr/bin/env bash\\n" +
-                                 "set -e\\n" +
-                                 "TEMP_REPO=/tmp/nixbit-repo-$$\\n" +
-                                 "echo \\\"Copying repository to temporary location...\\\"\\n" +
-                                 "cp -r " + repoPath + " $TEMP_REPO\\n" +
-                                 "cd $TEMP_REPO\\n" +
-                                 "nixos-rebuild build --flake .#" + hostname + " -L\\n" +
-                                 "echo \\\"Cleaning up temporary repository...\\\"\\n" +
-                                 "rm -rf $TEMP_REPO\\n' > " + tempScript +
-                                 " && chmod +x " + tempScript +
-                                 " && pkexec " + tempScript +
-                                 " ; rm -f " + tempScript
-                        processManager.runCommand("bash", ["-c", cmd])
+                        var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild build --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript + " && pkexec " + tempScript + " ; rm -f " + tempScript;
+                        processManager.runCommand("bash", ["-c", cmd]);
                     }
                     Layout.fillWidth: true
                 }
@@ -112,7 +101,7 @@ Kirigami.ApplicationWindow {
                     icon.name: "git-clone"
                     enabled: !gitManager.isBusy && repoUrlField.text.length > 0
                     onClicked: {
-                        gitManager.cloneOrPullRepository()
+                        gitManager.cloneOrPullRepository();
                     }
                     Layout.fillWidth: true
                 }
@@ -122,7 +111,7 @@ Kirigami.ApplicationWindow {
                     icon.name: "download"
                     enabled: !gitManager.isBusy
                     onClicked: {
-                        gitManager.pullRepository()
+                        gitManager.pullRepository();
                     }
                     Layout.fillWidth: true
                 }
@@ -137,7 +126,7 @@ Kirigami.ApplicationWindow {
 
                 onVisibleChanged: {
                     if (visible) {
-                        messageTimer.restart()
+                        messageTimer.restart();
                     }
                 }
 
@@ -192,7 +181,7 @@ Kirigami.ApplicationWindow {
 
                                 // Auto-scroll to bottom when output changes
                                 onTextChanged: {
-                                    cursorPosition = text.length
+                                    cursorPosition = text.length;
                                 }
                             }
                         }
@@ -208,13 +197,15 @@ Kirigami.ApplicationWindow {
                             font.pixelSize: 10
                         }
 
-                        Item { Layout.fillWidth: true }
+                        Item {
+                            Layout.fillWidth: true
+                        }
 
                         Button {
                             text: "Clear"
                             enabled: !processManager.isRunning
                             onClicked: {
-                                processManager.runCommand("clear", [])
+                                processManager.runCommand("clear", []);
                             }
                         }
 
@@ -222,7 +213,7 @@ Kirigami.ApplicationWindow {
                             text: "Kill Process"
                             enabled: processManager.isRunning
                             onClicked: {
-                                processManager.killProcess()
+                                processManager.killProcess();
                             }
                         }
                     }
@@ -235,9 +226,9 @@ Kirigami.ApplicationWindow {
         target: gitManager
 
         function onOperationCompleted(success, message) {
-            messageBox.text = message
-            messageBox.type = success ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error
-            messageBox.visible = true
+            messageBox.text = message;
+            messageBox.type = success ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error;
+            messageBox.visible = true;
         }
     }
 }
