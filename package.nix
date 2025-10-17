@@ -37,10 +37,10 @@ stdenv.mkDerivation {
   ];
 
   meta = with lib; {
-    description = "A KDE Plasma application to display git status in a terminal-like interface";
-    homepage = "https://github.com/yourusername/nixbit";
+    description = "A KDE Plasma application to update your nixos system from a git repository";
+    homepage = "https://github.com/pbek/nixbit";
     license = licenses.gpl3Plus;
-    maintainers = [ ];
+    maintainers = [ "pbek" ];
     platforms = platforms.linux;
     mainProgram = "nixbit";
   };
