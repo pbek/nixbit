@@ -86,8 +86,23 @@ Kirigami.ApplicationWindow {
                     enabled: !processManager.isRunning
                     onClicked: {
                         var hostname = processManager.getHostname()
-                        var flakePath = gitManager.localPath + "#" + hostname
-                        processManager.runCommand("pkexec", ["nixos-rebuild", "build", "--flake", flakePath, "-L"])
+                        var repoPath = gitManager.localPath
+                        // Write script to temp file and execute it with pkexec
+                        var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh"
+                        // Copy repo to temp location owned by root, run rebuild, then clean up
+                        var cmd = "printf '#!/usr/bin/env bash\\n" +
+                                 "set -e\\n" +
+                                 "TEMP_REPO=/tmp/nixbit-repo-$$\\n" +
+                                 "echo \\\"Copying repository to temporary location...\\\"\\n" +
+                                 "cp -r " + repoPath + " $TEMP_REPO\\n" +
+                                 "cd $TEMP_REPO\\n" +
+                                 "nixos-rebuild build --flake .#" + hostname + " -L\\n" +
+                                 "echo \\\"Cleaning up temporary repository...\\\"\\n" +
+                                 "rm -rf $TEMP_REPO\\n' > " + tempScript +
+                                 " && chmod +x " + tempScript +
+                                 " && pkexec " + tempScript +
+                                 " ; rm -f " + tempScript
+                        processManager.runCommand("bash", ["-c", cmd])
                     }
                     Layout.fillWidth: true
                 }
