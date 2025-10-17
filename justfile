@@ -85,3 +85,6 @@ nix-check:
     fi
     echo ""
     echo "✓ Build appears successful!"
+
+fix-cmakelists:
+    cmake-format -i CMakeLists.txt
