@@ -1,0 +1,10 @@
+build/
+.devenv/
+.direnv/
+.devenv.flake.nix
+*.user
+*.autosave
+*~
+.DS_Store
+compile_commands.json
+
