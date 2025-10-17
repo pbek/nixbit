@@ -1,5 +1,7 @@
 # Build and run commands for Nixbit
 
+import ".shared/common.just"
+
 # Default recipe - show available commands
 default:
     @just --list
