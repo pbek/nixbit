@@ -1,4 +1,5 @@
 #include "gitmanager.h"
+#include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
 #include <QSettings>
@@ -67,13 +68,43 @@ static int credential_cb(git_credential **out, const char *url,
 static int transfer_progress_cb(const git_indexer_progress *stats,
                                 void *payload) {
   GitManager *manager = static_cast<GitManager *>(payload);
-  if (manager && stats->total_objects > 0) {
-    int progress = (stats->received_objects * 100) / stats->total_objects;
-    QString status = QString("Cloning: %1% (%2/%3 objects)")
-                         .arg(progress)
-                         .arg(stats->received_objects)
-                         .arg(stats->total_objects);
-    manager->setStatus(status);
+  if (manager) {
+    static int last_progress = -1; // Track last reported progress percentage
+
+    if (stats->total_objects > 0) {
+      int progress = (stats->received_objects * 100) / stats->total_objects;
+
+      // Only update UI if progress changed by at least 1%
+      if (progress != last_progress) {
+        QString status = QString("Cloning: %1% (%2/%3 objects)")
+                             .arg(progress)
+                             .arg(stats->received_objects)
+                             .arg(stats->total_objects);
+        manager->setStatus(status);
+        manager->setProgress(progress);
+
+        // Process events to allow UI updates
+        QCoreApplication::processEvents();
+
+        last_progress = progress;
+      }
+    } else if (stats->received_objects > 0) {
+      // During early clone phase when total is not yet known
+      // Only update every 100 objects to avoid excessive updates
+      static unsigned int last_received = 0;
+      if (stats->received_objects - last_received >= 100 ||
+          last_received == 0) {
+        QString status = QString("Cloning: Receiving objects... (%1 received)")
+                             .arg(stats->received_objects);
+        manager->setStatus(status);
+        manager->setProgress(1); // Show at least 1% to indicate progress
+
+        // Process events to allow UI updates
+        QCoreApplication::processEvents();
+
+        last_received = stats->received_objects;
+      }
+    }
   }
   return 0;
 }
@@ -81,7 +112,7 @@ static int transfer_progress_cb(const git_indexer_progress *stats,
 GitManager::GitManager(QObject *parent)
     : QObject(parent), m_repositoryUrl("https://github.com/pbek/nixcfg.git"),
       m_isBusy(false), m_commitsBehind(0), m_fetchIntervalMinutes(5),
-      m_fetchTimer(nullptr) {
+      m_progress(0), m_fetchTimer(nullptr) {
   git_libgit2_init();
 
   loadSettings();
@@ -97,15 +128,12 @@ GitManager::GitManager(QObject *parent)
 
   setStatus("Ready");
 
-  // Perform initial check for updates if repository exists
-  QDir gitDir(m_localPath + "/.git");
-  if (gitDir.exists()) {
-    // Use a single-shot timer to check after the event loop starts
-    QTimer::singleShot(1000, this, [this]() {
-      qDebug() << "Performing initial fetch on startup...";
-      checkForUpdates();
-    });
-  }
+  // Perform initial check for updates on startup
+  // This will clone the repository if it doesn't exist yet
+  QTimer::singleShot(1000, this, [this]() {
+    qDebug() << "Performing initial check on startup...";
+    checkForUpdates();
+  });
 }
 
 GitManager::~GitManager() {
@@ -170,6 +198,14 @@ void GitManager::setFetchIntervalMinutes(int minutes) {
   }
 }
 
+void GitManager::setProgress(int progress) {
+  if (m_progress != progress) {
+    m_progress = progress;
+    qDebug() << "Progress changed to:" << progress;
+    emit progressChanged();
+  }
+}
+
 void GitManager::startFetchTimer() {
   if (m_fetchTimer) {
     m_fetchTimer->stop();
@@ -198,10 +234,25 @@ void GitManager::checkForUpdates() {
     return;
   }
 
-  // Don't check if repository doesn't exist locally
+  // Check if repository exists, if not clone it first
   QDir gitDir(m_localPath + "/.git");
   if (!gitDir.exists()) {
-    qDebug() << "Repository not cloned yet, skipping update check";
+    qDebug() << "Repository not cloned yet, cloning now...";
+    setIsBusy(true);
+    setStatus("Cloning repository...");
+    setProgress(1); // Set initial progress to make progress bar visible
+
+    bool success = cloneRepository();
+    if (success) {
+      setStatus("Repository cloned successfully");
+      // After cloning, check commits behind (should be 0)
+      int behind = calculateCommitsBehind();
+      setCommitsBehind(behind);
+    } else {
+      setStatus("Failed to clone repository");
+    }
+
+    setIsBusy(false);
     return;
   }
 
@@ -312,6 +363,29 @@ void GitManager::pullRepository() {
     return;
   }
 
+  // Check if repository exists, if not clone it first
+  QDir gitDir(m_localPath + "/.git");
+  if (!gitDir.exists()) {
+    qDebug() << "Repository not cloned yet, cloning before pull...";
+    setIsBusy(true);
+    setStatus("Cloning repository...");
+    setProgress(1); // Set initial progress to make progress bar visible
+
+    bool success = cloneRepository();
+    if (success) {
+      setStatus("Repository cloned successfully");
+      // After cloning, we're up to date
+      setCommitsBehind(0);
+      emit pullCompletedForUpdate();
+    } else {
+      setStatus("Failed to clone repository");
+      emit operationCompleted(false, "Failed to clone repository");
+    }
+
+    setIsBusy(false);
+    return;
+  }
+
   setIsBusy(true);
   setStatus("Pulling repository...");
 
@@ -330,6 +404,9 @@ void GitManager::pullRepository() {
 }
 
 bool GitManager::cloneRepository() {
+  // Reset progress for cloning operation
+  setProgress(0);
+
   // Create parent directory if it doesn't exist
   QDir dir;
   QString parentPath = QFileInfo(m_localPath).absolutePath();

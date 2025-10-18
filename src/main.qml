@@ -155,6 +155,31 @@ Kirigami.ApplicationWindow {
                 visible: gitManager.isBusy
             }
 
+            ProgressBar {
+                Layout.fillWidth: true
+                Layout.leftMargin: Kirigami.Units.largeSpacing
+                Layout.rightMargin: Kirigami.Units.largeSpacing
+                visible: gitManager.isBusy && gitManager.status.indexOf("Cloning") !== -1
+                from: 0
+                to: 100
+                value: gitManager.progress
+
+                Component.onCompleted: {
+                    console.log("ProgressBar created");
+                }
+
+                onVisibleChanged: {
+                    console.log("ProgressBar visibility changed to:", visible);
+                    console.log("  - isBusy:", gitManager.isBusy);
+                    console.log("  - status:", gitManager.status);
+                    console.log("  - progress:", gitManager.progress);
+                }
+
+                onValueChanged: {
+                    console.log("ProgressBar value changed to:", value);
+                }
+            }
+
             // Terminal Output Section
             GroupBox {
                 title: "Terminal Output"

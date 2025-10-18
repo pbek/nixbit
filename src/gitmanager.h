@@ -1,6 +1,8 @@
 #ifndef GITMANAGER_H
 #define GITMANAGER_H
 
+#include <QFuture>
+#include <QFutureWatcher>
 #include <QObject>
 #include <QSettings>
 #include <QStandardPaths>
@@ -19,6 +21,7 @@ class GitManager : public QObject {
   Q_PROPERTY(int commitsBehind READ commitsBehind NOTIFY commitsBehindChanged)
   Q_PROPERTY(int fetchIntervalMinutes READ fetchIntervalMinutes WRITE
                  setFetchIntervalMinutes NOTIFY fetchIntervalMinutesChanged)
+  Q_PROPERTY(int progress READ progress NOTIFY progressChanged)
 
 public:
   explicit GitManager(QObject *parent = nullptr);
@@ -35,6 +38,7 @@ public:
   int commitsBehind() const { return m_commitsBehind; }
   int fetchIntervalMinutes() const { return m_fetchIntervalMinutes; }
   void setFetchIntervalMinutes(int minutes);
+  int progress() const { return m_progress; }
 
   Q_INVOKABLE void pullRepository();
   Q_INVOKABLE void cloneOrPullRepository();
@@ -42,6 +46,7 @@ public:
 
   // Make setStatus public so callbacks can use it
   void setStatus(const QString &status);
+  void setProgress(int progress);
 
 signals:
   void repositoryUrlChanged();
@@ -50,6 +55,7 @@ signals:
   void isBusyChanged();
   void commitsBehindChanged();
   void fetchIntervalMinutesChanged();
+  void progressChanged();
   void operationCompleted(bool success, const QString &message);
   void pullCompletedForUpdate();
 
@@ -76,6 +82,7 @@ private:
   bool m_isBusy;
   int m_commitsBehind;
   int m_fetchIntervalMinutes;
+  int m_progress;
   QTimer *m_fetchTimer;
 };
 
