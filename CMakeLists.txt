@@ -34,6 +34,8 @@ qt_add_executable(
   src/gitmanager.h
   src/processmanager.cpp
   src/processmanager.h
+  src/trayiconmanager.cpp
+  src/trayiconmanager.h
   ${QML_RESOURCES})
 
 target_link_libraries(
