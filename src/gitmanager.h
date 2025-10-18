@@ -51,6 +51,7 @@ signals:
   void commitsBehindChanged();
   void fetchIntervalMinutesChanged();
   void operationCompleted(bool success, const QString &message);
+  void pullCompletedForUpdate();
 
 private slots:
   void onFetchTimerTimeout();

@@ -26,13 +26,9 @@ Kirigami.ApplicationWindow {
         Menu {
             title: "&Tools"
             Action {
-                text: "&Update System"
-                onTriggered: processManager.runCommand("gh", [])
-            }
-            Action {
-                text: "&Clone/Pull Repository"
+                text: "&Check for Updates"
                 enabled: !gitManager.isBusy
-                onTriggered: gitManager.cloneOrPullRepository()
+                onTriggered: gitManager.checkForUpdates()
             }
         }
     }
@@ -114,15 +110,10 @@ Kirigami.ApplicationWindow {
                 Button {
                     text: "Update System"
                     icon.name: "system-software-update"
-                    enabled: !processManager.isRunning
+                    enabled: !processManager.isRunning && !gitManager.isBusy
                     onClicked: {
-                        var hostname = processManager.getHostname();
-                        var repoPath = gitManager.localPath;
-                        // Write script to temp file and execute it with pkexec
-                        var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
-                        // Copy repo to temp location owned by root, run rebuild, then clean up
-                        var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild build --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript + " && pkexec " + tempScript + " ; rm -f " + tempScript;
-                        processManager.runCommand("bash", ["-c", cmd]);
+                        // First pull the repository, then update system
+                        gitManager.pullRepository();
                     }
                     Layout.fillWidth: true
                 }
@@ -133,26 +124,6 @@ Kirigami.ApplicationWindow {
                     enabled: !gitManager.isBusy
                     onClicked: {
                         gitManager.checkForUpdates();
-                    }
-                    Layout.fillWidth: true
-                }
-
-                Button {
-                    text: "Clone/Pull Repository"
-                    icon.name: "git-clone"
-                    enabled: !gitManager.isBusy && repoUrlField.text.length > 0
-                    onClicked: {
-                        gitManager.cloneOrPullRepository();
-                    }
-                    Layout.fillWidth: true
-                }
-
-                Button {
-                    text: "Pull (Update)"
-                    icon.name: "download"
-                    enabled: !gitManager.isBusy
-                    onClicked: {
-                        gitManager.pullRepository();
                     }
                     Layout.fillWidth: true
                 }
@@ -270,6 +241,15 @@ Kirigami.ApplicationWindow {
             messageBox.text = message;
             messageBox.type = success ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error;
             messageBox.visible = true;
+        }
+
+        function onPullCompletedForUpdate() {
+            // Pull completed successfully, now run system update
+            var hostname = processManager.getHostname();
+            var repoPath = gitManager.localPath;
+            var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
+            var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild build --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript + " && pkexec " + tempScript + " ; rm -f " + tempScript;
+            processManager.runCommand("bash", ["-c", cmd]);
         }
     }
 }

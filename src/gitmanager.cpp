@@ -322,6 +322,7 @@ void GitManager::pullRepository() {
   // After successful pull, we should be up to date
   if (success) {
     setCommitsBehind(0);
+    emit pullCompletedForUpdate();
   }
 
   setIsBusy(false);

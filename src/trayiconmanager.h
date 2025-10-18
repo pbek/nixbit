@@ -21,7 +21,6 @@ public:
 signals:
   void showWindowRequested();
   void checkForUpdatesRequested();
-  void pullRepositoryRequested();
   void quitRequested();
 
 private slots:

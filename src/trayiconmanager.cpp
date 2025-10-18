@@ -39,11 +39,6 @@ void TrayIconManager::createTrayIcon() {
   connect(m_checkUpdatesAction, &QAction::triggered, this,
           &TrayIconManager::checkForUpdatesRequested);
 
-  m_pullAction =
-      m_trayMenu->addAction(QIcon::fromTheme("download"), "Pull Repository");
-  connect(m_pullAction, &QAction::triggered, this,
-          &TrayIconManager::pullRepositoryRequested);
-
   m_trayMenu->addSeparator();
 
   m_quitAction =

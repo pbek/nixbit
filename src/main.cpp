@@ -80,9 +80,6 @@ int main(int argc, char *argv[]) {
   QObject::connect(&trayIconManager, &TrayIconManager::checkForUpdatesRequested,
                    &gitManager, &GitManager::checkForUpdates);
 
-  QObject::connect(&trayIconManager, &TrayIconManager::pullRepositoryRequested,
-                   &gitManager, &GitManager::pullRepository);
-
   QObject::connect(&trayIconManager, &TrayIconManager::quitRequested, &app,
                    &QApplication::quit);
 
