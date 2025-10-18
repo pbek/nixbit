@@ -61,7 +61,7 @@ void TrayIconManager::createTrayIcon() {
   // Set initial icon
   updateIcon(0);
 
-  m_trayIcon->setToolTip("NixBit - Git Repository Manager");
+  m_trayIcon->setToolTip("NixBit - NixOS Updater");
 }
 
 void TrayIconManager::updateIcon(int commitsBehind) {
