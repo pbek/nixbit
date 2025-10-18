@@ -60,10 +60,14 @@ Kirigami.ApplicationWindow {
                     }
                 }
 
-                Label {
+                TextEdit {
+                    id: localPathLabel
                     Kirigami.FormData.label: "Local Path:"
                     text: gitManager.localPath
+                    readOnly: true
+                    selectByMouse: true
                     wrapMode: Text.WrapAnywhere
+                    color: Kirigami.Theme.textColor
                     Layout.fillWidth: true
                 }
 
@@ -72,6 +76,33 @@ Kirigami.ApplicationWindow {
                     text: gitManager.status
                     font.bold: true
                     color: gitManager.isBusy ? Kirigami.Theme.activeTextColor : Kirigami.Theme.positiveTextColor
+                }
+
+                Label {
+                    Kirigami.FormData.label: "Commits Behind:"
+                    text: gitManager.commitsBehind >= 0 ? gitManager.commitsBehind.toString() : "N/A"
+                    font.bold: gitManager.commitsBehind > 0
+                    color: gitManager.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor
+                }
+
+                RowLayout {
+                    Kirigami.FormData.label: "Auto-fetch Interval:"
+
+                    SpinBox {
+                        id: fetchIntervalSpinBox
+                        from: 1
+                        to: 60
+                        value: gitManager.fetchIntervalMinutes
+                        editable: true
+                        enabled: !gitManager.isBusy
+                        onValueModified: {
+                            gitManager.fetchIntervalMinutes = value;
+                        }
+                    }
+
+                    Label {
+                        text: "minutes"
+                    }
                 }
             }
 
@@ -92,6 +123,16 @@ Kirigami.ApplicationWindow {
                         // Copy repo to temp location owned by root, run rebuild, then clean up
                         var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild build --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript + " && pkexec " + tempScript + " ; rm -f " + tempScript;
                         processManager.runCommand("bash", ["-c", cmd]);
+                    }
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: "Check for Updates"
+                    icon.name: "view-refresh"
+                    enabled: !gitManager.isBusy
+                    onClicked: {
+                        gitManager.checkForUpdates();
                     }
                     Layout.fillWidth: true
                 }

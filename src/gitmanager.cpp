@@ -80,7 +80,8 @@ static int transfer_progress_cb(const git_indexer_progress *stats,
 
 GitManager::GitManager(QObject *parent)
     : QObject(parent), m_repositoryUrl("https://github.com/pbek/nixcfg.git"),
-      m_isBusy(false) {
+      m_isBusy(false), m_commitsBehind(0), m_fetchIntervalMinutes(5),
+      m_fetchTimer(nullptr) {
   git_libgit2_init();
 
   loadSettings();
@@ -88,10 +89,27 @@ GitManager::GitManager(QObject *parent)
   // Set up the local path based on repository URL
   m_localPath = getRepositoryLocalPath(m_repositoryUrl);
 
+  // Initialize fetch timer
+  m_fetchTimer = new QTimer(this);
+  connect(m_fetchTimer, &QTimer::timeout, this,
+          &GitManager::onFetchTimerTimeout);
+  startFetchTimer();
+
   setStatus("Ready");
+
+  // Perform initial check for updates if repository exists
+  QDir gitDir(m_localPath + "/.git");
+  if (gitDir.exists()) {
+    // Use a single-shot timer to check after the event loop starts
+    QTimer::singleShot(1000, this, [this]() {
+      qDebug() << "Performing initial fetch on startup...";
+      checkForUpdates();
+    });
+  }
 }
 
 GitManager::~GitManager() {
+  stopFetchTimer();
   saveSettings();
   git_libgit2_shutdown();
 }
@@ -100,8 +118,18 @@ void GitManager::setRepositoryUrl(const QString &url) {
   if (m_repositoryUrl != url) {
     m_repositoryUrl = url;
     m_localPath = getRepositoryLocalPath(url);
+    setCommitsBehind(0);
     saveSettings();
     emit repositoryUrlChanged();
+    emit localPathChanged();
+  }
+}
+
+void GitManager::setLocalPath(const QString &path) {
+  if (m_localPath != path) {
+    m_localPath = path;
+    setCommitsBehind(0);
+    saveSettings();
     emit localPathChanged();
   }
 }
@@ -121,6 +149,80 @@ void GitManager::setIsBusy(bool busy) {
   }
 }
 
+void GitManager::setCommitsBehind(int count) {
+  if (m_commitsBehind != count) {
+    m_commitsBehind = count;
+    qDebug() << "Commits behind:" << count;
+    emit commitsBehindChanged();
+  }
+}
+
+void GitManager::setFetchIntervalMinutes(int minutes) {
+  if (m_fetchIntervalMinutes != minutes && minutes > 0) {
+    m_fetchIntervalMinutes = minutes;
+    saveSettings();
+    emit fetchIntervalMinutesChanged();
+
+    // Restart timer with new interval
+    if (m_fetchTimer && m_fetchTimer->isActive()) {
+      startFetchTimer();
+    }
+  }
+}
+
+void GitManager::startFetchTimer() {
+  if (m_fetchTimer) {
+    m_fetchTimer->stop();
+    // Convert minutes to milliseconds
+    m_fetchTimer->start(m_fetchIntervalMinutes * 60 * 1000);
+    qDebug() << "Fetch timer started with interval:" << m_fetchIntervalMinutes
+             << "minutes";
+  }
+}
+
+void GitManager::stopFetchTimer() {
+  if (m_fetchTimer) {
+    m_fetchTimer->stop();
+  }
+}
+
+void GitManager::onFetchTimerTimeout() {
+  qDebug() << "Fetch timer triggered, checking for updates...";
+  checkForUpdates();
+}
+
+void GitManager::checkForUpdates() {
+  // Don't check if already busy
+  if (m_isBusy) {
+    qDebug() << "Already busy, skipping update check";
+    return;
+  }
+
+  // Don't check if repository doesn't exist locally
+  QDir gitDir(m_localPath + "/.git");
+  if (!gitDir.exists()) {
+    qDebug() << "Repository not cloned yet, skipping update check";
+    return;
+  }
+
+  setIsBusy(true);
+
+  bool success = fetchRepository();
+  if (success) {
+    int behind = calculateCommitsBehind();
+    setCommitsBehind(behind);
+
+    if (behind > 0) {
+      setStatus(
+          QString("Repository is %1 commit(s) behind origin").arg(behind));
+    } else {
+      setStatus("Repository is up to date");
+    }
+  }
+
+  setIsBusy(false);
+}
+
 void GitManager::loadSettings() {
   QSettings settings("pbek", "nixbit");
 
@@ -128,11 +230,26 @@ void GitManager::loadSettings() {
   if (!savedUrl.isEmpty()) {
     m_repositoryUrl = savedUrl;
   }
+
+  // Load saved local path if available
+  QString savedPath =
+      settings.value("Repository/LocalPath", QString()).toString();
+  if (!savedPath.isEmpty()) {
+    m_localPath = savedPath;
+  }
+
+  m_fetchIntervalMinutes =
+      settings.value("Repository/FetchIntervalMinutes", 5).toInt();
+  if (m_fetchIntervalMinutes <= 0) {
+    m_fetchIntervalMinutes = 5; // Default to 5 minutes
+  }
 }
 
 void GitManager::saveSettings() {
   QSettings settings("pbek", "nixbit");
   settings.setValue("Repository/Url", m_repositoryUrl);
+  settings.setValue("Repository/LocalPath", m_localPath);
+  settings.setValue("Repository/FetchIntervalMinutes", m_fetchIntervalMinutes);
   settings.sync();
 }
 
@@ -179,6 +296,12 @@ void GitManager::cloneOrPullRepository() {
                       : "Failed to clone repository";
   }
 
+  // After successful clone/pull, check how many commits behind we are
+  if (success) {
+    int behind = calculateCommitsBehind();
+    setCommitsBehind(behind);
+  }
+
   setIsBusy(false);
   emit operationCompleted(success, message);
 }
@@ -195,6 +318,11 @@ void GitManager::pullRepository() {
   bool success = pullRepository_internal();
   QString message =
       success ? "Repository updated successfully" : "Failed to pull repository";
+
+  // After successful pull, we should be up to date
+  if (success) {
+    setCommitsBehind(0);
+  }
 
   setIsBusy(false);
   emit operationCompleted(success, message);
@@ -336,5 +464,135 @@ bool GitManager::pullRepository_internal() {
   git_repository_free(repo);
 
   setStatus("Pull completed successfully");
+  return true;
+}
+
+int GitManager::calculateCommitsBehind() {
+  git_repository *repo = nullptr;
+  git_oid local_oid, remote_oid;
+  git_reference *head_ref = nullptr;
+  int error;
+
+  // Open the repository
+  error = git_repository_open(&repo, m_localPath.toUtf8().constData());
+  if (error != 0) {
+    qDebug() << "Failed to open repository for commit count";
+    return -1;
+  }
+
+  // Get HEAD reference and resolve it to a commit
+  error = git_repository_head(&head_ref, repo);
+  if (error != 0) {
+    qDebug() << "Failed to get HEAD reference";
+    git_repository_free(repo);
+    return -1;
+  }
+
+  // Get the OID that HEAD points to
+  const git_oid *head_target = git_reference_target(head_ref);
+  if (!head_target) {
+    qDebug() << "Failed to get HEAD target OID";
+    git_reference_free(head_ref);
+    git_repository_free(repo);
+    return -1;
+  }
+  git_oid_cpy(&local_oid, head_target);
+  git_reference_free(head_ref);
+
+  // Try to find the remote tracking branch
+  const char *remote_branch_names[] = {"refs/remotes/origin/main",
+                                       "refs/remotes/origin/master",
+                                       "refs/remotes/origin/HEAD"};
+
+  bool found_remote = false;
+  for (const char *branch_name : remote_branch_names) {
+    error = git_reference_name_to_id(&remote_oid, repo, branch_name);
+    if (error == 0) {
+      qDebug() << "Found remote branch:" << branch_name;
+      found_remote = true;
+      break;
+    }
+  }
+
+  if (!found_remote) {
+    qDebug() << "Failed to find remote tracking branch";
+    git_repository_free(repo);
+    return -1;
+  }
+
+  // If commits are the same, we're up to date
+  if (git_oid_equal(&local_oid, &remote_oid)) {
+    qDebug() << "Local and remote are at the same commit";
+    git_repository_free(repo);
+    return 0;
+  }
+
+  // Use git_graph_ahead_behind to count commits
+  size_t ahead, behind;
+  error =
+      git_graph_ahead_behind(&ahead, &behind, repo, &local_oid, &remote_oid);
+  if (error != 0) {
+    qDebug() << "Failed to calculate ahead/behind, error:" << error;
+    const git_error *e = git_error_last();
+    if (e) {
+      qDebug() << "Error message:" << e->message;
+    }
+    git_repository_free(repo);
+    return -1;
+  }
+
+  int commits_behind = static_cast<int>(behind);
+  qDebug() << "Repository is" << ahead << "commit(s) ahead and" << behind
+           << "commit(s) behind";
+
+  git_repository_free(repo);
+  return commits_behind;
+}
+
+bool GitManager::fetchRepository() {
+  git_repository *repo = nullptr;
+
+  // Open the repository
+  int error = git_repository_open(&repo, m_localPath.toUtf8().constData());
+  if (error != 0) {
+    const git_error *e = git_error_last();
+    QString errorMsg = QString("Failed to open repository: %1")
+                           .arg(e ? e->message : "Unknown error");
+    setStatus(errorMsg);
+    return false;
+  }
+
+  // Get the remote
+  git_remote *remote = nullptr;
+  error = git_remote_lookup(&remote, repo, "origin");
+  if (error != 0) {
+    const git_error *e = git_error_last();
+    QString errorMsg = QString("Failed to lookup remote: %1")
+                           .arg(e ? e->message : "Unknown error");
+    setStatus(errorMsg);
+    git_repository_free(repo);
+    return false;
+  }
+
+  // Fetch from remote with credential callback
+  git_fetch_options fetch_opts = GIT_FETCH_OPTIONS_INIT;
+  fetch_opts.callbacks.credentials = credential_cb;
+  fetch_opts.callbacks.payload = this;
+
+  error = git_remote_fetch(remote, nullptr, &fetch_opts, nullptr);
+  if (error != 0) {
+    const git_error *e = git_error_last();
+    QString errorMsg =
+        QString("Fetch failed: %1").arg(e ? e->message : "Unknown error");
+    setStatus(errorMsg);
+    git_remote_free(remote);
+    git_repository_free(repo);
+    return false;
+  }
+
+  // Cleanup
+  git_remote_free(remote);
+  git_repository_free(repo);
+
   return true;
 }
