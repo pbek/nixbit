@@ -1,5 +1,6 @@
 #include "gitmanager.h"
 #include "processmanager.h"
+#include "settingsmanager.h"
 #include "trayiconmanager.h"
 #include <KLocalizedContext>
 #include <KLocalizedString>
@@ -36,6 +37,10 @@ int main(int argc, char *argv[]) {
   // Create and register TrayIconManager
   TrayIconManager trayIconManager;
   engine.rootContext()->setContextProperty("trayIconManager", &trayIconManager);
+
+  // Create and register SettingsManager
+  SettingsManager settingsManager;
+  engine.rootContext()->setContextProperty("settingsManager", &settingsManager);
 
   engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
 
@@ -77,6 +82,22 @@ int main(int argc, char *argv[]) {
                      }
                    });
 
+  // Toggle window visibility when tray icon is clicked
+  QObject::connect(&trayIconManager, &TrayIconManager::toggleWindowRequested,
+                   [mainWindow]() {
+                     if (mainWindow) {
+                       // If window is visible and active, hide it
+                       if (mainWindow->isVisible() && mainWindow->isActive()) {
+                         mainWindow->hide();
+                       } else {
+                         // Otherwise show and activate it
+                         mainWindow->show();
+                         mainWindow->raise();
+                         mainWindow->requestActivate();
+                       }
+                     }
+                   });
+
   QObject::connect(&trayIconManager, &TrayIconManager::checkForUpdatesRequested,
                    &gitManager, &GitManager::checkForUpdates);
 
@@ -92,6 +113,14 @@ int main(int argc, char *argv[]) {
 
   // Show the tray icon
   trayIconManager.show();
+
+  // Handle start hidden preference
+  if (settingsManager.startHidden()) {
+    qDebug() << "Starting hidden as per user preference";
+    if (mainWindow) {
+      mainWindow->hide();
+    }
+  }
 
   return app.exec();
 }

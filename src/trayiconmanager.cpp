@@ -216,6 +216,6 @@ void TrayIconManager::hide() {
 void TrayIconManager::onActivated(QSystemTrayIcon::ActivationReason reason) {
   if (reason == QSystemTrayIcon::Trigger ||
       reason == QSystemTrayIcon::DoubleClick) {
-    emit showWindowRequested();
+    emit toggleWindowRequested();
   }
 }

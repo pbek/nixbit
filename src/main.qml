@@ -100,6 +100,15 @@ Kirigami.ApplicationWindow {
                         text: "minutes"
                     }
                 }
+
+                CheckBox {
+                    Kirigami.FormData.label: "Start Hidden:"
+                    checked: settingsManager.startHidden
+                    text: "Start application hidden in system tray"
+                    onToggled: {
+                        settingsManager.startHidden = checked;
+                    }
+                }
             }
 
             // Action Buttons

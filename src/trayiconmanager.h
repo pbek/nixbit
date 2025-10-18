@@ -20,6 +20,7 @@ public:
 
 signals:
   void showWindowRequested();
+  void toggleWindowRequested();
   void checkForUpdatesRequested();
   void quitRequested();
 
