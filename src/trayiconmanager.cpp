@@ -115,11 +115,11 @@ QPixmap TrayIconManager::createDefaultIcon() {
   painter.setPen(Qt::NoPen);
 
   // Arrow shaft
-  painter.drawRect(21, 14, 6, 16);
+  painter.drawRect(20, 13, 8, 15);
 
   // Arrow head
   QPolygon arrowHead;
-  arrowHead << QPoint(24, 34) << QPoint(16, 26) << QPoint(32, 26);
+  arrowHead << QPoint(24, 34) << QPoint(15, 26) << QPoint(33, 26);
   painter.drawPolygon(arrowHead);
 
   return pixmap;
@@ -172,11 +172,11 @@ QPixmap TrayIconManager::createUpdateAvailableIcon(int count) {
   painter.setPen(Qt::NoPen);
 
   // Arrow shaft
-  painter.drawRect(21, 14, 6, 14);
+  painter.drawRect(20, 13, 8, 15);
 
   // Arrow head
   QPolygon arrowHead;
-  arrowHead << QPoint(24, 32) << QPoint(17, 25) << QPoint(31, 25);
+  arrowHead << QPoint(24, 34) << QPoint(15, 26) << QPoint(33, 26);
   painter.drawPolygon(arrowHead);
 
   // Draw count badge if more than 1 update
