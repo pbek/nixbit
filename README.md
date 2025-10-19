@@ -8,6 +8,12 @@ An opinionated KDE Plasma application for updating the current NixOS system.
 
 NixBit is a Qt6/QML-based desktop application that provides a graphical interface for updating NixOS systems from Git repositories. Built with KDE Kirigami for a modern, responsive UI.
 
+Run directly with Nix:
+
+```bash
+nix run github:pbek/nixbit#nixbit
+```
+
 ## Features
 
 ### Git Repository Management
