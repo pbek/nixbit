@@ -13,11 +13,6 @@ Kirigami.ApplicationWindow {
         Menu {
             title: "&File"
             Action {
-                text: "&Refresh Terminal"
-                onTriggered: processManager.runCommand("gh", [])
-            }
-            MenuSeparator {}
-            Action {
                 text: "&Quit"
                 onTriggered: Qt.quit()
             }
