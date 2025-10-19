@@ -67,6 +67,17 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                 }
 
+                TextField {
+                    id: hostnameField
+                    Kirigami.FormData.label: "Hostname:"
+                    text: settingsManager.hostname
+                    placeholderText: "System hostname for NixOS rebuild"
+                    enabled: !gitManager.isBusy && !processManager.isRunning
+                    onEditingFinished: {
+                        settingsManager.hostname = text;
+                    }
+                }
+
                 Label {
                     Kirigami.FormData.label: "Status:"
                     text: gitManager.status
@@ -279,7 +290,7 @@ Kirigami.ApplicationWindow {
 
         function onPullCompletedForUpdate() {
             // Pull completed successfully, now run system update
-            var hostname = processManager.getHostname();
+            var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
             var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
             var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild build --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript + " && pkexec " + tempScript + " ; rm -f " + tempScript;
