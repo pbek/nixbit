@@ -92,6 +92,16 @@ Kirigami.ApplicationWindow {
                     }
                 }
 
+                ComboBox {
+                    id: rebuildModeComboBox
+                    Kirigami.FormData.label: "Rebuild Mode:"
+                    model: ["build", "switch"]
+                    currentIndex: 1
+                    enabled: !gitManager.isBusy && !processManager.isRunning
+                    ToolTip.visible: hovered
+                    ToolTip.text: currentIndex === 0 ? "Build the system without activating (no sudo required)" : "Build and activate the new system (requires sudo)"
+                }
+
                 Label {
                     Kirigami.FormData.label: "Status:"
                     text: gitManager.status
@@ -306,8 +316,19 @@ Kirigami.ApplicationWindow {
             // Pull completed successfully, now run system update
             var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
+            var rebuildMode = rebuildModeComboBox.currentText;
             var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
-            var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild build --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript + " && pkexec " + tempScript + " ; rm -f " + tempScript;
+
+            // Build mode doesn't need sudo, switch mode does
+            var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild " + rebuildMode + " --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript;
+
+            // Only use pkexec for switch mode
+            if (rebuildMode === "switch") {
+                cmd += " && pkexec " + tempScript + " ; rm -f " + tempScript;
+            } else {
+                cmd += " && " + tempScript + " ; rm -f " + tempScript;
+            }
+
             processManager.runCommand("bash", ["-c", cmd]);
         }
     }
