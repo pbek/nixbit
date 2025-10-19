@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
   QApplication::setOrganizationDomain("pbek");
   QApplication::setApplicationName("nixbit");
   QApplication::setApplicationDisplayName("NixBit");
-  QApplication::setWindowIcon(QIcon::fromTheme("git"));
+  QApplication::setWindowIcon(QIcon::fromTheme("nixbit"));
 
   QQmlApplicationEngine engine;
 

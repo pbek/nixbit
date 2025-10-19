@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=NixBit
+GenericName=NixOS System Updater
+Comment=Update your NixOS system from a Git repository
+Exec=nixbit
+Icon=nixbit
+Terminal=false
+Type=Application
+Categories=System;Settings;Qt;KDE;
+Keywords=nix;nixos;system;update;git;rebuild;
+StartupNotify=true
+StartupWMClass=nixbit
+X-KDE-StartupNotify=true
+X-DBUS-StartupType=Unique

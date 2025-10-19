@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" version="1.1" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5277C3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7EBAE4;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Metallic shine -->
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.3" />
+      <stop offset="50%" style="stop-color:#ffffff;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:0.1" />
+    </linearGradient>
+
+    <!-- Git logo gradient -->
+    <linearGradient id="gitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F05033;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C9301E;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Main hexagon background (NixOS style) -->
+  <g filter="url(#shadow)">
+    <path d="M 64 12 L 106 34 L 106 78 L 64 100 L 22 78 L 22 34 Z"
+          fill="url(#bgGradient)"
+          stroke="#294172"
+          stroke-width="2.5"
+          stroke-linejoin="round"/>
+
+    <!-- Shine overlay on hexagon -->
+    <path d="M 64 12 L 106 34 L 106 78 L 64 100 L 22 78 L 22 34 Z"
+          fill="url(#shine)"
+          opacity="0.6"/>
+  </g>
+
+  <!-- NixOS lambda/snowflake pattern -->
+  <g transform="translate(64,56)">
+    <!-- Lambda symbol (stylized NixOS logo) -->
+    <g fill="#FFFFFF" stroke="none">
+      <!-- Left branch of lambda -->
+      <path d="M -18 -20 L -8 -20 L 0 0 L -8 20 L -18 20 L -10 0 Z" opacity="0.95"/>
+
+      <!-- Right branch of lambda -->
+      <path d="M 8 -20 L 18 -20 L 10 0 L 18 20 L 8 20 L 0 0 Z" opacity="0.95"/>
+
+      <!-- Center connecting piece -->
+      <circle cx="0" cy="0" r="4" fill="#FFFFFF"/>
+    </g>
+
+    <!-- Decorative dots around lambda -->
+    <g fill="#FFFFFF" opacity="0.6">
+      <circle cx="-24" cy="-8" r="2.5"/>
+      <circle cx="-24" cy="8" r="2.5"/>
+      <circle cx="24" cy="-8" r="2.5"/>
+      <circle cx="24" cy="8" r="2.5"/>
+      <circle cx="0" cy="-24" r="2.5"/>
+      <circle cx="0" cy="24" r="2.5"/>
+    </g>
+  </g>
+
+  <!-- Update/Sync circular arrow indicator -->
+  <g transform="translate(64,88)">
+    <!-- Background circle for update symbol -->
+    <circle cx="0" cy="0" r="14" fill="#34D058" stroke="#FFFFFF" stroke-width="2"/>
+
+    <!-- Circular arrow (update/refresh symbol) -->
+    <g stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" fill="none">
+      <!-- Main circular arrow -->
+      <path d="M 6 -2 A 6 6 0 1 1 -6 -2"/>
+      <!-- Arrow head -->
+      <path d="M 6 -2 L 6 2 M 6 -2 L 2 -2"/>
+    </g>
+  </g>
+
+  <!-- Small Git logo accent -->
+  <g transform="translate(92,24)">
+    <circle cx="0" cy="0" r="11" fill="url(#gitGradient)" stroke="#FFFFFF" stroke-width="1.5"/>
+
+    <!-- Git branch icon -->
+    <g stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none">
+      <circle cx="0" cy="-3" r="2" fill="#FFFFFF"/>
+      <line x1="0" y1="-1" x2="0" y2="4"/>
+      <circle cx="0" cy="4" r="2" fill="#FFFFFF"/>
+    </g>
+  </g>
+
+  <!-- Subtle inner glow -->
+  <path d="M 64 12 L 106 34 L 106 78 L 64 100 L 22 78 L 22 34 Z"
+        fill="none"
+        stroke="#FFFFFF"
+        stroke-width="1"
+        opacity="0.3"/>
+</svg>
+

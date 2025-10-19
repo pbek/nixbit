@@ -54,3 +54,10 @@ target_link_libraries(
 target_include_directories(nixbit PRIVATE ${LIBGIT2_INCLUDE_DIRS})
 
 install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+
+# Install desktop file
+install(FILES nixbit.desktop DESTINATION ${KDE_INSTALL_APPDIR})
+
+# Install application icon
+install(FILES src/nixbit.svg
+        DESTINATION ${KDE_INSTALL_FULL_ICONDIR}/hicolor/scalable/apps)
