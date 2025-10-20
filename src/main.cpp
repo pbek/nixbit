@@ -9,6 +9,7 @@
 #include <KLocalizedString>
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -16,6 +17,65 @@
 #include <QQuickWindow>
 
 int main(int argc, char *argv[]) {
+  // First, check if we're running in CLI-only mode (help, version, or
+  // completion) Use QCoreApplication for these to avoid GUI initialization
+  // overhead
+  bool isCliOnlyMode = false;
+  for (int i = 1; i < argc; i++) {
+    QString arg = QString::fromLocal8Bit(argv[i]);
+    if (arg == "--help" || arg == "-h" || arg == "--version" || arg == "-v" ||
+        arg == "--completion-bash" || arg == "--completion-fish") {
+      isCliOnlyMode = true;
+      break;
+    }
+  }
+
+  if (isCliOnlyMode) {
+    // Use QCoreApplication for CLI-only operations
+    QCoreApplication coreApp(argc, argv);
+    QCoreApplication::setOrganizationName("pbek");
+    QCoreApplication::setOrganizationDomain("pbek");
+    QCoreApplication::setApplicationName("nixbit");
+    QCoreApplication::setApplicationVersion(NIXBIT_VERSION);
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription("A KDE Plasma application for updating "
+                                     "NixOS systems from Git repositories.");
+
+    QCommandLineOption helpOption = parser.addHelpOption();
+    QCommandLineOption versionOption = parser.addVersionOption();
+
+    QCommandLineOption completionBashOption(
+        QStringList() << "completion-bash",
+        "Generate Bash completion script and exit");
+    parser.addOption(completionBashOption);
+
+    QCommandLineOption completionFishOption(
+        QStringList() << "completion-fish",
+        "Generate Fish completion script and exit");
+    parser.addOption(completionFishOption);
+
+    parser.process(coreApp);
+
+    QList<QCommandLineOption> options;
+    options << helpOption << versionOption << completionBashOption
+            << completionFishOption;
+
+    if (parser.isSet(completionBashOption)) {
+      Utils::Cli::generateBashCompletionScript(options, "nixbit");
+      return 0;
+    }
+
+    if (parser.isSet(completionFishOption)) {
+      Utils::Cli::generateFishCompletionScript(options, "nixbit");
+      return 0;
+    }
+
+    // Help and version are automatically handled by parser.process()
+    return 0;
+  }
+
+  // GUI mode - use QApplication
   QApplication app(argc, argv);
 
   QApplication::setOrganizationName("pbek");
@@ -23,44 +83,6 @@ int main(int argc, char *argv[]) {
   QApplication::setApplicationName("nixbit");
   QApplication::setApplicationDisplayName("NixBit");
   QApplication::setApplicationVersion(NIXBIT_VERSION);
-
-  // Set up command line parser
-  QCommandLineParser parser;
-  parser.setApplicationDescription("A KDE Plasma application for updating "
-                                   "NixOS systems from Git repositories.");
-
-  // Add standard help and version options
-  QCommandLineOption helpOption = parser.addHelpOption();
-  QCommandLineOption versionOption = parser.addVersionOption();
-
-  // Add shell completion generation options
-  QCommandLineOption completionBashOption(
-      QStringList() << "completion-bash",
-      "Generate Bash completion script and exit");
-  parser.addOption(completionBashOption);
-
-  QCommandLineOption completionFishOption(
-      QStringList() << "completion-fish",
-      "Generate Fish completion script and exit");
-  parser.addOption(completionFishOption);
-
-  // Process the command line arguments
-  parser.process(app);
-
-  // Handle completion generation
-  QList<QCommandLineOption> options;
-  options << helpOption << versionOption << completionBashOption
-          << completionFishOption;
-
-  if (parser.isSet(completionBashOption)) {
-    Utils::Cli::generateBashCompletionScript(options, "nixbit");
-    return 0;
-  }
-
-  if (parser.isSet(completionFishOption)) {
-    Utils::Cli::generateFishCompletionScript(options, "nixbit");
-    return 0;
-  }
 
   qDebug() << "Starting nixbit application...";
 
