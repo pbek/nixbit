@@ -1,6 +1,7 @@
 # Build and run commands for Nixbit
 
 import ".shared/common.just"
+import ".shared/cpp.just"
 
 # Default recipe - show available commands
 default:
@@ -91,9 +92,6 @@ nix-check:
     fi
     echo ""
     echo "✓ Build appears successful!"
-
-fix-cmakelists:
-    cmake-format -i CMakeLists.txt
 
 # Apply a git patch to the project
 [group('patches')]

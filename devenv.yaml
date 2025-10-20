@@ -7,3 +7,4 @@ inputs:
 
 imports:
   - shared/common
+  - shared/cpp

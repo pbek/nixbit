@@ -6,7 +6,6 @@
   languages.nix.enable = true;
 
   packages = with pkgs; [
-    cmake
     ninja
     git
     just
@@ -42,29 +41,7 @@
     echo "  ▶️ just run    - Build and run the application"
     echo "  🧹 just clean  - Clean build artifacts"
     echo ""
-    echo "📦 CMake: $(cmake --version | head -n1)"
     echo "🎨 Qt Version: ${pkgs.qt6.qtbase.version}"
     echo "📁 QML_IMPORT_PATH: $QML_IMPORT_PATH"
   '';
-
-  # https://devenv.sh/git-hooks/
-  git-hooks = {
-    hooks = {
-      cmake-format.enable = true;
-      clang-format = {
-        enable = true;
-      };
-
-      # Custom pre-commit hook to format justfile
-      qmlformat = {
-        enable = true;
-        name = "qmlformat";
-        entry = "${pkgs.qt6.qtdeclarative}/bin/qmlformat -i";
-        language = "system";
-        pass_filenames = true;
-        stages = [ "pre-commit" ];
-        files = "\\.qml$";
-      };
-    };
-  };
 }
