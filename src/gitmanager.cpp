@@ -502,6 +502,11 @@ bool GitManager::cloneRepository() {
     return false;
   }
 
+  // Disable global/system git config to avoid insteadOf URL rewrites
+  git_libgit2_opts(GIT_OPT_SET_SEARCH_PATH, GIT_CONFIG_LEVEL_SYSTEM, "");
+  git_libgit2_opts(GIT_OPT_SET_SEARCH_PATH, GIT_CONFIG_LEVEL_GLOBAL, "");
+  git_libgit2_opts(GIT_OPT_SET_SEARCH_PATH, GIT_CONFIG_LEVEL_XDG, "");
+
   git_repository *repo = nullptr;
   git_clone_options clone_opts = GIT_CLONE_OPTIONS_INIT;
 
@@ -726,6 +731,11 @@ int GitManager::calculateCommitsBehind() {
 }
 
 bool GitManager::fetchRepository() {
+  // Disable global/system git config to avoid insteadOf URL rewrites
+  git_libgit2_opts(GIT_OPT_SET_SEARCH_PATH, GIT_CONFIG_LEVEL_SYSTEM, "");
+  git_libgit2_opts(GIT_OPT_SET_SEARCH_PATH, GIT_CONFIG_LEVEL_GLOBAL, "");
+  git_libgit2_opts(GIT_OPT_SET_SEARCH_PATH, GIT_CONFIG_LEVEL_XDG, "");
+
   git_repository *repo = nullptr;
 
   // Open the repository
