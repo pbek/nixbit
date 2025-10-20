@@ -24,6 +24,10 @@ public:
                                          const QString &workingDirectory);
   Q_INVOKABLE void killProcess();
   Q_INVOKABLE QString getHostname();
+  Q_INVOKABLE bool startDetached(const QString &program,
+                                 const QStringList &arguments = QStringList(),
+                                 const QString &workingDirectory = QString());
+  Q_INVOKABLE void clearOutput();
 
 signals:
   void outputChanged();

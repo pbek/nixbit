@@ -85,6 +85,30 @@ void ProcessManager::killProcess() {
   }
 }
 
+bool ProcessManager::startDetached(const QString &program,
+                                   const QStringList &arguments,
+                                   const QString &workingDirectory) {
+  qDebug() << "Starting detached process:" << program << arguments;
+
+  bool success;
+  if (workingDirectory.isEmpty()) {
+    success = QProcess::startDetached(program, arguments);
+  } else {
+    success = QProcess::startDetached(program, arguments, workingDirectory);
+  }
+
+  if (!success) {
+    qDebug() << "Failed to start detached process:" << program;
+  }
+
+  return success;
+}
+
+void ProcessManager::clearOutput() {
+  m_output.clear();
+  emit outputChanged();
+}
+
 QString ProcessManager::getHostname() { return QSysInfo::machineHostName(); }
 
 void ProcessManager::onReadyReadStandardOutput() {
