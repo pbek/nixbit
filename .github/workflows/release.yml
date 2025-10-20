@@ -1,0 +1,45 @@
+name: 🚀 Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - release
+    tags-ignore:
+      - "*"
+
+jobs:
+  release:
+    name: 🚀 Release Nixbit
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔧 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Get version
+        run: |
+          VERSION=$(grep "VERSION" CMakeLists.txt | head -1 | awk '{print $2}')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      #      - name: Get release text
+      #        run: |
+      #          export RELEASE_TEXT=$(grep -Pzo "## ${VERSION}\n(\n|.)+?\n##" CHANGELOG.md | sed '$ d')
+      #          # Add multiline release text
+      #          echo "RELEASE_TEXT<<EOF" >> $GITHUB_ENV
+      #          echo "${RELEASE_TEXT}" >> $GITHUB_ENV
+      #          echo "EOF" >> $GITHUB_ENV
+
+      - name: 📝 Extract changelog
+        run: |
+          awk "/^## $VERSION$/{flag=1; next} /^## [0-9]+\.[0-9]+\.[0-9]+$/{if(flag) exit} flag" CHANGELOG.md > changelog.txt
+
+      - name: 🚀 Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Release v${{ env.VERSION }}
+          body_path: changelog.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
