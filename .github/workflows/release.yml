@@ -18,7 +18,7 @@ jobs:
 
       - name: 📦 Get version
         run: |
-          VERSION=$(grep "VERSION" CMakeLists.txt | head -1 | awk '{print $2}')
+          VERSION=$(grep "  VERSION" CMakeLists.txt | head -1 | awk '{print $2}')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       #      - name: Get release text
