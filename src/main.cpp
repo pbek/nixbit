@@ -3,38 +3,68 @@
 #include "settingsmanager.h"
 #include "systemresumedetector.h"
 #include "trayiconmanager.h"
+#include "utils/cli.h"
 #include "version.h"
 #include <KLocalizedContext>
 #include <KLocalizedString>
 #include <QApplication>
+#include <QCommandLineParser>
 #include <QDebug>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
-#include <iostream>
 
 int main(int argc, char *argv[]) {
-  // Handle --version argument before creating QApplication
-  for (int i = 1; i < argc; i++) {
-    QString arg = QString::fromLocal8Bit(argv[i]);
-    if (arg == "--version" || arg == "-v") {
-      std::cout << "NixBit version " << NIXBIT_VERSION << std::endl;
-      return 0;
-    }
-  }
-
   QApplication app(argc, argv);
-
-  qDebug() << "Starting nixbit application...";
-
-  KLocalizedString::setApplicationDomain("nixbit");
 
   QApplication::setOrganizationName("pbek");
   QApplication::setOrganizationDomain("pbek");
   QApplication::setApplicationName("nixbit");
   QApplication::setApplicationDisplayName("NixBit");
   QApplication::setApplicationVersion(NIXBIT_VERSION);
+
+  // Set up command line parser
+  QCommandLineParser parser;
+  parser.setApplicationDescription("A KDE Plasma application for updating "
+                                   "NixOS systems from Git repositories.");
+
+  // Add standard help and version options
+  QCommandLineOption helpOption = parser.addHelpOption();
+  QCommandLineOption versionOption = parser.addVersionOption();
+
+  // Add shell completion generation options
+  QCommandLineOption completionBashOption(
+      QStringList() << "completion-bash",
+      "Generate Bash completion script and exit");
+  parser.addOption(completionBashOption);
+
+  QCommandLineOption completionFishOption(
+      QStringList() << "completion-fish",
+      "Generate Fish completion script and exit");
+  parser.addOption(completionFishOption);
+
+  // Process the command line arguments
+  parser.process(app);
+
+  // Handle completion generation
+  QList<QCommandLineOption> options;
+  options << helpOption << versionOption << completionBashOption
+          << completionFishOption;
+
+  if (parser.isSet(completionBashOption)) {
+    Utils::Cli::generateBashCompletionScript(options, "nixbit");
+    return 0;
+  }
+
+  if (parser.isSet(completionFishOption)) {
+    Utils::Cli::generateFishCompletionScript(options, "nixbit");
+    return 0;
+  }
+
+  qDebug() << "Starting nixbit application...";
+
+  KLocalizedString::setApplicationDomain("nixbit");
   QApplication::setWindowIcon(QIcon::fromTheme("nixbit"));
 
   QQmlApplicationEngine engine;

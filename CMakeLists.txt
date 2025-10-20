@@ -44,6 +44,8 @@ qt_add_executable(
   src/settingsmanager.h
   src/systemresumedetector.cpp
   src/systemresumedetector.h
+  src/utils/cli.cpp
+  src/utils/cli.h
   ${QML_RESOURCES})
 
 target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
