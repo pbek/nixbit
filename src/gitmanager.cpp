@@ -9,6 +9,7 @@ struct CredentialData {
   int ssh_agent_tried = 0;
   int ssh_key_tried = 0;
   GitManager *manager = nullptr;
+  QString passphrase; // Store passphrase if needed
 };
 
 // Certificate callback for SSH host key verification
@@ -42,43 +43,81 @@ static int credential_cb(git_credential **out, const char *url,
            << (username_from_url ? username_from_url : "none");
   qDebug() << "Allowed credential types:" << allowed_types;
 
-  // Try SSH agent first if SSH credentials are allowed and not tried yet
-  if ((allowed_types & GIT_CREDENTIAL_SSH_KEY) &&
-      cred_data->ssh_agent_tried == 0) {
-    cred_data->ssh_agent_tried++;
-    qDebug() << "Trying SSH agent authentication...";
-    int error = git_credential_ssh_key_from_agent(
-        out, username_from_url ? username_from_url : "git");
-    if (error == 0) {
-      qDebug() << "SSH agent authentication successful";
-      return 0;
+  // Try SSH agent first if SSH credentials are allowed
+  if (allowed_types & GIT_CREDENTIAL_SSH_KEY) {
+    // Always try SSH agent first if it's an option, as it may have multiple
+    // keys
+    if (cred_data->ssh_agent_tried < 3) { // Allow up to 3 attempts
+      cred_data->ssh_agent_tried++;
+      qDebug() << "Trying SSH agent authentication (attempt"
+               << cred_data->ssh_agent_tried << ")...";
+      int error = git_credential_ssh_key_from_agent(
+          out, username_from_url ? username_from_url : "git");
+      if (error == 0) {
+        qDebug() << "SSH agent authentication successful";
+        return 0;
+      }
+      qDebug() << "SSH agent authentication failed, error:" << error;
     }
-    qDebug() << "SSH agent authentication failed, error:" << error;
   }
 
-  // Try default SSH key if available and not tried yet
+  // Try default SSH keys if available and not tried yet
   if ((allowed_types & GIT_CREDENTIAL_SSH_KEY) &&
       cred_data->ssh_key_tried == 0) {
     cred_data->ssh_key_tried++;
-    qDebug() << "Trying default SSH key...";
+    qDebug() << "Trying default SSH keys...";
     QString homeDir = QDir::homePath();
-    QString publicKey = homeDir + "/.ssh/id_rsa.pub";
-    QString privateKey = homeDir + "/.ssh/id_rsa";
 
-    if (QFile::exists(privateKey)) {
-      int error = git_credential_ssh_key_new(
-          out, username_from_url ? username_from_url : "git",
-          publicKey.toUtf8().constData(), privateKey.toUtf8().constData(),
-          "" // passphrase - empty for now
-      );
-      if (error == 0) {
-        qDebug() << "SSH key authentication successful";
-        return 0;
+    // List of common SSH key pairs to try
+    QStringList keyPairs = {
+        "id_ed25519", // Modern Ed25519 keys (most common now)
+        "id_rsa",     // Traditional RSA keys
+        "id_ecdsa",   // ECDSA keys
+        "id_dsa"      // Legacy DSA keys
+    };
+
+    for (const QString &keyName : keyPairs) {
+      QString privateKey = homeDir + "/.ssh/" + keyName;
+      QString publicKey = privateKey + ".pub";
+
+      if (QFile::exists(privateKey)) {
+        qDebug() << "Trying SSH key:" << keyName;
+
+        // Try without passphrase first (most keys in SSH agents don't have
+        // passphrases)
+        int error = git_credential_ssh_key_new(
+            out, username_from_url ? username_from_url : "git",
+            publicKey.toUtf8().constData(), privateKey.toUtf8().constData(),
+            "" // Try without passphrase first
+        );
+
+        if (error == 0) {
+          qDebug() << "SSH key authentication successful with" << keyName;
+          return 0;
+        }
+
+        qDebug() << "SSH key" << keyName << "failed (error:" << error << ")";
+
+        // If we have a stored passphrase, try with it
+        if (!cred_data->passphrase.isEmpty()) {
+          qDebug() << "Retrying" << keyName << "with passphrase...";
+          error = git_credential_ssh_key_new(
+              out, username_from_url ? username_from_url : "git",
+              publicKey.toUtf8().constData(), privateKey.toUtf8().constData(),
+              cred_data->passphrase.toUtf8().constData());
+
+          if (error == 0) {
+            qDebug() << "SSH key authentication successful with" << keyName
+                     << "and passphrase";
+            return 0;
+          }
+          qDebug() << "SSH key" << keyName
+                   << "failed with passphrase (error:" << error << ")";
+        }
       }
-      qDebug() << "SSH key authentication failed, error:" << error;
-    } else {
-      qDebug() << "Default SSH key not found at:" << privateKey;
     }
+
+    qDebug() << "No working SSH keys found in ~/.ssh/";
   }
 
   // Use default credentials (for HTTPS without auth, or public repos)
@@ -96,6 +135,15 @@ static int credential_cb(git_credential **out, const char *url,
   qDebug() << "No suitable credential type available or all attempts exhausted";
   qDebug() << "SSH agent tried:" << cred_data->ssh_agent_tried << "times";
   qDebug() << "SSH key tried:" << cred_data->ssh_key_tried << "times";
+
+  // If we tried SSH keys without passphrase and it failed, suggest checking
+  // passphrase
+  if (cred_data->ssh_key_tried > 0 && cred_data->passphrase.isEmpty()) {
+    qDebug() << "Note: If your SSH key is passphrase-protected, authentication "
+                "will fail.";
+    qDebug()
+        << "Consider using ssh-agent or removing the passphrase from your key.";
+  }
 
   // Return an authentication error instead of GIT_PASSTHROUGH
   return GIT_EAUTH;
