@@ -5,7 +5,7 @@ import org.kde.kirigami as Kirigami
 
 Kirigami.ApplicationWindow {
     id: root
-    title: "NixBit - NixOS Updater"
+    title: "NixBit - NixOS Updater v" + appVersion
     width: 1000
     height: 700
 

@@ -2,13 +2,17 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
   nixbit
-  VERSION 1.0.0
+  VERSION 0.1.0
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
+
+# Configure version header
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/version.h" @ONLY)
 
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
@@ -42,6 +46,9 @@ qt_add_executable(
   src/systemresumedetector.h
   ${QML_RESOURCES})
 
+target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+                                          ${LIBGIT2_INCLUDE_DIRS})
+
 target_link_libraries(
   nixbit
   PRIVATE Qt6::Core
@@ -53,8 +60,6 @@ target_link_libraries(
           KF6::CoreAddons
           KF6::I18n
           ${LIBGIT2_LIBRARIES})
-
-target_include_directories(nixbit PRIVATE ${LIBGIT2_INCLUDE_DIRS})
 
 install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 

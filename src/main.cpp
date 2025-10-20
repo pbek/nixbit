@@ -3,6 +3,7 @@
 #include "settingsmanager.h"
 #include "systemresumedetector.h"
 #include "trayiconmanager.h"
+#include "version.h"
 #include <KLocalizedContext>
 #include <KLocalizedString>
 #include <QApplication>
@@ -11,8 +12,18 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickWindow>
+#include <iostream>
 
 int main(int argc, char *argv[]) {
+  // Handle --version argument before creating QApplication
+  for (int i = 1; i < argc; i++) {
+    QString arg = QString::fromLocal8Bit(argv[i]);
+    if (arg == "--version" || arg == "-v") {
+      std::cout << "NixBit version " << NIXBIT_VERSION << std::endl;
+      return 0;
+    }
+  }
+
   QApplication app(argc, argv);
 
   qDebug() << "Starting nixbit application...";
@@ -23,9 +34,14 @@ int main(int argc, char *argv[]) {
   QApplication::setOrganizationDomain("pbek");
   QApplication::setApplicationName("nixbit");
   QApplication::setApplicationDisplayName("NixBit");
+  QApplication::setApplicationVersion(NIXBIT_VERSION);
   QApplication::setWindowIcon(QIcon::fromTheme("nixbit"));
 
   QQmlApplicationEngine engine;
+
+  // Make version available to QML
+  engine.rootContext()->setContextProperty("appVersion",
+                                           QString(NIXBIT_VERSION));
 
   // Create and register GitManager
   GitManager gitManager;
