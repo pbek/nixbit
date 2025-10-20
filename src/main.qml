@@ -64,6 +64,7 @@ Kirigami.ApplicationWindow {
             title: "&File"
             Action {
                 text: "&Quit"
+                shortcut: StandardKey.Quit
                 onTriggered: Qt.quit()
             }
         }
