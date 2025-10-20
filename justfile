@@ -6,6 +6,10 @@ import ".shared/common.just"
 default:
     @just --list
 
+# Variables
+
+transferDir := `if [ -d "$HOME/NextcloudPrivate/Transfer" ]; then echo "$HOME/NextcloudPrivate/Transfer"; else echo "$HOME/Nextcloud/Transfer"; fi`
+
 # Configure the project with CMake
 configure:
     mkdir -p build
@@ -90,3 +94,15 @@ nix-check:
 
 fix-cmakelists:
     cmake-format -i CMakeLists.txt
+
+# Apply a git patch to the project
+[group('patches')]
+git-apply-patch:
+    git apply {{ transferDir }}/nixbit.patch
+
+# Create git patches for the project and some libraries
+[group('patches')]
+git-create-patch:
+    @echo "transferDir: {{ transferDir }}"
+    git diff --no-ext-diff --staged --binary > {{ transferDir }}/nixbit.patch
+    ls -l1t {{ transferDir }} | head -2
