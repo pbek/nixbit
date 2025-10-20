@@ -44,4 +44,12 @@
     echo "🎨 Qt Version: ${pkgs.qt6.qtbase.version}"
     echo "📁 QML_IMPORT_PATH: $QML_IMPORT_PATH"
   '';
+
+  git-hooks = {
+    hooks = {
+      # gitlint ignores everything that is behind a "#" in commit messages,
+      # so it throws a lot of errors for our conventional commit messages
+      gitlint.enable = false;
+    };
+  };
 }
