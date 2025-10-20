@@ -11,6 +11,8 @@ on:
 jobs:
   release:
     name: 🚀 Release Nixbit
+    permissions:
+      contents: write # for actions/create-release to create a release
     runs-on: ubuntu-latest
     steps:
       - name: 🔧 Checkout code
@@ -41,5 +43,3 @@ jobs:
           body_path: changelog.txt
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
