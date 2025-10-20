@@ -9,6 +9,56 @@ Kirigami.ApplicationWindow {
     width: 1000
     height: 700
 
+    // Confirmation dialog for deleting local repository
+    Kirigami.PromptDialog {
+        id: deleteConfirmDialog
+        title: "Delete Local Repository"
+        subtitle: "Are you sure you want to delete the local repository at:\n" + gitManager.localPath
+        standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
+
+        onAccepted: {
+            var path = gitManager.localPath;
+
+            // Validate the path before deletion
+            if (!path || path === "") {
+                messageBox.text = "Error: Local path is empty.";
+                messageBox.type = Kirigami.MessageType.Error;
+                messageBox.visible = true;
+                return;
+            }
+
+            // Prevent deletion of dangerous paths
+            var dangerousPaths = ["/", "/home", "/root", "/usr", "/etc", "/var", "/bin", "/sbin", "/lib", "/lib64", "/opt", "/boot", "/dev", "/proc", "/sys"];
+            if (dangerousPaths.indexOf(path) !== -1) {
+                messageBox.text = "Error: Cannot delete system directory: " + path;
+                messageBox.type = Kirigami.MessageType.Error;
+                messageBox.visible = true;
+                return;
+            }
+
+            // Additional check: path should contain reasonable depth (not too shallow)
+            var pathParts = path.split('/').filter(function (part) {
+                return part !== '';
+            });
+
+            // Prevent deletion of home directory (e.g., /home/username)
+            if (pathParts.length < 3 || (pathParts[0] === 'home' && pathParts.length === 2) || (pathParts[0] === 'root' && pathParts.length === 1)) {
+                messageBox.text = "Error: Path appears too shallow to be a repository path: " + path;
+                messageBox.type = Kirigami.MessageType.Error;
+                messageBox.visible = true;
+                return;
+            }
+
+            // Execute the deletion command
+            var deleteCmd = "rm -rf '" + path + "'";
+            var args = ["-c", deleteCmd];
+            processManager.runCommand("bash", args);
+            messageBox.text = "Deleting local repository...";
+            messageBox.type = Kirigami.MessageType.Information;
+            messageBox.visible = true;
+        }
+    }
+
     menuBar: MenuBar {
         Menu {
             title: "&File"
@@ -64,6 +114,17 @@ Kirigami.ApplicationWindow {
                         wrapMode: Text.WrapAnywhere
                         color: Kirigami.Theme.textColor
                         Layout.fillWidth: true
+                    }
+
+                    ToolButton {
+                        icon.name: "edit-delete"
+                        display: AbstractButton.IconOnly
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Delete local repository"
+                        enabled: gitManager.localPath !== "" && !gitManager.isBusy && !processManager.isRunning
+                        onClicked: {
+                            deleteConfirmDialog.open();
+                        }
                     }
 
                     ToolButton {
