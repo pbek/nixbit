@@ -17,7 +17,7 @@ include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets DBus)
 
 find_package(KF6 REQUIRED COMPONENTS CoreAddons I18n)
 
@@ -38,6 +38,8 @@ qt_add_executable(
   src/trayiconmanager.h
   src/settingsmanager.cpp
   src/settingsmanager.h
+  src/systemresumedetector.cpp
+  src/systemresumedetector.h
   ${QML_RESOURCES})
 
 target_link_libraries(
@@ -47,6 +49,7 @@ target_link_libraries(
           Qt6::Qml
           Qt6::Quick
           Qt6::Widgets
+          Qt6::DBus
           KF6::CoreAddons
           KF6::I18n
           ${LIBGIT2_LIBRARIES})

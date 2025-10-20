@@ -1,6 +1,7 @@
 #include "gitmanager.h"
 #include "processmanager.h"
 #include "settingsmanager.h"
+#include "systemresumedetector.h"
 #include "trayiconmanager.h"
 #include <KLocalizedContext>
 #include <KLocalizedString>
@@ -41,6 +42,11 @@ int main(int argc, char *argv[]) {
   // Create and register SettingsManager
   SettingsManager settingsManager;
   engine.rootContext()->setContextProperty("settingsManager", &settingsManager);
+
+  // Create SystemResumeDetector to check for updates after system resume
+  SystemResumeDetector resumeDetector;
+  QObject::connect(&resumeDetector, &SystemResumeDetector::systemResumed,
+                   &gitManager, &GitManager::checkForUpdates);
 
   engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
 
