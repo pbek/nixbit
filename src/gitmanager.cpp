@@ -4,19 +4,48 @@
 #include <QDir>
 #include <QSettings>
 
+// Structure to track credential attempts
+struct CredentialData {
+  int ssh_agent_tried = 0;
+  int ssh_key_tried = 0;
+  GitManager *manager = nullptr;
+};
+
+// Certificate callback for SSH host key verification
+static int certificate_check_cb(git_cert *cert, int valid, const char *host,
+                                void *payload) {
+  Q_UNUSED(payload);
+
+  qDebug() << "Certificate check callback invoked for host:" << host;
+  qDebug() << "Certificate valid:" << valid;
+  qDebug() << "Certificate type:" << cert->cert_type;
+
+  // For SSH connections, we need to accept the host key
+  // In production, you might want to verify against known_hosts
+  if (cert->cert_type == GIT_CERT_HOSTKEY_LIBSSH2) {
+    qDebug() << "Accepting SSH host key for" << host;
+    return 0; // Accept the certificate
+  }
+
+  // For other certificate types, use the validation result
+  return valid ? 0 : GIT_ECERTIFICATE;
+}
+
 // Credential callback for libgit2
 static int credential_cb(git_credential **out, const char *url,
                          const char *username_from_url,
                          unsigned int allowed_types, void *payload) {
-  Q_UNUSED(payload);
+  CredentialData *cred_data = static_cast<CredentialData *>(payload);
 
   qDebug() << "Credential callback invoked for URL:" << url;
   qDebug() << "Username from URL:"
            << (username_from_url ? username_from_url : "none");
   qDebug() << "Allowed credential types:" << allowed_types;
 
-  // Try SSH agent first if SSH credentials are allowed
-  if (allowed_types & GIT_CREDENTIAL_SSH_KEY) {
+  // Try SSH agent first if SSH credentials are allowed and not tried yet
+  if ((allowed_types & GIT_CREDENTIAL_SSH_KEY) &&
+      cred_data->ssh_agent_tried == 0) {
+    cred_data->ssh_agent_tried++;
     qDebug() << "Trying SSH agent authentication...";
     int error = git_credential_ssh_key_from_agent(
         out, username_from_url ? username_from_url : "git");
@@ -27,8 +56,10 @@ static int credential_cb(git_credential **out, const char *url,
     qDebug() << "SSH agent authentication failed, error:" << error;
   }
 
-  // Try default SSH key if available
-  if (allowed_types & GIT_CREDENTIAL_SSH_KEY) {
+  // Try default SSH key if available and not tried yet
+  if ((allowed_types & GIT_CREDENTIAL_SSH_KEY) &&
+      cred_data->ssh_key_tried == 0) {
+    cred_data->ssh_key_tried++;
     qDebug() << "Trying default SSH key...";
     QString homeDir = QDir::homePath();
     QString publicKey = homeDir + "/.ssh/id_rsa.pub";
@@ -45,6 +76,8 @@ static int credential_cb(git_credential **out, const char *url,
         return 0;
       }
       qDebug() << "SSH key authentication failed, error:" << error;
+    } else {
+      qDebug() << "Default SSH key not found at:" << privateKey;
     }
   }
 
@@ -60,14 +93,20 @@ static int credential_cb(git_credential **out, const char *url,
     // Future: Could prompt user for credentials here
   }
 
-  qDebug() << "No suitable credential type available";
-  return GIT_PASSTHROUGH;
+  qDebug() << "No suitable credential type available or all attempts exhausted";
+  qDebug() << "SSH agent tried:" << cred_data->ssh_agent_tried << "times";
+  qDebug() << "SSH key tried:" << cred_data->ssh_key_tried << "times";
+
+  // Return an authentication error instead of GIT_PASSTHROUGH
+  return GIT_EAUTH;
 }
 
 // Progress callback for clone operations
 static int transfer_progress_cb(const git_indexer_progress *stats,
                                 void *payload) {
-  GitManager *manager = static_cast<GitManager *>(payload);
+  CredentialData *cred_data = static_cast<CredentialData *>(payload);
+  GitManager *manager = cred_data ? cred_data->manager : nullptr;
+
   if (manager) {
     static int last_progress = -1; // Track last reported progress percentage
 
@@ -418,13 +457,19 @@ bool GitManager::cloneRepository() {
   git_repository *repo = nullptr;
   git_clone_options clone_opts = GIT_CLONE_OPTIONS_INIT;
 
-  // Set up credential callback
+  // Create credential data structure to track attempts
+  CredentialData cred_data;
+  cred_data.manager = this;
+
+  // Set up credential callback with tracking
   clone_opts.fetch_opts.callbacks.credentials = credential_cb;
+  clone_opts.fetch_opts.callbacks.certificate_check = certificate_check_cb;
   clone_opts.fetch_opts.callbacks.transfer_progress = transfer_progress_cb;
-  clone_opts.fetch_opts.callbacks.payload = this;
+  clone_opts.fetch_opts.callbacks.payload = &cred_data;
 
   // Set up callbacks for progress
   clone_opts.checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
+  clone_opts.checkout_opts.progress_payload = this;
 
   int error = git_clone(&repo, m_repositoryUrl.toUtf8().constData(),
                         m_localPath.toUtf8().constData(), &clone_opts);
@@ -467,10 +512,15 @@ bool GitManager::pullRepository_internal() {
     return false;
   }
 
+  // Create credential data structure to track attempts
+  CredentialData cred_data;
+  cred_data.manager = this;
+
   // Fetch from remote with credential callback
   git_fetch_options fetch_opts = GIT_FETCH_OPTIONS_INIT;
   fetch_opts.callbacks.credentials = credential_cb;
-  fetch_opts.callbacks.payload = this;
+  fetch_opts.callbacks.certificate_check = certificate_check_cb;
+  fetch_opts.callbacks.payload = &cred_data;
 
   error = git_remote_fetch(remote, nullptr, &fetch_opts, nullptr);
   if (error != 0) {
@@ -652,10 +702,15 @@ bool GitManager::fetchRepository() {
     return false;
   }
 
+  // Create credential data structure to track attempts
+  CredentialData cred_data;
+  cred_data.manager = this;
+
   // Fetch from remote with credential callback
   git_fetch_options fetch_opts = GIT_FETCH_OPTIONS_INIT;
   fetch_opts.callbacks.credentials = credential_cb;
-  fetch_opts.callbacks.payload = this;
+  fetch_opts.callbacks.certificate_check = certificate_check_cb;
+  fetch_opts.callbacks.payload = &cred_data;
 
   error = git_remote_fetch(remote, nullptr, &fetch_opts, nullptr);
   if (error != 0) {
