@@ -13,10 +13,12 @@ Kirigami.ApplicationWindow {
     Kirigami.PromptDialog {
         id: deleteConfirmDialog
         title: "Delete Local Repository"
-        subtitle: "Are you sure you want to delete the local repository at:\n" + gitManager.localPath
+        subtitle: "Are you sure you want to delete the local repository at:\n" + (gitManager ? gitManager.localPath : "")
         standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
 
         onAccepted: {
+            if (!gitManager)
+                return;
             var path = gitManager.localPath;
 
             // Validate the path before deletion
@@ -73,8 +75,11 @@ Kirigami.ApplicationWindow {
             title: "&Tools"
             Action {
                 text: "&Check for Updates"
-                enabled: !gitManager.isBusy
-                onTriggered: gitManager.checkForUpdates()
+                enabled: gitManager ? !gitManager.isBusy : false
+                onTriggered: {
+                    if (gitManager)
+                        gitManager.checkForUpdates();
+                }
             }
         }
     }
@@ -94,11 +99,12 @@ Kirigami.ApplicationWindow {
                 TextField {
                     id: repoUrlField
                     Kirigami.FormData.label: "Repository URL:"
-                    text: gitManager.repositoryUrl
+                    text: gitManager ? gitManager.repositoryUrl : ""
                     placeholderText: "https://github.com/user/repo.git"
-                    enabled: !gitManager.isBusy
+                    enabled: gitManager ? !gitManager.isBusy : false
                     onEditingFinished: {
-                        gitManager.repositoryUrl = text;
+                        if (gitManager)
+                            gitManager.repositoryUrl = text;
                     }
                 }
 
@@ -109,7 +115,7 @@ Kirigami.ApplicationWindow {
 
                     TextEdit {
                         id: localPathLabel
-                        text: gitManager.localPath
+                        text: gitManager ? gitManager.localPath : ""
                         readOnly: true
                         selectByMouse: true
                         wrapMode: Text.WrapAnywhere
@@ -122,7 +128,7 @@ Kirigami.ApplicationWindow {
                         display: AbstractButton.IconOnly
                         ToolTip.visible: hovered
                         ToolTip.text: "Delete local repository"
-                        enabled: gitManager.localPath !== "" && !gitManager.isBusy && !processManager.isRunning
+                        enabled: (gitManager ? gitManager.localPath !== "" : false) && (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
                         onClicked: {
                             deleteConfirmDialog.open();
                         }
@@ -133,12 +139,15 @@ Kirigami.ApplicationWindow {
                         display: AbstractButton.IconOnly
                         ToolTip.visible: hovered
                         ToolTip.text: "Open terminal here"
-                        enabled: gitManager.localPath !== ""
+                        enabled: gitManager ? gitManager.localPath !== "" : false
                         onClicked: {
+                            if (!gitManager)
+                                return;
                             // Build command with proper syntax for each terminal emulator
                             var path = gitManager.localPath;
                             var cmd = "if command -v konsole >/dev/null 2>&1; then konsole --workdir '" + path + "' & " + "elif command -v gnome-terminal >/dev/null 2>&1; then gnome-terminal --working-directory='" + path + "' & " + "elif command -v xfce4-terminal >/dev/null 2>&1; then xfce4-terminal --working-directory='" + path + "' & " + "elif command -v alacritty >/dev/null 2>&1; then alacritty --working-directory '" + path + "' & " + "elif command -v kitty >/dev/null 2>&1; then kitty --directory '" + path + "' & " + "elif command -v ghostty >/dev/null 2>&1; then ghostty --working-directory='" + path + "' & " + "elif command -v xterm >/dev/null 2>&1; then cd '" + path + "' && xterm & " + "else notify-send 'NixBit' 'No supported terminal emulator found'; fi";
-                            processManager.startDetached("bash", ["-c", cmd]);
+                            if (processManager)
+                                processManager.startDetached("bash", ["-c", cmd]);
                         }
                     }
                 }
@@ -146,11 +155,12 @@ Kirigami.ApplicationWindow {
                 TextField {
                     id: hostnameField
                     Kirigami.FormData.label: "Hostname:"
-                    text: settingsManager.hostname
+                    text: settingsManager ? settingsManager.hostname : ""
                     placeholderText: "System hostname for NixOS rebuild"
-                    enabled: !gitManager.isBusy && !processManager.isRunning
+                    enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
                     onEditingFinished: {
-                        settingsManager.hostname = text;
+                        if (settingsManager)
+                            settingsManager.hostname = text;
                     }
                 }
 
@@ -159,23 +169,23 @@ Kirigami.ApplicationWindow {
                     Kirigami.FormData.label: "Rebuild Mode:"
                     model: ["build", "switch"]
                     currentIndex: 1
-                    enabled: !gitManager.isBusy && !processManager.isRunning
+                    enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
                     ToolTip.visible: hovered
                     ToolTip.text: currentIndex === 0 ? "Build the system without activating (no sudo required)" : "Build and activate the new system (requires sudo)"
                 }
 
                 Label {
                     Kirigami.FormData.label: "Status:"
-                    text: gitManager.status
+                    text: gitManager ? gitManager.status : ""
                     font.bold: true
-                    color: gitManager.isBusy ? Kirigami.Theme.activeTextColor : Kirigami.Theme.positiveTextColor
+                    color: gitManager ? (gitManager.isBusy ? Kirigami.Theme.activeTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
                 }
 
                 Label {
                     Kirigami.FormData.label: "Commits Behind:"
-                    text: gitManager.commitsBehind >= 0 ? gitManager.commitsBehind.toString() : "N/A"
-                    font.bold: gitManager.commitsBehind > 0
-                    color: gitManager.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor
+                    text: gitManager ? (gitManager.commitsBehind >= 0 ? gitManager.commitsBehind.toString() : "N/A") : "N/A"
+                    font.bold: gitManager ? gitManager.commitsBehind > 0 : false
+                    color: gitManager ? (gitManager.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
                 }
 
                 RowLayout {
@@ -185,11 +195,12 @@ Kirigami.ApplicationWindow {
                         id: fetchIntervalSpinBox
                         from: 1
                         to: 60
-                        value: gitManager.fetchIntervalMinutes
+                        value: gitManager ? gitManager.fetchIntervalMinutes : 5
                         editable: true
-                        enabled: !gitManager.isBusy
+                        enabled: gitManager ? !gitManager.isBusy : false
                         onValueModified: {
-                            gitManager.fetchIntervalMinutes = value;
+                            if (gitManager)
+                                gitManager.fetchIntervalMinutes = value;
                         }
                     }
 
@@ -200,10 +211,11 @@ Kirigami.ApplicationWindow {
 
                 CheckBox {
                     Kirigami.FormData.label: "Start Hidden:"
-                    checked: settingsManager.startHidden
+                    checked: settingsManager ? settingsManager.startHidden : false
                     text: "Start application hidden in system tray"
                     onToggled: {
-                        settingsManager.startHidden = checked;
+                        if (settingsManager)
+                            settingsManager.startHidden = checked;
                     }
                 }
             }
@@ -216,10 +228,11 @@ Kirigami.ApplicationWindow {
                 Button {
                     text: "Update System"
                     icon.name: "system-software-update"
-                    enabled: !processManager.isRunning && !gitManager.isBusy
+                    enabled: (processManager ? !processManager.isRunning : false) && (gitManager ? !gitManager.isBusy : false)
                     onClicked: {
                         // First pull the repository, then update system
-                        gitManager.pullRepository();
+                        if (gitManager)
+                            gitManager.pullRepository();
                     }
                     Layout.fillWidth: true
                 }
@@ -227,9 +240,10 @@ Kirigami.ApplicationWindow {
                 Button {
                     text: "Check for Updates"
                     icon.name: "view-refresh"
-                    enabled: !gitManager.isBusy
+                    enabled: gitManager ? !gitManager.isBusy : false
                     onClicked: {
-                        gitManager.checkForUpdates();
+                        if (gitManager)
+                            gitManager.checkForUpdates();
                     }
                     Layout.fillWidth: true
                 }
@@ -257,18 +271,18 @@ Kirigami.ApplicationWindow {
 
             BusyIndicator {
                 Layout.alignment: Qt.AlignHCenter
-                running: gitManager.isBusy
-                visible: gitManager.isBusy
+                running: gitManager ? gitManager.isBusy : false
+                visible: gitManager ? gitManager.isBusy : false
             }
 
             ProgressBar {
                 Layout.fillWidth: true
                 Layout.leftMargin: Kirigami.Units.largeSpacing
                 Layout.rightMargin: Kirigami.Units.largeSpacing
-                visible: gitManager.isBusy && gitManager.status.indexOf("Cloning") !== -1
+                visible: (gitManager ? gitManager.isBusy : false) && (gitManager ? gitManager.status.indexOf("Cloning") !== -1 : false)
                 from: 0
                 to: 100
-                value: gitManager.progress
+                value: gitManager ? gitManager.progress : 0
 
                 Component.onCompleted: {
                     console.log("ProgressBar created");
@@ -276,9 +290,9 @@ Kirigami.ApplicationWindow {
 
                 onVisibleChanged: {
                     console.log("ProgressBar visibility changed to:", visible);
-                    console.log("  - isBusy:", gitManager.isBusy);
-                    console.log("  - status:", gitManager.status);
-                    console.log("  - progress:", gitManager.progress);
+                    console.log("  - isBusy:", gitManager ? gitManager.isBusy : false);
+                    console.log("  - status:", gitManager ? gitManager.status : "");
+                    console.log("  - progress:", gitManager ? gitManager.progress : 0);
                 }
 
                 onValueChanged: {
@@ -317,7 +331,7 @@ Kirigami.ApplicationWindow {
                                 font.family: "Monospace"
                                 font.pixelSize: 12
                                 color: "#00ff00"
-                                text: processManager.output
+                                text: processManager ? processManager.output : ""
                                 background: Rectangle {
                                     color: "transparent"
                                 }
@@ -334,8 +348,8 @@ Kirigami.ApplicationWindow {
                         Layout.fillWidth: true
 
                         Label {
-                            text: processManager.isRunning ? "Process running..." : "Ready"
-                            color: processManager.isRunning ? "#ffaa00" : "#00ff00"
+                            text: processManager ? (processManager.isRunning ? "Process running..." : "Ready") : "Ready"
+                            color: processManager ? (processManager.isRunning ? "#ffaa00" : "#00ff00") : "#00ff00"
                             font.family: "Monospace"
                             font.pixelSize: 10
                         }
@@ -346,17 +360,19 @@ Kirigami.ApplicationWindow {
 
                         Button {
                             text: "Clear"
-                            enabled: !processManager.isRunning
+                            enabled: processManager ? !processManager.isRunning : false
                             onClicked: {
-                                processManager.clearOutput();
+                                if (processManager)
+                                    processManager.clearOutput();
                             }
                         }
 
                         Button {
                             text: "Kill Process"
-                            enabled: processManager.isRunning
+                            enabled: processManager ? processManager.isRunning : false
                             onClicked: {
-                                processManager.killProcess();
+                                if (processManager)
+                                    processManager.killProcess();
                             }
                         }
                     }
@@ -376,6 +392,8 @@ Kirigami.ApplicationWindow {
 
         function onPullCompletedForUpdate() {
             // Pull completed successfully, now run system update
+            if (!settingsManager || !gitManager || !processManager)
+                return;
             var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
             var rebuildMode = rebuildModeComboBox.currentText;
