@@ -28,7 +28,7 @@ void TrayIconManager::createTrayIcon() {
   m_trayMenu = new QMenu();
 
   m_showAction =
-      m_trayMenu->addAction(QIcon::fromTheme("window"), "Show NixBit");
+      m_trayMenu->addAction(QIcon::fromTheme("window"), "Show Nixbit");
   connect(m_showAction, &QAction::triggered, this,
           &TrayIconManager::showWindowRequested);
 
@@ -56,7 +56,7 @@ void TrayIconManager::createTrayIcon() {
   // Set initial icon
   updateIcon(0);
 
-  m_trayIcon->setToolTip("NixBit - NixOS Updater");
+  m_trayIcon->setToolTip("Nixbit - NixOS Updater");
 }
 
 void TrayIconManager::updateIcon(int commitsBehind) {
@@ -66,23 +66,23 @@ void TrayIconManager::updateIcon(int commitsBehind) {
     // Create icon showing updates available (orange/yellow theme)
     pixmap = createUpdateAvailableIcon(commitsBehind);
     m_trayIcon->setToolTip(
-        QString("NixBit - %1 update(s) available").arg(commitsBehind));
+        QString("Nixbit - %1 update(s) available").arg(commitsBehind));
 
     // Show a notification if commits behind increased
     if (commitsBehind > m_currentCommitsBehind && m_currentCommitsBehind >= 0) {
       m_trayIcon->showMessage(
-          "NixBit - Updates Available",
+          "Nixbit - Updates Available",
           QString("%1 new commit(s) available from origin").arg(commitsBehind),
           QSystemTrayIcon::Information, 5000);
     }
   } else if (commitsBehind == 0) {
     // Create icon showing system is up to date (green theme)
     pixmap = createUpToDateIcon();
-    m_trayIcon->setToolTip("NixBit - System up to date");
+    m_trayIcon->setToolTip("Nixbit - System up to date");
   } else {
     // Unknown state or error
     pixmap = createDefaultIcon();
-    m_trayIcon->setToolTip("NixBit - Repository status unknown");
+    m_trayIcon->setToolTip("Nixbit - Repository status unknown");
   }
 
   m_trayIcon->setIcon(QIcon(pixmap));

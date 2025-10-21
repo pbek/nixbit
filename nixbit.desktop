@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=NixBit
+Name=Nixbit
 GenericName=NixOS System Updater
 Comment=Update your NixOS system from a Git repository
 Exec=nixbit
