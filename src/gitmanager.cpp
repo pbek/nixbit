@@ -197,9 +197,8 @@ static int transfer_progress_cb(const git_indexer_progress *stats,
 }
 
 GitManager::GitManager(QObject *parent)
-    : QObject(parent), m_repositoryUrl("https://github.com/pbek/nixcfg.git"),
-      m_isBusy(false), m_commitsBehind(0), m_fetchIntervalMinutes(60),
-      m_progress(0), m_fetchTimer(nullptr) {
+    : QObject(parent), m_repositoryUrl(""), m_isBusy(false), m_commitsBehind(0),
+      m_fetchIntervalMinutes(60), m_progress(0), m_fetchTimer(nullptr) {
   git_libgit2_init();
 
   loadSettings();
@@ -380,6 +379,14 @@ void GitManager::loadSettings() {
       settings.value("Repository/FetchIntervalMinutes", 60).toInt();
   if (m_fetchIntervalMinutes <= 0) {
     m_fetchIntervalMinutes = 60; // Default to 60 minutes (1 hour)
+  }
+
+  // Check for system-wide override from /etc/nixbit.conf
+  QSettings systemSettings("/etc/nixbit.conf", QSettings::IniFormat);
+  QString systemRepo = systemSettings.value("Repository/Url").toString();
+  qDebug() << __func__ << " - 'systemRepo': " << systemRepo;
+  if (!systemRepo.isEmpty()) {
+    m_repositoryUrl = systemRepo;
   }
 }
 

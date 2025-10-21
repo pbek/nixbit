@@ -2,6 +2,9 @@
 
 ## 0.1.1
 
+- The repository url can now be overwritten with an external config file `/etc/nixbit.conf`
+  (for [#5](https://github.com/pbek/nixbit/issues/5))
+  - This can be done by a nix module or other system configuration management tools
 - The repository path will now always be the same and does not depend on the git repository name
 
 ## 0.1.0
