@@ -61,6 +61,33 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    // Confirmation dialog for changing repository URL
+    Kirigami.PromptDialog {
+        id: changeUrlConfirmDialog
+        title: "Change Repository URL"
+        subtitle: "Changing the repository URL will delete the current local repository and clone the new one.\n\nCurrent repository: " + (gitManager ? gitManager.repositoryUrl : "") + "\nNew repository: " + newUrl + "\n\nContinue?"
+        standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
+        property string newUrl: ""
+
+        onAccepted: {
+            if (!gitManager || !processManager)
+                return;
+
+            var path = gitManager.localPath;
+
+            // Validate the path before deletion
+            if (path && path !== "") {
+                // Execute the deletion command
+                var deleteCmd = "rm -rf '" + path + "'";
+                processManager.runCommand("bash", ["-c", deleteCmd]);
+            }
+
+            // Set new URL and clone
+            gitManager.repositoryUrl = newUrl;
+            gitManager.cloneOrPullRepository();
+        }
+    }
+
     menuBar: MenuBar {
         Menu {
             title: "&File"
@@ -103,8 +130,11 @@ Kirigami.ApplicationWindow {
                     placeholderText: "https://github.com/user/repo.git"
                     enabled: gitManager ? !gitManager.isBusy : false
                     onEditingFinished: {
-                        if (gitManager)
-                            gitManager.repositoryUrl = text;
+                        if (gitManager && text !== gitManager.repositoryUrl) {
+                            // Open confirmation dialog before changing URL
+                            changeUrlConfirmDialog.newUrl = text;
+                            changeUrlConfirmDialog.open();
+                        }
                     }
                 }
 
