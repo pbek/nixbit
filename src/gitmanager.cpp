@@ -320,6 +320,12 @@ void GitManager::checkForUpdates() {
     return;
   }
 
+  // Check if repository URL is set
+  if (m_repositoryUrl.isEmpty()) {
+    setStatus("No repository URL set");
+    return;
+  }
+
   // Check if repository exists, if not clone it first
   QDir gitDir(m_localPath + "/.git");
   if (!gitDir.exists()) {
@@ -445,6 +451,13 @@ void GitManager::cloneOrPullRepository() {
 void GitManager::pullRepository() {
   if (m_isBusy) {
     qDebug() << "Already busy with an operation";
+    return;
+  }
+
+  // Check if repository URL is set
+  if (m_repositoryUrl.isEmpty()) {
+    setStatus("No repository URL set");
+    emit operationCompleted(false, "No repository URL set");
     return;
   }
 
