@@ -74,7 +74,7 @@ private:
   bool pullRepository_internal();
   bool fetchRepository();
   int calculateCommitsBehind();
-  QString getRepositoryLocalPath(const QString &url);
+  QString getRepositoryLocalPath() const;
 
   QString m_repositoryUrl;
   QString m_localPath;

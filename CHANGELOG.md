@@ -1,5 +1,9 @@
 # Nixbit Changelog
 
+## 0.1.1
+
+- The repository path will now always be the same and does not depend on the git repository name
+
 ## 0.1.0
 
 - Initial release of Nixbit

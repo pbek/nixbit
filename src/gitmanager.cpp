@@ -205,7 +205,7 @@ GitManager::GitManager(QObject *parent)
   loadSettings();
 
   // Set up the local path based on repository URL
-  m_localPath = getRepositoryLocalPath(m_repositoryUrl);
+  m_localPath = getRepositoryLocalPath();
 
   // Initialize fetch timer
   m_fetchTimer = new QTimer(this);
@@ -232,7 +232,7 @@ GitManager::~GitManager() {
 void GitManager::setRepositoryUrl(const QString &url) {
   if (m_repositoryUrl != url) {
     m_repositoryUrl = url;
-    m_localPath = getRepositoryLocalPath(url);
+    m_localPath = getRepositoryLocalPath();
     setCommitsBehind(0);
     saveSettings();
     emit repositoryUrlChanged();
@@ -391,20 +391,11 @@ void GitManager::saveSettings() {
   settings.sync();
 }
 
-QString GitManager::getRepositoryLocalPath(const QString &url) {
-  // Extract repository name from URL
-  QString repoName = url;
-  repoName.replace(".git", "");
-
-  int lastSlash = repoName.lastIndexOf('/');
-  if (lastSlash >= 0) {
-    repoName = repoName.mid(lastSlash + 1);
-  }
-
+QString GitManager::getRepositoryLocalPath() const {
   // Use Qt's data location
-  QString dataPath =
+  const QString dataPath =
       QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-  return dataPath + "/repos/" + repoName;
+  return dataPath + "/repos/nixcfg";
 }
 
 void GitManager::cloneOrPullRepository() {
