@@ -22,6 +22,8 @@ class GitManager : public QObject {
   Q_PROPERTY(int fetchIntervalMinutes READ fetchIntervalMinutes WRITE
                  setFetchIntervalMinutes NOTIFY fetchIntervalMinutesChanged)
   Q_PROPERTY(int progress READ progress NOTIFY progressChanged)
+  Q_PROPERTY(bool isUrlFromGlobalSettings READ isUrlFromGlobalSettings NOTIFY
+                 isUrlFromGlobalSettingsChanged)
 
 public:
   explicit GitManager(QObject *parent = nullptr);
@@ -39,6 +41,7 @@ public:
   int fetchIntervalMinutes() const { return m_fetchIntervalMinutes; }
   void setFetchIntervalMinutes(int minutes);
   int progress() const { return m_progress; }
+  bool isUrlFromGlobalSettings() const { return m_isUrlFromGlobalSettings; }
 
   Q_INVOKABLE void pullRepository();
   Q_INVOKABLE void cloneOrPullRepository();
@@ -58,6 +61,7 @@ signals:
   void progressChanged();
   void operationCompleted(bool success, const QString &message);
   void pullCompletedForUpdate();
+  void isUrlFromGlobalSettingsChanged();
 
 private slots:
   void onFetchTimerTimeout();
@@ -83,6 +87,7 @@ private:
   int m_commitsBehind;
   int m_fetchIntervalMinutes;
   int m_progress;
+  bool m_isUrlFromGlobalSettings;
   QTimer *m_fetchTimer;
 };
 

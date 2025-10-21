@@ -198,7 +198,8 @@ static int transfer_progress_cb(const git_indexer_progress *stats,
 
 GitManager::GitManager(QObject *parent)
     : QObject(parent), m_repositoryUrl(""), m_isBusy(false), m_commitsBehind(0),
-      m_fetchIntervalMinutes(60), m_progress(0), m_fetchTimer(nullptr) {
+      m_fetchIntervalMinutes(60), m_progress(0),
+      m_isUrlFromGlobalSettings(false), m_fetchTimer(nullptr) {
   git_libgit2_init();
 
   loadSettings();
@@ -393,6 +394,7 @@ void GitManager::loadSettings() {
   qDebug() << __func__ << " - 'systemRepo': " << systemRepo;
   if (!systemRepo.isEmpty()) {
     m_repositoryUrl = systemRepo;
+    m_isUrlFromGlobalSettings = true;
   }
 }
 

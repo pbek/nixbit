@@ -128,7 +128,9 @@ Kirigami.ApplicationWindow {
                     Kirigami.FormData.label: "Repository URL:"
                     text: gitManager ? gitManager.repositoryUrl : ""
                     placeholderText: "https://github.com/user/repo.git"
-                    enabled: gitManager ? !gitManager.isBusy : false
+                    enabled: gitManager ? (!gitManager.isBusy && !gitManager.isUrlFromGlobalSettings) : false
+                    ToolTip.visible: hovered && gitManager && gitManager.isUrlFromGlobalSettings
+                    ToolTip.text: "Repository URL is set by global settings and cannot be changed"
                     onEditingFinished: {
                         if (gitManager && text !== gitManager.repositoryUrl) {
                             // Open confirmation dialog before changing URL

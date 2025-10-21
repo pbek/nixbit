@@ -5,6 +5,8 @@
 - When you change the repository URL, the existing repository will be removed
   and re-cloned after a confirmation to avoid issues with mismatched repositories
   (for [#3](https://github.com/pbek/nixbit/issues/3))
+- Don't allow the repository URL to be changed, if it was overwritten by the
+  external config file (for [#5](https://github.com/pbek/nixbit/issues/5))
 
 ## 0.1.1
 
