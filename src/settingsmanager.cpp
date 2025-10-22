@@ -7,8 +7,9 @@
 #include <QStandardPaths>
 
 SettingsManager::SettingsManager(QObject *parent)
-    : QObject(parent), m_startHidden(false), m_autostart(false) {
+    : QObject(parent), m_startHidden(false) {
   loadSettings();
+  checkAndCreateAutostart();
 }
 
 SettingsManager::~SettingsManager() { saveSettings(); }
@@ -31,27 +32,36 @@ void SettingsManager::setHostname(const QString &hostname) {
   }
 }
 
-void SettingsManager::setAutostart(bool enabled) {
-  if (m_autostart != enabled) {
-    m_autostart = enabled;
+bool SettingsManager::autostartEnabled() const { return autostartFileExists(); }
 
+void SettingsManager::setAutostartEnabled(bool enabled) {
+  bool currentState = autostartEnabled();
+
+  if (currentState != enabled) {
     if (enabled) {
       if (createAutostartFile()) {
         qDebug() << "Autostart enabled successfully";
+        emit autostartEnabledChanged();
       } else {
         qDebug() << "Failed to enable autostart";
-        m_autostart = false; // Revert if failed
       }
     } else {
       if (removeAutostartFile()) {
         qDebug() << "Autostart disabled successfully";
+        emit autostartEnabledChanged();
       } else {
         qDebug() << "Failed to disable autostart";
       }
     }
+  }
+}
 
-    saveSettings();
-    emit autostartChanged();
+void SettingsManager::checkAndCreateAutostart() {
+  if (shouldForceAutostart() && !autostartFileExists()) {
+    qDebug() << "Force autostart is enabled, creating autostart file";
+    if (createAutostartFile()) {
+      emit autostartEnabledChanged();
+    }
   }
 }
 
@@ -67,6 +77,14 @@ QString SettingsManager::getAutostartFilePath() const {
 
 bool SettingsManager::autostartFileExists() const {
   return QFile::exists(getAutostartFilePath());
+}
+
+bool SettingsManager::shouldForceAutostart() const {
+  // Check for system-wide override from /etc/nixbit.conf
+  QSettings systemSettings("/etc/nixbit.conf", QSettings::IniFormat);
+  bool forceAutostart = systemSettings.value("Autostart/Force", false).toBool();
+  qDebug() << "Force autostart from global settings:" << forceAutostart;
+  return forceAutostart;
 }
 
 bool SettingsManager::createAutostartFile() {
@@ -142,29 +160,14 @@ void SettingsManager::loadSettings() {
   m_hostname =
       settings.value("General/Hostname", getSystemHostname()).toString();
 
-  // Check if autostart file exists and sync with settings
-  bool fileExists = autostartFileExists();
-  m_autostart = settings.value("General/Autostart", fileExists).toBool();
-
-  // Ensure consistency between setting and actual file
-  if (m_autostart && !fileExists) {
-    createAutostartFile();
-  } else if (!m_autostart && fileExists) {
-    // User might have removed the setting but file still exists
-    // Keep the file but update setting to match reality
-    m_autostart = true;
-    settings.setValue("General/Autostart", true);
-  }
-
   qDebug() << "Loaded start hidden setting:" << m_startHidden;
   qDebug() << "Loaded hostname:" << m_hostname;
-  qDebug() << "Loaded autostart setting:" << m_autostart;
+  qDebug() << "Autostart file exists:" << autostartFileExists();
 }
 
 void SettingsManager::saveSettings() {
   QSettings settings("pbek", "nixbit");
   settings.setValue("General/StartHidden", m_startHidden);
   settings.setValue("General/Hostname", m_hostname);
-  settings.setValue("General/Autostart", m_autostart);
   settings.sync();
 }

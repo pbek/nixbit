@@ -45,6 +45,8 @@
                 type = types.str;
                 description = "Git repository URL for Nixbit";
               };
+
+              forceAutostart = mkEnableOption "Force creation of autostart desktop entry when application starts";
             };
 
             config = mkIf cfg.enable {
@@ -53,6 +55,9 @@
               environment.etc."nixbit.conf".text = ''
                 [Repository]
                 Url = ${cfg.repository}
+
+                [Autostart]
+                Force = ${if cfg.forceAutostart then "true" else "false"}
               '';
             };
           };

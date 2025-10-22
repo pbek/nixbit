@@ -10,8 +10,8 @@ class SettingsManager : public QObject {
                  startHiddenChanged)
   Q_PROPERTY(
       QString hostname READ hostname WRITE setHostname NOTIFY hostnameChanged)
-  Q_PROPERTY(
-      bool autostart READ autostart WRITE setAutostart NOTIFY autostartChanged)
+  Q_PROPERTY(bool autostartEnabled READ autostartEnabled NOTIFY
+                 autostartEnabledChanged)
 
 public:
   explicit SettingsManager(QObject *parent = nullptr);
@@ -23,13 +23,14 @@ public:
   QString hostname() const { return m_hostname; }
   void setHostname(const QString &hostname);
 
-  bool autostart() const { return m_autostart; }
-  void setAutostart(bool enabled);
+  bool autostartEnabled() const;
+  Q_INVOKABLE void setAutostartEnabled(bool enabled);
+  Q_INVOKABLE void checkAndCreateAutostart();
 
 signals:
   void startHiddenChanged();
   void hostnameChanged();
-  void autostartChanged();
+  void autostartEnabledChanged();
 
 private:
   void loadSettings();
@@ -39,10 +40,10 @@ private:
   bool autostartFileExists() const;
   bool createAutostartFile();
   bool removeAutostartFile();
+  bool shouldForceAutostart() const;
 
   bool m_startHidden;
   QString m_hostname;
-  bool m_autostart;
 };
 
 #endif // SETTINGSMANAGER_H
