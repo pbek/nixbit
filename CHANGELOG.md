@@ -13,6 +13,10 @@
   (for [#7](https://github.com/pbek/nixbit/issues/7))
 - A pause/resume button to allow pausing and resuming the running system update
   process was added (for [#8](https://github.com/pbek/nixbit/issues/8))
+- Add real-time system resource monitoring (CPU, RAM, network transfer, system load)
+  during NixOS updates (for [#9](https://github.com/pbek/nixbit/issues/9))
+  - System stats are displayed in a horizontal bar
+  - Monitoring automatically starts when an update process begins and stops when it completes
 
 ## 0.1.2
 
