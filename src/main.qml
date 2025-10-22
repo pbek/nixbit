@@ -250,6 +250,16 @@ Kirigami.ApplicationWindow {
                             settingsManager.startHidden = checked;
                     }
                 }
+
+                CheckBox {
+                    Kirigami.FormData.label: "Autostart:"
+                    checked: settingsManager ? settingsManager.autostart : false
+                    text: "Launch Nixbit automatically at login"
+                    onToggled: {
+                        if (settingsManager)
+                            settingsManager.autostart = checked;
+                    }
+                }
             }
 
             // Action Buttons

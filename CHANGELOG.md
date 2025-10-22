@@ -2,6 +2,8 @@
 
 ## 0.1.3
 
+- There now is a checkbox to allow to create or remove an autostart desktop entry
+  (for [#6](https://github.com/pbek/nixbit/issues/6))
 - Fix warnings caused by the app icon SVG file (for [#2](https://github.com/pbek/nixbit/issues/2))
 
 ## 0.1.2
