@@ -17,6 +17,8 @@
   during NixOS updates (for [#9](https://github.com/pbek/nixbit/issues/9))
   - System stats are displayed in a horizontal bar
   - Monitoring automatically starts when an update process begins and stops when it completes
+- Some settings were moved to a separate settings dialog to declutter the main window
+  (for [#9](https://github.com/pbek/nixbit/issues/9))
 
 ## 0.1.2
 

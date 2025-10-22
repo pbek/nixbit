@@ -88,6 +88,10 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    SettingsDialog {
+        id: settingsDialog
+    }
+
     menuBar: MenuBar {
         Menu {
             title: "&File"
@@ -106,6 +110,12 @@ Kirigami.ApplicationWindow {
                 onTriggered: {
                     if (gitManager)
                         gitManager.checkForUpdates();
+                }
+            }
+            Action {
+                text: "&Settings"
+                onTriggered: {
+                    settingsDialog.open();
                 }
             }
         }
@@ -218,47 +228,6 @@ Kirigami.ApplicationWindow {
                     text: gitManager ? (gitManager.commitsBehind >= 0 ? gitManager.commitsBehind.toString() : "N/A") : "N/A"
                     font.bold: gitManager ? gitManager.commitsBehind > 0 : false
                     color: gitManager ? (gitManager.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
-                }
-
-                RowLayout {
-                    Kirigami.FormData.label: "Auto-fetch Interval:"
-
-                    SpinBox {
-                        id: fetchIntervalSpinBox
-                        from: 1
-                        to: 60
-                        value: gitManager ? gitManager.fetchIntervalMinutes : 5
-                        editable: true
-                        enabled: gitManager ? !gitManager.isBusy : false
-                        onValueModified: {
-                            if (gitManager)
-                                gitManager.fetchIntervalMinutes = value;
-                        }
-                    }
-
-                    Label {
-                        text: "minutes"
-                    }
-                }
-
-                CheckBox {
-                    Kirigami.FormData.label: "Start Hidden:"
-                    checked: settingsManager ? settingsManager.startHidden : false
-                    text: "Start application hidden in system tray"
-                    onToggled: {
-                        if (settingsManager)
-                            settingsManager.startHidden = checked;
-                    }
-                }
-
-                CheckBox {
-                    Kirigami.FormData.label: "Autostart:"
-                    checked: settingsManager ? settingsManager.autostartEnabled : false
-                    text: "Launch Nixbit automatically at login"
-                    onToggled: {
-                        if (settingsManager)
-                            settingsManager.setAutostartEnabled(checked);
-                    }
                 }
             }
 

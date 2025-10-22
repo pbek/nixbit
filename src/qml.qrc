@@ -2,6 +2,6 @@
 <RCC version="1.0">
     <qresource prefix="/">
         <file>main.qml</file>
+        <file>SettingsDialog.qml</file>
     </qresource>
 </RCC>
-
