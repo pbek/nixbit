@@ -1,5 +1,9 @@
 # Nixbit Changelog
 
+## 0.1.3
+
+- Fix warnings caused by the app icon SVG file (for [#2](https://github.com/pbek/nixbit/issues/2))
+
 ## 0.1.2
 
 - When you change the repository URL, the existing repository will be removed
