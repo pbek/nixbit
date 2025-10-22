@@ -2,7 +2,7 @@
 
 ## 0.1.3
 
-- There now is a checkbox to allow to create or remove an autostart desktop entry
+- There now is a checkbox to allow creating or removing an autostart desktop entry
   (for [#6](https://github.com/pbek/nixbit/issues/6))
   - The autostart entry can now be forced to be created with the external config file `/etc/nixbit.conf`
   - There also is a new nix module option `services.nixbit.forceAutostart` for this
