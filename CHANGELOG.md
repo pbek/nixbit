@@ -8,6 +8,9 @@
   - There also is a new nix module option `services.nixbit.forceAutostart` for this
 - Fix warnings caused by the app icon SVG file (for [#2](https://github.com/pbek/nixbit/issues/2))
 - Adapt the window title a bit to show version number at the end
+- Wait for network availability after system resume before checking for updates,
+  with a 10-second timeout to prevent failures when network is not immediately present
+  (for [#7](https://github.com/pbek/nixbit/issues/7))
 
 ## 0.1.2
 

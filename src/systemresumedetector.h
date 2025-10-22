@@ -3,7 +3,9 @@
 
 #include <QDBusConnection>
 #include <QDBusInterface>
+#include <QNetworkInformation>
 #include <QObject>
+#include <QTimer>
 
 class SystemResumeDetector : public QObject {
   Q_OBJECT
@@ -17,12 +19,18 @@ signals:
 
 private slots:
   void onPrepareForSleep(bool sleeping);
+  void onReachabilityChanged(QNetworkInformation::Reachability reachability);
+  void onNetworkTimeout();
 
 private:
   void setupDBusConnection();
+  void setupNetworkMonitoring();
 
   QDBusInterface *m_loginInterface;
+  QNetworkInformation *m_networkInfo;
+  QTimer *m_networkTimeoutTimer;
   bool m_wasSleeping;
+  bool m_waitingForNetwork;
 };
 
 #endif // SYSTEMRESUMEDETECTOR_H

@@ -21,7 +21,15 @@ include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick Widgets DBus)
+find_package(
+  Qt6 REQUIRED
+  COMPONENTS Core
+             Gui
+             Qml
+             Quick
+             Widgets
+             DBus
+             Network)
 
 find_package(KF6 REQUIRED COMPONENTS CoreAddons I18n)
 
@@ -59,6 +67,7 @@ target_link_libraries(
           Qt6::Quick
           Qt6::Widgets
           Qt6::DBus
+          Qt6::Network
           KF6::CoreAddons
           KF6::I18n
           ${LIBGIT2_LIBRARIES})
