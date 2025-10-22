@@ -1,6 +1,6 @@
 # Nixbit
 
-An opinionated KDE Plasma application for updating the current NixOS system.
+A GUI application for updating your NixOS system from a Nix Flakes Git repository.
 
 ![Nixbit Screenshot](nixbit.webp)
 

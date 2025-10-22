@@ -12,7 +12,53 @@
       nixpkgs,
       flake-utils,
     }:
-    flake-utils.lib.eachDefaultSystem (
+    {
+      nixosModules = {
+        nixbit =
+          {
+            config,
+            lib,
+            pkgs,
+            ...
+          }:
+
+          let
+            inherit (lib)
+              mkEnableOption
+              mkOption
+              mkIf
+              types
+              ;
+            cfg = config.services.nixbit;
+          in
+          {
+            options.services.nixbit = {
+              enable = mkEnableOption "Nixbit configuration";
+
+              package = mkOption {
+                type = types.package;
+                default = pkgs.callPackage ./package.nix { };
+                description = "The Nixbit package to install";
+              };
+
+              repository = mkOption {
+                type = types.str;
+                description = "Git repository URL for Nixbit";
+              };
+            };
+
+            config = mkIf cfg.enable {
+              environment.systemPackages = [ cfg.package ];
+
+              environment.etc."nixbit.conf".text = ''
+                [Repository]
+                Url = ${cfg.repository}
+              '';
+            };
+          };
+      };
+    }
+    // flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
