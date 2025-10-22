@@ -342,6 +342,90 @@ Kirigami.ApplicationWindow {
                 }
             }
 
+            // System Resources Section
+            GroupBox {
+                title: "System Resources"
+                Layout.fillWidth: true
+                visible: systemMonitor ? systemMonitor.active : false
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: Kirigami.Units.smallSpacing
+
+                    // CPU
+                    ColumnLayout {
+                        spacing: 2
+                        Label {
+                            text: "CPU"
+                            font.bold: true
+                            font.pixelSize: 10
+                        }
+                        ProgressBar {
+                            Layout.preferredWidth: 80
+                            from: 0
+                            to: 100
+                            value: systemMonitor ? systemMonitor.cpuUsage : 0
+                        }
+                        Label {
+                            text: systemMonitor ? systemMonitor.cpuUsage.toFixed(1) + "%" : "0.0%"
+                            font.pixelSize: 10
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
+                    // RAM
+                    ColumnLayout {
+                        spacing: 2
+                        Label {
+                            text: "RAM"
+                            font.bold: true
+                            font.pixelSize: 10
+                        }
+                        ProgressBar {
+                            Layout.preferredWidth: 80
+                            from: 0
+                            to: 100
+                            value: systemMonitor ? systemMonitor.memoryUsage : 0
+                        }
+                        Label {
+                            text: systemMonitor ? systemMonitor.memoryUsage.toFixed(1) + "%" : "0.0%"
+                            font.pixelSize: 10
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
+                    // Network
+                    ColumnLayout {
+                        spacing: 2
+                        Label {
+                            text: "Network"
+                            font.bold: true
+                            font.pixelSize: 10
+                        }
+                        Label {
+                            text: systemMonitor ? systemMonitor.networkStats : "↓ 0 B/s ↑ 0 B/s"
+                            font.pixelSize: 10
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
+                    // Load
+                    ColumnLayout {
+                        spacing: 2
+                        Label {
+                            text: "Load"
+                            font.bold: true
+                            font.pixelSize: 10
+                        }
+                        Label {
+                            text: systemMonitor ? systemMonitor.systemLoad.toFixed(2) : "0.00"
+                            font.pixelSize: 10
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
+            }
+
             // Terminal Output Section
             GroupBox {
                 title: "Terminal Output"
@@ -466,6 +550,16 @@ Kirigami.ApplicationWindow {
             }
 
             processManager.runCommand("bash", ["-c", cmd]);
+        }
+    }
+
+    Connections {
+        target: processManager
+
+        function onIsRunningChanged() {
+            if (systemMonitor) {
+                systemMonitor.active = processManager.isRunning;
+            }
         }
     }
 }

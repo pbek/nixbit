@@ -50,6 +50,8 @@ qt_add_executable(
   src/trayiconmanager.h
   src/settingsmanager.cpp
   src/settingsmanager.h
+  src/systemmonitor.cpp
+  src/systemmonitor.h
   src/systemresumedetector.cpp
   src/systemresumedetector.h
   src/utils/cli.cpp

@@ -1,6 +1,7 @@
 #include "gitmanager.h"
 #include "processmanager.h"
 #include "settingsmanager.h"
+#include "systemmonitor.h"
 #include "systemresumedetector.h"
 #include "trayiconmanager.h"
 #include "utils/cli.h"
@@ -111,6 +112,10 @@ int main(int argc, char *argv[]) {
   // Create and register SettingsManager
   SettingsManager settingsManager;
   engine.rootContext()->setContextProperty("settingsManager", &settingsManager);
+
+  // Create and register SystemMonitor
+  SystemMonitor systemMonitor;
+  engine.rootContext()->setContextProperty("systemMonitor", &systemMonitor);
 
   // Create SystemResumeDetector to check for updates after system resume
   SystemResumeDetector resumeDetector;
