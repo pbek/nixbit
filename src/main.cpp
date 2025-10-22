@@ -81,7 +81,8 @@ int main(int argc, char *argv[]) {
   QApplication::setOrganizationName("pbek");
   QApplication::setOrganizationDomain("pbek");
   QApplication::setApplicationName("nixbit");
-  QApplication::setApplicationDisplayName("Nixbit");
+  QApplication::setApplicationDisplayName("Nixbit " +
+                                          QStringLiteral(NIXBIT_VERSION));
   QApplication::setApplicationVersion(NIXBIT_VERSION);
 
   qDebug() << "Starting nixbit application...";

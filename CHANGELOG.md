@@ -7,6 +7,7 @@
   - The autostart entry can now be forced to be created with the external config file `/etc/nixbit.conf`
   - There also is a new nix module option `services.nixbit.forceAutostart` for this
 - Fix warnings caused by the app icon SVG file (for [#2](https://github.com/pbek/nixbit/issues/2))
+- Adapt the window title a bit to show version number at the end
 
 ## 0.1.2
 
