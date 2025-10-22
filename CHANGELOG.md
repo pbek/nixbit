@@ -11,6 +11,8 @@
 - Wait for network availability after system resume before checking for updates,
   with a 10-second timeout to prevent failures when network is not immediately present
   (for [#7](https://github.com/pbek/nixbit/issues/7))
+- A pause/resume button to allow pausing and resuming the running system update
+  process was added (for [#8](https://github.com/pbek/nixbit/issues/8))
 
 ## 0.1.2
 

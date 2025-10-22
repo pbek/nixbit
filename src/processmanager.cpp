@@ -1,9 +1,11 @@
 #include "processmanager.h"
 #include <QDebug>
 #include <QSysInfo>
+#include <csignal>
 
 ProcessManager::ProcessManager(QObject *parent)
-    : QObject(parent), m_process(nullptr), m_isRunning(false) {
+    : QObject(parent), m_process(nullptr), m_isRunning(false),
+      m_isPaused(false) {
   m_process = new QProcess(this);
 
   connect(m_process, &QProcess::readyReadStandardOutput, this,
@@ -145,6 +147,39 @@ void ProcessManager::appendOutput(const QString &text) {
 void ProcessManager::setIsRunning(bool running) {
   if (m_isRunning != running) {
     m_isRunning = running;
+    if (!running) {
+      m_isPaused = false;
+      emit isPausedChanged();
+    }
     emit isRunningChanged();
+  }
+}
+
+void ProcessManager::setIsPaused(bool paused) {
+  if (m_isPaused != paused) {
+    m_isPaused = paused;
+    emit isPausedChanged();
+  }
+}
+
+void ProcessManager::pauseProcess() {
+  if (!m_isRunning || m_isPaused)
+    return;
+  qint64 pid = m_process->processId();
+  if (pid > 0) {
+    kill(static_cast<pid_t>(pid), SIGSTOP);
+    setIsPaused(true);
+    appendOutput("\n\n=== Process paused ===\n");
+  }
+}
+
+void ProcessManager::resumeProcess() {
+  if (!m_isRunning || !m_isPaused)
+    return;
+  qint64 pid = m_process->processId();
+  if (pid > 0) {
+    kill(static_cast<pid_t>(pid), SIGCONT);
+    setIsPaused(false);
+    appendOutput("\n\n=== Process resumed ===\n");
   }
 }

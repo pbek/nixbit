@@ -417,6 +417,20 @@ Kirigami.ApplicationWindow {
                                     processManager.killProcess();
                             }
                         }
+
+                        Button {
+                            text: processManager ? (processManager.isPaused ? "Resume" : "Pause") : "Pause"
+                            enabled: processManager ? processManager.isRunning : false
+                            onClicked: {
+                                if (processManager) {
+                                    if (processManager.isPaused) {
+                                        processManager.resumeProcess();
+                                    } else {
+                                        processManager.pauseProcess();
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
