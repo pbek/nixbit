@@ -55,18 +55,11 @@ stdenv.mkDerivation (
     ];
 
     # Install shell completion on Linux (with xvfb-run)
-    postInstall =
-      lib.optionalString stdenv.hostPlatform.isLinux ''
-        installShellCompletion --cmd ${finalAttrs.pname} \
-          --bash <(xvfb-run $out/bin/${finalAttrs.pname} --completion-bash) \
-          --fish <(xvfb-run $out/bin/${finalAttrs.pname} --completion-fish)
-      ''
-      # Install shell completion on macOS
-      + lib.optionalString stdenv.hostPlatform.isDarwin ''
-        installShellCompletion --cmd ${finalAttrs.pname} \
-          --bash <($out/bin/${finalAttrs.pname} --completion-bash) \
-          --fish <($out/bin/${finalAttrs.pname} --completion-fish)
-      '';
+    postInstall = ''
+      installShellCompletion --cmd ${finalAttrs.pname} \
+        --bash <(xvfb-run $out/bin/${finalAttrs.pname} --completion-bash) \
+        --fish <(xvfb-run $out/bin/${finalAttrs.pname} --completion-fish)
+    '';
 
     meta = with lib; {
       description = "A KDE Plasma application to update your nixos system from a git repository";
