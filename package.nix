@@ -1,13 +1,13 @@
 {
-  lib,
-  stdenv,
   cmake,
+  installShellFiles,
+  kdePackages,
+  lib,
+  libgit2,
   ninja,
   pkg-config,
-  kdePackages,
   qt6,
-  libgit2,
-  installShellFiles,
+  stdenv,
   xvfb-run,
 }:
 
@@ -27,43 +27,36 @@ stdenv.mkDerivation (
 
     nativeBuildInputs = [
       cmake
+      installShellFiles
+      kdePackages.extra-cmake-modules
       ninja
       pkg-config
-      kdePackages.extra-cmake-modules
       qt6.wrapQtAppsHook
-      installShellFiles
     ]
     ++ lib.optionals stdenv.hostPlatform.isLinux [ xvfb-run ];
 
     buildInputs = [
+      kdePackages.kconfig
       kdePackages.kcoreaddons
       kdePackages.ki18n
-      kdePackages.kconfig
       kdePackages.kirigami
+      libgit2
       qt6.qtbase
       qt6.qtdeclarative
       qt6.qtwayland
-      libgit2
-    ];
-
-    preConfigure = ''
-      rm -rf build
-    '';
-
-    cmakeFlags = [
-      "-DCMAKE_BUILD_TYPE=Release"
     ];
 
     # Install shell completion on Linux (with xvfb-run)
     postInstall = ''
-      installShellCompletion --cmd ${finalAttrs.pname} \
-        --bash <(xvfb-run $out/bin/${finalAttrs.pname} --completion-bash) \
-        --fish <(xvfb-run $out/bin/${finalAttrs.pname} --completion-fish)
+      installShellCompletion --cmd nixbit \
+        --bash <(xvfb-run $out/bin/nixbit --completion-bash) \
+        --fish <(xvfb-run $out/bin/nixbit --completion-fish)
     '';
 
     meta = with lib; {
-      description = "A KDE Plasma application to update your nixos system from a git repository";
+      description = "KDE Plasma application to update your NixOS system from a git repository";
       homepage = "https://github.com/pbek/nixbit";
+      changelog = "https://github.com/pbek/nixbit/releases/tag/v${finalAttrs.version}";
       license = licenses.gpl3Plus;
       maintainers = with lib.maintainers; [ pbek ];
       platforms = platforms.linux;

@@ -46,19 +46,25 @@
                 description = "Git repository URL for Nixbit";
               };
 
-              forceAutostart = mkEnableOption "Force creation of autostart desktop entry when application starts";
+              forceAutostart = mkEnableOption "" // {
+                description = "Force creation of autostart desktop entry when application starts";
+              };
             };
 
             config = mkIf cfg.enable {
-              environment.systemPackages = [ cfg.package ];
+              environment = {
+                systemPackages = [ cfg.package ];
 
-              environment.etc."nixbit.conf".text = ''
-                [Repository]
-                Url = ${cfg.repository}
-
-                [Autostart]
-                Force = ${if cfg.forceAutostart then "true" else "false"}
-              '';
+                etc."nixbit.conf".text =
+                  lib.optionalString (cfg.repository != "") ''
+                    [Repository]
+                    Url = ${cfg.repository}
+                  ''
+                  + ''
+                    [Autostart]
+                    Force = ${if cfg.forceAutostart then "true" else "false"}
+                  '';
+              };
             };
           };
       };
