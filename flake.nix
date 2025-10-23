@@ -29,10 +29,10 @@
               mkIf
               types
               ;
-            cfg = config.services.nixbit;
+            cfg = config.programs.nixbit;
           in
           {
-            options.services.nixbit = {
+            options.programs.nixbit = {
               enable = mkEnableOption "Nixbit configuration";
 
               package = mkOption {
