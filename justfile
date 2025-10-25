@@ -11,6 +11,12 @@ default:
 
 transferDir := `if [ -d "$HOME/NextcloudPrivate/Transfer" ]; then echo "$HOME/NextcloudPrivate/Transfer"; else echo "$HOME/Nextcloud/Transfer"; fi`
 
+# Clear QML cache
+clear-qml-cache:
+    @echo "Clearing QML cache..."
+    @rm -rf ~/.cache/pbek/nixbit/qmlcache 2>/dev/null || true
+    @echo "QML cache cleared"
+
 # Configure the project with CMake
 configure:
     mkdir -p build
@@ -22,12 +28,12 @@ build:
     cd build && cmake .. && cmake --build .
 
 # Clean build artifacts
-clean:
+clean: clear-qml-cache
     rm -rf build
 
 # Run the application
 run: build
-    ./build/nixbit
+    QML_DISABLE_DISK_CACHE=1 ./build/nixbit
 
 # Rebuild from scratch
 rebuild: clean build
