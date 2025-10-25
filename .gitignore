@@ -11,3 +11,4 @@ result
 result-*
 .pre-commit-config.yaml
 .shared
+cmake-build-debug
