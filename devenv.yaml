@@ -1,6 +1,8 @@
 inputs:
   nixpkgs:
-    url: github:cachix/devenv-nixpkgs/rolling
+    # url: github:cachix/devenv-nixpkgs/rolling
+    # NixOS Unstable for Qt 6.10
+    url: github:nixos/nixpkgs/nixos-unstable
   shared:
     url: github:pbek/nix-shared
     flake: false
