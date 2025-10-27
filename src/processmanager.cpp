@@ -2,11 +2,19 @@
 #include <QDebug>
 #include <QSysInfo>
 #include <csignal>
+#include <unistd.h>
 
 ProcessManager::ProcessManager(QObject *parent)
     : QObject(parent), m_process(nullptr), m_isRunning(false),
       m_isPaused(false) {
   m_process = new QProcess(this);
+
+  // Set up the process to create a new process group
+  // This allows us to send signals to the entire process tree
+  m_process->setChildProcessModifier([]() {
+    // Create a new process group with the current process as the leader
+    setpgid(0, 0);
+  });
 
   connect(m_process, &QProcess::readyReadStandardOutput, this,
           &ProcessManager::onReadyReadStandardOutput);
@@ -167,7 +175,9 @@ void ProcessManager::pauseProcess() {
     return;
   qint64 pid = m_process->processId();
   if (pid > 0) {
-    kill(static_cast<pid_t>(pid), SIGSTOP);
+    // Send SIGSTOP to the entire process group, not just the process
+    // This ensures all child processes are paused too
+    kill(-static_cast<pid_t>(pid), SIGSTOP);
     setIsPaused(true);
     appendOutput("\n\n=== Process paused ===\n");
   }
@@ -178,7 +188,8 @@ void ProcessManager::resumeProcess() {
     return;
   qint64 pid = m_process->processId();
   if (pid > 0) {
-    kill(static_cast<pid_t>(pid), SIGCONT);
+    // Send SIGCONT to the entire process group
+    kill(-static_cast<pid_t>(pid), SIGCONT);
     setIsPaused(false);
     appendOutput("\n\n=== Process resumed ===\n");
   }
