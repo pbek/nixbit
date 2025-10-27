@@ -1,5 +1,10 @@
 # Nixbit Changelog
 
+## 0.1.4
+
+- The used and available memory will now be shown correctly in the system
+  resource monitoring bar (for [#9](https://github.com/pbek/nixbit/issues/9))
+
 ## 0.1.3
 
 - There now is a checkbox to allow creating or removing an autostart desktop entry

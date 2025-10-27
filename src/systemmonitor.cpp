@@ -2,13 +2,14 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QFile>
+#include <QProcess>
 #include <QRegularExpression>
 #include <QTextStream>
 
 SystemMonitor::SystemMonitor(QObject *parent)
-    : QObject(parent), m_cpuUsage(0.0), m_memoryUsage(0.0), m_networkStats(""),
-      m_systemLoad(0.0), m_active(false), m_prevTotal(0), m_prevIdle(0),
-      m_prevRxBytes(0), m_prevTxBytes(0) {
+    : QObject(parent), m_cpuUsage(0.0), m_memoryUsage(0.0), m_totalMemory(""),
+      m_usedMemory(""), m_networkStats(""), m_systemLoad(0.0), m_active(false),
+      m_prevTotal(0), m_prevIdle(0), m_prevRxBytes(0), m_prevTxBytes(0) {
   m_timer = new QTimer(this);
   connect(m_timer, &QTimer::timeout, this, &SystemMonitor::updateStats);
 }
@@ -26,6 +27,8 @@ void SystemMonitor::setActive(bool active) {
     // Initialize previous values
     updateCpuUsage();
     updateNetworkStats();
+    updateMemoryUsage();
+    updateSystemLoad();
     m_timer->start(2000); // Update every 2 seconds
   } else {
     m_timer->stop();
@@ -83,33 +86,47 @@ void SystemMonitor::updateCpuUsage() {
 }
 
 void SystemMonitor::updateMemoryUsage() {
-  QFile file("/proc/meminfo");
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-    return;
+  QProcess process;
+  process.start("free", QStringList() << "-b");
+  process.waitForFinished();
 
-  QTextStream in(&file);
+  QByteArray output = process.readAllStandardOutput();
+  QList<QByteArray> lines = output.split('\n');
+
   unsigned long long totalMem = 0, availableMem = 0;
 
-  while (!in.atEnd()) {
-    QString line = in.readLine();
-    if (line.startsWith("MemTotal:")) {
-      QStringList parts =
-          line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-      if (parts.size() >= 2)
+  for (const QByteArray &line : lines) {
+    qDebug() << __func__ << "line: " << line;
+    if (line.startsWith("Mem:")) {
+      QList<QByteArray> parts = line.split(' ');
+      parts.removeAll(QByteArray()); // Remove empty parts
+      if (parts.size() >= 7) {
         totalMem = parts[1].toULongLong();
-    } else if (line.startsWith("MemAvailable:")) {
-      QStringList parts =
-          line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-      if (parts.size() >= 2)
-        availableMem = parts[1].toULongLong();
+        availableMem = parts[6].toULongLong();
+      }
+      break;
     }
   }
 
   if (totalMem > 0) {
-    double usage = 100.0 * (totalMem - availableMem) / totalMem;
+    unsigned long long usedMem = totalMem - availableMem;
+    double usage = 100.0 * usedMem / totalMem;
+
     if (usage != m_memoryUsage) {
       m_memoryUsage = usage;
       emit memoryUsageChanged();
+    }
+
+    QString newTotal = formatBytes(totalMem);
+    if (newTotal != m_totalMemory) {
+      m_totalMemory = newTotal;
+      emit totalMemoryChanged();
+    }
+
+    QString newUsed = formatBytes(usedMem);
+    if (newUsed != m_usedMemory) {
+      m_usedMemory = newUsed;
+      emit usedMemoryChanged();
     }
   }
 }

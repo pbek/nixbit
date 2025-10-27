@@ -357,7 +357,7 @@ Kirigami.ApplicationWindow {
                             value: systemMonitor ? systemMonitor.memoryUsage : 0
                         }
                         Label {
-                            text: systemMonitor ? systemMonitor.memoryUsage.toFixed(1) + "%" : "0.0%"
+                            text: systemMonitor ? systemMonitor.usedMemory + " / " + systemMonitor.totalMemory : ""
                             font.pixelSize: 10
                             horizontalAlignment: Text.AlignHCenter
                         }
