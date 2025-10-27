@@ -47,11 +47,11 @@ test: build
     cd build && ctest --output-on-failure
 
 # Build the Nix package
-nix-build:
+nix-build: clear-qml-cache
     nix-build -E '(import <nixpkgs> {}).callPackage ./package.nix {}'
 
 # Build the Nix package using flakes (if available)
-flake-build:
+flake-build: clear-qml-cache
     nix build .#nixbit
 
 # Install the Nix package to user profile
@@ -98,15 +98,3 @@ nix-check:
     fi
     echo ""
     echo "✓ Build appears successful!"
-
-# Apply a git patch to the project
-[group('patches')]
-git-apply-patch:
-    git apply {{ transferDir }}/nixbit.patch
-
-# Create git patches for the project and some libraries
-[group('patches')]
-git-create-patch:
-    @echo "transferDir: {{ transferDir }}"
-    git diff --no-ext-diff --staged --binary > {{ transferDir }}/nixbit.patch
-    ls -l1t {{ transferDir }} | head -2
