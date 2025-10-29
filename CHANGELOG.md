@@ -1,5 +1,10 @@
 # Nixbit Changelog
 
+## 0.1.5
+
+- The _Pause_ button is now hidden in _Switch_ mode, because you can't sleep the
+  permission-elevated process (for [#8](https://github.com/pbek/nixbit/issues/8))
+
 ## 0.1.4
 
 - The used and available memory will now be shown correctly in the system

@@ -474,6 +474,7 @@ Kirigami.ApplicationWindow {
                         Button {
                             text: processManager ? (processManager.isPaused ? "Resume" : "Pause") : "Pause"
                             enabled: processManager ? processManager.isRunning : false
+                            visible: rebuildModeComboBox.currentText !== "switch"
                             onClicked: {
                                 if (processManager) {
                                     if (processManager.isPaused) {
