@@ -8,6 +8,13 @@ You can try it out by running:
 nix run github:pbek/nixbit
 ```
 
+> [!TIP]
+> If Qt complains about different minor versions, you can try using your own nixpkgs:
+>
+> ```bash
+> nix run github:pbek/nixbit --override-input nixpkgs nixpkgs
+> ```
+
 ![Nixbit Screenshot](nixbit.webp)
 
 There also is a **NixOS Module** to allow the configuration of the Git repository,
