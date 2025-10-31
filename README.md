@@ -1,4 +1,7 @@
-# Nixbit
+# [Nixbit](https://github.com/pbek/nixbit)
+
+[Changelog](https://github.com/pbek/nixbit/blob/main/CHANGELOG.md) |
+[Issues](https://github.com/pbek/nixbit/issues)
 
 A **GUI application for updating your NixOS system** from a Nix Flakes Git repository.
 
