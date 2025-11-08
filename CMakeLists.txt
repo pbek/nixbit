@@ -60,8 +60,9 @@ qt_add_executable(
   src/utils/cli.h
   ${QML_RESOURCES})
 
-target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-                                          ${LIBGIT2_INCLUDE_DIRS})
+target_include_directories(
+  nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src
+                 ${LIBGIT2_INCLUDE_DIRS})
 
 target_link_libraries(
   nixbit

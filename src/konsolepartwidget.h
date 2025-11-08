@@ -18,7 +18,7 @@ public:
   QString workingDirectory() const;
   void setWorkingDirectory(const QString &dir);
 
-  void sendCommand(const QString &command);
+  Q_INVOKABLE void sendCommand(const QString &command);
 
 signals:
   void workingDirectoryChanged();
@@ -26,12 +26,14 @@ signals:
 protected:
   void geometryChange(const QRectF &newGeometry,
                       const QRectF &oldGeometry) override;
-  void itemChange(ItemChange change, const ItemChangeData &data) override;
 
 private:
+  void initializeKonsolePart();
+  void updateWidgetPosition();
+
   KParts::Part *m_part;
   QWidget *m_widget;
-  QQuickWindow *m_windowContainer;
+  QWidget *m_windowContainer;
   QString m_workingDirectory;
 };
 
