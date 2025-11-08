@@ -23,7 +23,22 @@ stdenv.mkDerivation (
     pname = "nixbit";
     inherit version;
 
-    src = ./.;
+    src = lib.cleanSourceWith {
+      src = ./.;
+      filter =
+        path: _type:
+        let
+          baseName = baseNameOf path;
+        in
+        !(builtins.elem baseName [
+          "build"
+          "cmake-build-debug"
+          "result"
+          ".git"
+          ".gitignore"
+          ".cache"
+        ]);
+    };
 
     nativeBuildInputs = [
       cmake
