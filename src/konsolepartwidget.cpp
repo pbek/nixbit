@@ -110,46 +110,45 @@ void KonsolePartWidget::initializeKonsolePart() {
   // Get the QQuickWindow
   QQuickWindow *qmlWindow = window();
 
-  // Create a native widget that will contain the konsole widget
-  // and be positioned as an overlay on the QML window
-  m_windowContainer = new QWidget();
+  qDebug() << "QML Window geometry:" << qmlWindow->geometry();
+  qDebug() << "QML Window position:" << qmlWindow->position();
+  qDebug() << "QML Window global position:"
+           << qmlWindow->mapToGlobal(QPoint(0, 0));
 
-  // Set it to be a frameless window that overlays the main window
-  m_windowContainer->setWindowFlags(Qt::Widget | Qt::FramelessWindowHint);
-  m_windowContainer->setAttribute(Qt::WA_TranslucentBackground, false);
-
-  // Create layout and add the konsole widget
-  QVBoxLayout *layout = new QVBoxLayout(m_windowContainer);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(0);
-  layout->addWidget(m_widget);
+  // The widget needs to be shown and positioned manually
+  // We'll make it a top-level widget but position it to follow the QML item
+  m_widget->setWindowFlags(Qt::Widget | Qt::FramelessWindowHint);
 
   // Calculate global position on screen
   QPointF scenePos = mapToScene(QPointF(0, 0));
   QPoint globalPos = qmlWindow->mapToGlobal(scenePos.toPoint());
 
-  // Position and size the widget
+  qDebug() << "Item scene position:" << scenePos;
+  qDebug() << "Item global position:" << globalPos;
+
   // Use a minimum size if the QML item hasn't been sized yet
   int w = qMax(static_cast<int>(width()), 400);
   int h = qMax(static_cast<int>(height()), 300);
 
-  m_windowContainer->setGeometry(globalPos.x(), globalPos.y(), w, h);
+  m_widget->setGeometry(globalPos.x(), globalPos.y(), w, h);
 
-  // Create a native window for the container
-  m_windowContainer->setAttribute(Qt::WA_NativeWindow);
-  m_windowContainer->winId(); // Force creation of window handle
+  // Create a native window and make it transient to keep it with the main
+  // window
+  m_widget->setAttribute(Qt::WA_NativeWindow);
+  m_widget->winId(); // Force creation of window handle
 
-  // Make the widget window transient for the QML window so they stay together
-  if (m_windowContainer->windowHandle()) {
-    m_windowContainer->windowHandle()->setTransientParent(qmlWindow);
+  if (m_widget->windowHandle()) {
+    m_widget->windowHandle()->setTransientParent(qmlWindow);
+    qDebug() << "Set widget as transient for main window";
   }
 
   // Show the widget
-  m_windowContainer->show();
-  m_windowContainer->raise();
+  m_widget->show();
+  m_widget->raise();
 
-  qDebug() << "KonsolePartWidget: Initial widget size:" << w << "x" << h
-           << "at global position:" << globalPos;
+  qDebug() << "KonsolePartWidget: Widget shown at global position:" << globalPos
+           << "size:" << w << "x" << h
+           << "actual widget geometry:" << m_widget->geometry();
 
   // Connect to geometry changes
   connect(this, &QQuickItem::xChanged, this,
@@ -169,8 +168,8 @@ void KonsolePartWidget::initializeKonsolePart() {
 
   // Connect to item visibility changes
   connect(this, &QQuickItem::visibleChanged, this, [this]() {
-    if (m_windowContainer) {
-      m_windowContainer->setVisible(isVisible());
+    if (m_widget) {
+      m_widget->setVisible(isVisible());
     }
   });
 
@@ -211,12 +210,99 @@ void KonsolePartWidget::sendCommand(const QString &command) {
   terminal = qobject_cast<TerminalInterface *>(m_part);
 
   if (!terminal) {
-    // Search all children recursively
+    // Search all children recursively for TerminalInterface
     QList<QObject *> allChildren = m_part->findChildren<QObject *>();
     qDebug() << "Searching through" << allChildren.size()
              << "child objects for TerminalInterface";
 
+    // First, look for SessionController which should have the session
+    QObject *sessionController = nullptr;
     for (QObject *child : allChildren) {
+      if (QString(child->metaObject()->className())
+              .contains("SessionController")) {
+        sessionController = child;
+        qDebug() << "Found SessionController:" << child;
+
+        // List all properties to see what's available
+        qDebug() << "SessionController properties:";
+        const QMetaObject *meta = child->metaObject();
+        for (int i = 0; i < meta->propertyCount(); ++i) {
+          QMetaProperty prop = meta->property(i);
+          qDebug() << "  -" << prop.name() << ":"
+                   << child->property(prop.name());
+        }
+
+        // List all methods that might help
+        qDebug() << "SessionController methods containing 'session':";
+        for (int i = 0; i < meta->methodCount(); ++i) {
+          QMetaMethod method = meta->method(i);
+          QString sig = QString::fromLatin1(method.methodSignature());
+          if (sig.contains("session", Qt::CaseInsensitive)) {
+            qDebug() << "  -" << sig;
+          }
+        }
+
+        // Try to get session from the controller using different approaches
+        QVariant sessionVar = child->property("session");
+        qDebug() << "session property valid:" << sessionVar.isValid()
+                 << "type:" << sessionVar.typeName();
+
+        if (sessionVar.isValid()) {
+          QObject *session = qvariant_cast<QObject *>(sessionVar);
+          if (session) {
+            qDebug() << "Found session object:"
+                     << session->metaObject()->className();
+            terminal = qobject_cast<TerminalInterface *>(session);
+            if (terminal) {
+              qDebug() << "Session implements TerminalInterface!";
+              break;
+            } else {
+              qWarning() << "Session does not implement TerminalInterface";
+
+              // List session methods
+              qDebug() << "Session methods:";
+              for (int i = 0; i < session->metaObject()->methodCount(); ++i) {
+                QMetaMethod method = session->metaObject()->method(i);
+                QString sig = QString::fromLatin1(method.methodSignature());
+                if (sig.contains("send", Qt::CaseInsensitive) ||
+                    sig.contains("input", Qt::CaseInsensitive) ||
+                    sig.contains("text", Qt::CaseInsensitive)) {
+                  qDebug() << "  -" << sig;
+                }
+              }
+
+              // Try sendText method directly on session
+              if (QMetaObject::invokeMethod(session, "sendText",
+                                            Qt::DirectConnection,
+                                            Q_ARG(QString, command + "\n"))) {
+                qDebug() << "Command sent via session->sendText";
+                return;
+              }
+              // Try sendInput on session
+              if (QMetaObject::invokeMethod(session, "sendInput",
+                                            Qt::DirectConnection,
+                                            Q_ARG(QString, command + "\n"))) {
+                qDebug() << "Command sent via session->sendInput";
+                return;
+              }
+            }
+          } else {
+            qWarning() << "Failed to cast session property to QObject*";
+          }
+        } else {
+          qWarning() << "session property is not valid";
+        }
+
+        // Try calling sendInput directly on the SessionController
+        if (QMetaObject::invokeMethod(child, "sendInput", Qt::DirectConnection,
+                                      Q_ARG(QString, command + "\n"))) {
+          qDebug() << "Command sent via SessionController->sendInput";
+          return;
+        }
+
+        break;
+      }
+
       terminal = qobject_cast<TerminalInterface *>(child);
       if (terminal) {
         qDebug() << "Found TerminalInterface in child:"
@@ -231,35 +317,7 @@ void KonsolePartWidget::sendCommand(const QString &command) {
     terminal->sendInput(command + "\n");
     qDebug() << "Command sent successfully";
   } else {
-    qWarning() << "TerminalInterface not found anywhere in part hierarchy";
-
-    // Try calling methods that might exist on Konsole::Part
-    QStringList methodsToTry = {"sendText", "sendInput", "writeToTerminal",
-                                "sendData"};
-    bool sent = false;
-
-    for (const QString &methodName : methodsToTry) {
-      if (QMetaObject::invokeMethod(m_part, methodName.toUtf8().constData(),
-                                    Qt::DirectConnection,
-                                    Q_ARG(QString, command + "\n"))) {
-        qDebug() << "Command sent via" << methodName;
-        sent = true;
-        break;
-      }
-    }
-
-    if (!sent) {
-      qWarning() << "Could not find any way to send command to terminal";
-      qWarning() << "Available methods on" << m_part->metaObject()->className()
-                 << ":";
-      for (int i = 0; i < m_part->metaObject()->methodCount(); ++i) {
-        QMetaMethod method = m_part->metaObject()->method(i);
-        if (method.access() == QMetaMethod::Public &&
-            method.methodType() == QMetaMethod::Method) {
-          qWarning() << "  -" << method.methodSignature();
-        }
-      }
-    }
+    qWarning() << "Could not send command - TerminalInterface not accessible";
   }
 }
 
@@ -270,13 +328,13 @@ void KonsolePartWidget::geometryChange(const QRectF &newGeometry,
 }
 
 void KonsolePartWidget::updateWidgetPosition() {
-  if (m_windowContainer && window()) {
+  if (m_widget && window()) {
     QPointF scenePos = mapToScene(QPointF(0, 0));
     QPoint globalPos = window()->mapToGlobal(scenePos.toPoint());
 
     int w = qMax(static_cast<int>(width()), 400);
     int h = qMax(static_cast<int>(height()), 300);
 
-    m_windowContainer->setGeometry(globalPos.x(), globalPos.y(), w, h);
+    m_widget->setGeometry(globalPos.x(), globalPos.y(), w, h);
   }
 }
