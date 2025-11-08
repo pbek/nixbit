@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import org.kde.nixbit 1.0
 
 Kirigami.ApplicationWindow {
     id: root
@@ -395,97 +396,16 @@ Kirigami.ApplicationWindow {
                 }
             }
 
-            // Terminal Output Section
+            // Embedded Terminal Section
             GroupBox {
-                title: "Terminal Output"
+                title: "Embedded Terminal"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                ColumnLayout {
+                KonsolePartWidget {
+                    id: embeddedTerminal
                     anchors.fill: parent
-                    spacing: 5
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        color: "#1e1e1e"
-                        border.color: "#3e3e3e"
-                        border.width: 1
-                        radius: 4
-
-                        ScrollView {
-                            anchors.fill: parent
-                            anchors.margins: 5
-                            clip: true
-
-                            TextArea {
-                                id: terminalOutput
-                                readOnly: true
-                                textFormat: TextEdit.PlainText
-                                wrapMode: TextEdit.Wrap
-                                font.family: "Monospace"
-                                font.pixelSize: 12
-                                color: "#00ff00"
-                                text: processManager ? processManager.output : ""
-                                background: Rectangle {
-                                    color: "transparent"
-                                }
-
-                                // Auto-scroll to bottom when output changes
-                                onTextChanged: {
-                                    cursorPosition = text.length;
-                                }
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        Label {
-                            text: processManager ? (processManager.isRunning ? "Process running..." : "Ready") : "Ready"
-                            color: processManager ? (processManager.isRunning ? "#ffaa00" : "#00ff00") : "#00ff00"
-                            font.family: "Monospace"
-                            font.pixelSize: 10
-                        }
-
-                        Item {
-                            Layout.fillWidth: true
-                        }
-
-                        Button {
-                            text: "Clear"
-                            enabled: processManager ? !processManager.isRunning : false
-                            onClicked: {
-                                if (processManager)
-                                    processManager.clearOutput();
-                            }
-                        }
-
-                        Button {
-                            text: "Kill Process"
-                            enabled: processManager ? processManager.isRunning : false
-                            onClicked: {
-                                if (processManager)
-                                    processManager.killProcess();
-                            }
-                        }
-
-                        Button {
-                            text: processManager ? (processManager.isPaused ? "Resume" : "Pause") : "Pause"
-                            enabled: processManager ? processManager.isRunning : false
-                            visible: rebuildModeComboBox.currentText !== "switch"
-                            onClicked: {
-                                if (processManager) {
-                                    if (processManager.isPaused) {
-                                        processManager.resumeProcess();
-                                    } else {
-                                        processManager.pauseProcess();
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    workingDirectory: gitManager ? gitManager.localPath : ""
                 }
             }
         }
@@ -501,25 +421,20 @@ Kirigami.ApplicationWindow {
         }
 
         function onPullCompletedForUpdate() {
-            // Pull completed successfully, now run system update
-            if (!settingsManager || !gitManager || !processManager)
+            // Pull completed successfully, now run system update in embedded terminal
+            if (!settingsManager || !gitManager)
                 return;
             var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
             var rebuildMode = rebuildModeComboBox.currentText;
-            var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
 
-            // Build mode doesn't need sudo, switch mode does
-            var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild " + rebuildMode + " --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript;
-
-            // Only use pkexec for switch mode
+            // Send commands to embedded terminal
+            embeddedTerminal.sendCommand("cd '" + repoPath + "'");
             if (rebuildMode === "switch") {
-                cmd += " && pkexec " + tempScript + " ; rm -f " + tempScript;
+                embeddedTerminal.sendCommand("pkexec nixos-rebuild switch --flake .#" + hostname + " -L");
             } else {
-                cmd += " && " + tempScript + " ; rm -f " + tempScript;
+                embeddedTerminal.sendCommand("nixos-rebuild build --flake .#" + hostname + " -L");
             }
-
-            processManager.runCommand("bash", ["-c", cmd]);
         }
     }
 

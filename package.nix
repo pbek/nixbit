@@ -40,6 +40,9 @@ stdenv.mkDerivation (
       kdePackages.kcoreaddons
       kdePackages.ki18n
       kdePackages.kirigami
+      kdePackages.konsole
+      kdePackages.kparts
+      kdePackages.kservice
       libgit2
       qt6.qtbase
       qt6.qtdeclarative

@@ -31,7 +31,7 @@ find_package(
              DBus
              Network)
 
-find_package(KF6 REQUIRED COMPONENTS CoreAddons I18n)
+find_package(KF6 REQUIRED COMPONENTS CoreAddons I18n Parts)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBGIT2 REQUIRED libgit2)
@@ -54,6 +54,8 @@ qt_add_executable(
   src/systemmonitor.h
   src/systemresumedetector.cpp
   src/systemresumedetector.h
+  src/konsolepartwidget.cpp
+  src/konsolepartwidget.h
   src/utils/cli.cpp
   src/utils/cli.h
   ${QML_RESOURCES})
@@ -72,6 +74,7 @@ target_link_libraries(
           Qt6::Network
           KF6::CoreAddons
           KF6::I18n
+          KF6::Parts
           ${LIBGIT2_LIBRARIES})
 
 install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})

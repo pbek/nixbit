@@ -1,4 +1,5 @@
 #include "gitmanager.h"
+#include "konsolepartwidget.h"
 #include "processmanager.h"
 #include "settingsmanager.h"
 #include "systemmonitor.h"
@@ -92,6 +93,10 @@ int main(int argc, char *argv[]) {
   QApplication::setWindowIcon(QIcon::fromTheme("nixbit"));
 
   QQmlApplicationEngine engine;
+
+  // Register KonsolePartWidget for QML
+  qmlRegisterType<KonsolePartWidget>("org.kde.nixbit", 1, 0,
+                                     "KonsolePartWidget");
 
   // Make version available to QML
   engine.rootContext()->setContextProperty("appVersion",
