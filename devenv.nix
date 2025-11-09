@@ -16,6 +16,7 @@
     kdePackages.kcoreaddons
     kdePackages.ki18n
     kdePackages.kirigami
+    kdePackages.kparts
     qt6.qtbase
     qt6.qtdeclarative
     qt6.qtwayland
