@@ -6,8 +6,8 @@ import org.kde.kirigami as Kirigami
 Kirigami.Dialog {
     id: settingsDialog
     title: "Settings"
-    width: 400
-    height: 300
+    width: 600
+    height: 460
 
     ColumnLayout {
         anchors.fill: parent
@@ -57,6 +57,18 @@ Kirigami.Dialog {
                     if (settingsManager)
                         settingsManager.setAutostartEnabled(checked);
                 }
+            }
+
+            TextField {
+                Kirigami.FormData.label: "Build Host:"
+                text: settingsManager ? settingsManager.buildHost : ""
+                placeholderText: "user@hostname (optional)"
+                onEditingFinished: {
+                    if (settingsManager)
+                        settingsManager.buildHost = text;
+                }
+                ToolTip.visible: hovered
+                ToolTip.text: "Remote host for building (e.g., user@buildserver). Leave empty to build locally."
             }
         }
 

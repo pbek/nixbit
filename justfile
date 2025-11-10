@@ -15,6 +15,7 @@ transferDir := `if [ -d "$HOME/NextcloudPrivate/Transfer" ]; then echo "$HOME/Ne
 clear-qml-cache:
     @echo "Clearing QML cache..."
     @rm -rf ~/.cache/pbek/nixbit/qmlcache 2>/dev/null || true
+    @rm -rf ~/.cache/pbek/nixbit-debug/qmlcache 2>/dev/null || true
     @echo "QML cache cleared"
 
 # Configure the project with CMake
@@ -33,7 +34,7 @@ clean: clear-qml-cache
 
 # Run the application
 run: build
-    QML_DISABLE_DISK_CACHE=1 ./build/nixbit
+    QML_DISABLE_DISK_CACHE=1 ./build/nixbit --debug
 
 # Rebuild from scratch
 rebuild: clean build
@@ -72,7 +73,7 @@ nix-run:
         echo "The application requires a graphical display to run."
         echo "If you're running this on a server, you may need to use Xvfb or run it on a system with a display."
     fi
-    exec result/bin/nixbit
+    exec result/bin/nixbit --debug
 
 # Show the build result
 nix-result:

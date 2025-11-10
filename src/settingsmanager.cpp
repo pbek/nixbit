@@ -7,7 +7,8 @@
 #include <QStandardPaths>
 
 SettingsManager::SettingsManager(QObject *parent)
-    : QObject(parent), m_startHidden(false) {
+    : QObject(parent), m_startHidden(false), m_windowWidth(1000),
+      m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost("") {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -29,6 +30,47 @@ void SettingsManager::setHostname(const QString &hostname) {
     saveSettings();
     emit hostnameChanged();
     qDebug() << "Hostname changed to:" << hostname;
+  }
+}
+
+void SettingsManager::setWindowWidth(int width) {
+  if (m_windowWidth != width) {
+    m_windowWidth = width;
+    saveSettings();
+    emit windowWidthChanged();
+  }
+}
+
+void SettingsManager::setWindowHeight(int height) {
+  if (m_windowHeight != height) {
+    m_windowHeight = height;
+    saveSettings();
+    emit windowHeightChanged();
+  }
+}
+
+void SettingsManager::setWindowX(int x) {
+  if (m_windowX != x) {
+    m_windowX = x;
+    saveSettings();
+    emit windowXChanged();
+  }
+}
+
+void SettingsManager::setWindowY(int y) {
+  if (m_windowY != y) {
+    m_windowY = y;
+    saveSettings();
+    emit windowYChanged();
+  }
+}
+
+void SettingsManager::setBuildHost(const QString &buildHost) {
+  if (m_buildHost != buildHost) {
+    m_buildHost = buildHost;
+    saveSettings();
+    emit buildHostChanged();
+    qDebug() << "Build host changed to:" << buildHost;
   }
 }
 
@@ -159,9 +201,17 @@ void SettingsManager::loadSettings() {
   m_startHidden = settings.value("General/StartHidden", false).toBool();
   m_hostname =
       settings.value("General/Hostname", getSystemHostname()).toString();
+  m_windowWidth = settings.value("Window/Width", 1000).toInt();
+  m_windowHeight = settings.value("Window/Height", 800).toInt();
+  m_windowX = settings.value("Window/X", -1).toInt();
+  m_windowY = settings.value("Window/Y", -1).toInt();
+  m_buildHost = settings.value("General/BuildHost", "").toString();
 
   qDebug() << "Loaded start hidden setting:" << m_startHidden;
   qDebug() << "Loaded hostname:" << m_hostname;
+  qDebug() << "Loaded window size:" << m_windowWidth << "x" << m_windowHeight;
+  qDebug() << "Loaded window position:" << m_windowX << "," << m_windowY;
+  qDebug() << "Loaded build host:" << m_buildHost;
   qDebug() << "Autostart file exists:" << autostartFileExists();
 }
 
@@ -169,5 +219,10 @@ void SettingsManager::saveSettings() {
   QSettings settings("pbek", "nixbit");
   settings.setValue("General/StartHidden", m_startHidden);
   settings.setValue("General/Hostname", m_hostname);
+  settings.setValue("Window/Width", m_windowWidth);
+  settings.setValue("Window/Height", m_windowHeight);
+  settings.setValue("Window/X", m_windowX);
+  settings.setValue("Window/Y", m_windowY);
+  settings.setValue("General/BuildHost", m_buildHost);
   settings.sync();
 }

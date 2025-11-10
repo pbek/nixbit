@@ -22,12 +22,16 @@ int main(int argc, char *argv[]) {
   // completion) Use QCoreApplication for these to avoid GUI initialization
   // overhead
   bool isCliOnlyMode = false;
+  bool debugMode = false;
   for (int i = 1; i < argc; i++) {
     QString arg = QString::fromLocal8Bit(argv[i]);
     if (arg == "--help" || arg == "-h" || arg == "--version" || arg == "-v" ||
         arg == "--completion-bash" || arg == "--completion-fish") {
       isCliOnlyMode = true;
       break;
+    }
+    if (arg == "--debug") {
+      debugMode = true;
     }
   }
 
@@ -56,11 +60,16 @@ int main(int argc, char *argv[]) {
         "Generate Fish completion script and exit");
     parser.addOption(completionFishOption);
 
+    QCommandLineOption debugOption(
+        QStringList() << "debug",
+        "Run in debug mode with separate settings and data directories");
+    parser.addOption(debugOption);
+
     parser.process(coreApp);
 
     QList<QCommandLineOption> options;
     options << helpOption << versionOption << completionBashOption
-            << completionFishOption;
+            << completionFishOption << debugOption;
 
     if (parser.isSet(completionBashOption)) {
       Utils::Cli::generateBashCompletionScript(options, "nixbit");
@@ -81,10 +90,18 @@ int main(int argc, char *argv[]) {
 
   QApplication::setOrganizationName("pbek");
   QApplication::setOrganizationDomain("pbek");
-  QApplication::setApplicationName("nixbit");
-  QApplication::setApplicationDisplayName("Nixbit " +
-                                          QStringLiteral(NIXBIT_VERSION));
   QApplication::setApplicationVersion(NIXBIT_VERSION);
+
+  // Use different organization/app name for debug mode to separate settings
+  if (debugMode) {
+    QApplication::setApplicationName("nixbit-debug");
+    QApplication::setApplicationDisplayName("Nixbit (Debug) " +
+                                            QStringLiteral(NIXBIT_VERSION));
+  } else {
+    QApplication::setApplicationName("nixbit");
+    QApplication::setApplicationDisplayName("Nixbit " +
+                                            QStringLiteral(NIXBIT_VERSION));
+  }
 
   qDebug() << "Starting nixbit application...";
 
@@ -93,9 +110,10 @@ int main(int argc, char *argv[]) {
 
   QQmlApplicationEngine engine;
 
-  // Make version available to QML
+  // Make version and debug mode available to QML
   engine.rootContext()->setContextProperty("appVersion",
                                            QString(NIXBIT_VERSION));
+  engine.rootContext()->setContextProperty("isDebugMode", debugMode);
 
   // Create and register GitManager
   GitManager gitManager;

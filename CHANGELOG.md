@@ -1,5 +1,16 @@
 # Nixbit Changelog
 
+## 0.2.0
+
+- Some font sizes have been increased for better readability
+- The `nixos-rebuild` command call was simplified in `build` mode
+- The hostname will now be sanitized in case the user adds unsupported characters
+- There now is a new `--debug` CLI argument to use the application with a different
+  settings directory and in `build` mode by default
+- The window size and position will now be remembered and restored on next start
+- There now is a `Build Host` setting in the settings dialog to set the
+  hostname to build the configuration on
+
 ## 0.1.5
 
 - The _Pause_ button is now hidden in _Switch_ mode, because you can't sleep the

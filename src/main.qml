@@ -6,8 +6,36 @@ import org.kde.kirigami as Kirigami
 Kirigami.ApplicationWindow {
     id: root
     title: "NixOS Updater"
-    width: 1000
-    height: 700
+    width: settingsManager ? settingsManager.windowWidth : 1000
+    height: settingsManager ? settingsManager.windowHeight : 800
+    x: settingsManager && settingsManager.windowX >= 0 ? settingsManager.windowX : Screen.width / 2 - width / 2
+    y: settingsManager && settingsManager.windowY >= 0 ? settingsManager.windowY : Screen.height / 2 - height / 2
+
+    // Save window size when it changes
+    onWidthChanged: {
+        if (settingsManager && width > 0) {
+            settingsManager.windowWidth = width;
+        }
+    }
+
+    onHeightChanged: {
+        if (settingsManager && height > 0) {
+            settingsManager.windowHeight = height;
+        }
+    }
+
+    // Save window position when it changes
+    onXChanged: {
+        if (settingsManager && x >= 0) {
+            settingsManager.windowX = x;
+        }
+    }
+
+    onYChanged: {
+        if (settingsManager && y >= 0) {
+            settingsManager.windowY = y;
+        }
+    }
 
     // Confirmation dialog for deleting local repository
     Kirigami.PromptDialog {
@@ -122,7 +150,7 @@ Kirigami.ApplicationWindow {
     }
 
     pageStack.initialPage: Kirigami.Page {
-        title: "Repository Manager"
+        title: (typeof isDebugMode !== 'undefined' && isDebugMode) ? "Repository Manager (Debug Mode)" : "Repository Manager"
 
         ColumnLayout {
             anchors.fill: parent
@@ -210,7 +238,7 @@ Kirigami.ApplicationWindow {
                     id: rebuildModeComboBox
                     Kirigami.FormData.label: "Rebuild Mode:"
                     model: ["build", "switch"]
-                    currentIndex: 1
+                    currentIndex: (typeof isDebugMode !== 'undefined' && isDebugMode) ? 0 : 1
                     enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
                     ToolTip.visible: hovered
                     ToolTip.text: currentIndex === 0 ? "Build the system without activating (no sudo required)" : "Build and activate the new system (requires sudo)"
@@ -327,7 +355,7 @@ Kirigami.ApplicationWindow {
                         Label {
                             text: "CPU"
                             font.bold: true
-                            font.pixelSize: 10
+                            // font.pointSize: 14
                         }
                         ProgressBar {
                             Layout.preferredWidth: 80
@@ -337,7 +365,7 @@ Kirigami.ApplicationWindow {
                         }
                         Label {
                             text: systemMonitor ? systemMonitor.cpuUsage.toFixed(1) + "%" : "0.0%"
-                            font.pixelSize: 10
+                            // font.pointSize: 14
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -348,7 +376,7 @@ Kirigami.ApplicationWindow {
                         Label {
                             text: "RAM"
                             font.bold: true
-                            font.pixelSize: 10
+                            // font.pointSize: 14
                         }
                         ProgressBar {
                             Layout.preferredWidth: 80
@@ -358,7 +386,7 @@ Kirigami.ApplicationWindow {
                         }
                         Label {
                             text: systemMonitor ? systemMonitor.usedMemory + " / " + systemMonitor.totalMemory : ""
-                            font.pixelSize: 10
+                            // font.pointSize: 14
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -369,11 +397,11 @@ Kirigami.ApplicationWindow {
                         Label {
                             text: "Network"
                             font.bold: true
-                            font.pixelSize: 10
+                            // font.pointSize: 14
                         }
                         Label {
                             text: systemMonitor ? systemMonitor.networkStats : "↓ 0 B/s ↑ 0 B/s"
-                            font.pixelSize: 10
+                            // font.pointSize: 14
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -384,11 +412,11 @@ Kirigami.ApplicationWindow {
                         Label {
                             text: "Load"
                             font.bold: true
-                            font.pixelSize: 10
+                            // font.pointSize: 14
                         }
                         Label {
                             text: systemMonitor ? systemMonitor.systemLoad.toFixed(2) : "0.00"
-                            font.pixelSize: 10
+                            // font.pointSize: 14
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -424,7 +452,7 @@ Kirigami.ApplicationWindow {
                                 textFormat: TextEdit.PlainText
                                 wrapMode: TextEdit.Wrap
                                 font.family: "Monospace"
-                                font.pixelSize: 12
+                                font.pixelSize: 14
                                 color: "#00ff00"
                                 text: processManager ? processManager.output : ""
                                 background: Rectangle {
@@ -446,7 +474,7 @@ Kirigami.ApplicationWindow {
                             text: processManager ? (processManager.isRunning ? "Process running..." : "Ready") : "Ready"
                             color: processManager ? (processManager.isRunning ? "#ffaa00" : "#00ff00") : "#00ff00"
                             font.family: "Monospace"
-                            font.pixelSize: 10
+                            font.pixelSize: 14
                         }
 
                         Item {
@@ -507,16 +535,43 @@ Kirigami.ApplicationWindow {
             var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
             var rebuildMode = rebuildModeComboBox.currentText;
-            var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
+            var buildHost = settingsManager.buildHost;
 
-            // Build mode doesn't need sudo, switch mode does
-            var cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "nixos-rebuild " + rebuildMode + " --flake .#" + hostname + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript;
+            // Sanitize hostname to prevent command injection
+            // Only allow alphanumeric characters, hyphens, underscores, and dots
+            var sanitizedHostname = hostname.replace(/[^a-zA-Z0-9._-]/g, '');
+            if (sanitizedHostname === "" || sanitizedHostname !== hostname) {
+                messageBox.text = "Error: Invalid hostname. Only alphanumeric characters, hyphens, underscores, and dots are allowed.";
+                messageBox.type = Kirigami.MessageType.Error;
+                messageBox.visible = true;
+                return;
+            }
 
-            // Only use pkexec for switch mode
+            // Sanitize build host to prevent command injection
+            // Allow alphanumeric, hyphens, underscores, dots, and @ for user@host format
+            var sanitizedBuildHost = "";
+            if (buildHost && buildHost.trim() !== "") {
+                sanitizedBuildHost = buildHost.trim().replace(/[^a-zA-Z0-9._@-]/g, '');
+                if (sanitizedBuildHost === "" || sanitizedBuildHost !== buildHost.trim()) {
+                    messageBox.text = "Error: Invalid build host. Only alphanumeric characters, hyphens, underscores, dots, and @ are allowed.";
+                    messageBox.type = Kirigami.MessageType.Error;
+                    messageBox.visible = true;
+                    return;
+                }
+            }
+
+            // Build the nixos-rebuild command with optional --build-host parameter
+            var buildHostParam = sanitizedBuildHost !== "" ? " --build-host " + sanitizedBuildHost : "";
+
+            var cmd;
             if (rebuildMode === "switch") {
+                // Switch mode: copy to temp repo and use pkexec for sudo
+                var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
+                cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "env TERM=dumb nixos-rebuild " + rebuildMode + " --flake .#" + sanitizedHostname + buildHostParam + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript;
                 cmd += " && pkexec " + tempScript + " ; rm -f " + tempScript;
             } else {
-                cmd += " && " + tempScript + " ; rm -f " + tempScript;
+                // Build mode: run directly from repo (no temp copy, no temp script, no sudo)
+                cmd = "cd " + repoPath + " && env TERM=dumb nixos-rebuild " + rebuildMode + " --flake .#" + sanitizedHostname + buildHostParam + " -L";
             }
 
             processManager.runCommand("bash", ["-c", cmd]);
