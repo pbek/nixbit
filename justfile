@@ -98,3 +98,15 @@ nix-check:
     fi
     echo ""
     echo "✓ Build appears successful!"
+
+# Apply a git patch to the project
+[group('patches')]
+git-apply-patch:
+    git apply {{ transferDir }}/nixbit.patch
+
+# Create git patches for the project
+[group('patches')]
+git-create-patch:
+    @echo "transferDir: {{ transferDir }}"
+    git diff --no-ext-diff --staged --binary > {{ transferDir }}/nixbit.patch
+    ls -l1t {{ transferDir }} | head -2
