@@ -1,5 +1,9 @@
 # Nixbit Changelog
 
+## Unreleased
+
+- Fixed visual window movement that occurred when closing the application
+
 ## 0.2.0
 
 - Some font sizes have been increased for better readability
