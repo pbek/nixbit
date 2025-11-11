@@ -11,28 +11,36 @@ Kirigami.ApplicationWindow {
     x: settingsManager && settingsManager.windowX >= 0 ? settingsManager.windowX : Screen.width / 2 - width / 2
     y: settingsManager && settingsManager.windowY >= 0 ? settingsManager.windowY : Screen.height / 2 - height / 2
 
+    // Flag to prevent saving window geometry during close
+    property bool closing: false
+
+    // Prevent window geometry updates during close
+    onClosing: {
+        closing = true
+    }
+
     // Save window size when it changes
     onWidthChanged: {
-        if (settingsManager && width > 0) {
+        if (settingsManager && width > 0 && !closing) {
             settingsManager.windowWidth = width;
         }
     }
 
     onHeightChanged: {
-        if (settingsManager && height > 0) {
+        if (settingsManager && height > 0 && !closing) {
             settingsManager.windowHeight = height;
         }
     }
 
     // Save window position when it changes
     onXChanged: {
-        if (settingsManager && x >= 0) {
+        if (settingsManager && x >= 0 && !closing) {
             settingsManager.windowX = x;
         }
     }
 
     onYChanged: {
-        if (settingsManager && y >= 0) {
+        if (settingsManager && y >= 0 && !closing) {
             settingsManager.windowY = y;
         }
     }
