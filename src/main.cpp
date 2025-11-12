@@ -17,6 +17,8 @@
 #include <QQmlContext>
 #include <QQuickWindow>
 
+using namespace Qt::StringLiterals;
+
 int main(int argc, char *argv[]) {
   // First, check if we're running in CLI-only mode (help, version, or
   // completion) Use QCoreApplication for these to avoid GUI initialization
@@ -142,10 +144,10 @@ int main(int argc, char *argv[]) {
 
   engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
 
-  qDebug() << "Loading QML from qrc:/main.qml";
+  qDebug() << "Loading QML from qrc:/qt/qml/nixbit/src/main.qml";
 
   // Load QML
-  const QUrl url(QStringLiteral("qrc:/main.qml"));
+  const QUrl url(u"qrc:/qt/qml/nixbit/src/main.qml"_s);
 
   QObject::connect(
       &engine, &QQmlApplicationEngine::objectCreated, &app,

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
   nixbit
-  VERSION 0.2.0
+  VERSION 0.2.1
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -36,9 +36,6 @@ find_package(KF6 REQUIRED COMPONENTS CoreAddons I18n)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBGIT2 REQUIRED libgit2)
 
-# Create a Qt resource file for the QML
-qt_add_resources(QML_RESOURCES src/qml.qrc)
-
 qt_add_executable(
   nixbit
   src/main.cpp
@@ -55,8 +52,24 @@ qt_add_executable(
   src/systemresumedetector.cpp
   src/systemresumedetector.h
   src/utils/cli.cpp
-  src/utils/cli.h
-  ${QML_RESOURCES})
+  src/utils/cli.h)
+
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
+
+qt_add_qml_module(
+  nixbit
+  URI
+  nixbit
+  VERSION
+  1.0
+  OUTPUT_DIRECTORY
+  ${CMAKE_CURRENT_BINARY_DIR}/qml/nixbit
+  NO_LINT
+  NO_PLUGIN
+  QML_FILES
+  src/main.qml
+  src/SettingsDialog.qml)
 
 target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                           ${LIBGIT2_INCLUDE_DIRS})

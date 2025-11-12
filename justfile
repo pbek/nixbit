@@ -11,13 +11,6 @@ default:
 
 transferDir := `if [ -d "$HOME/NextcloudPrivate/Transfer" ]; then echo "$HOME/NextcloudPrivate/Transfer"; else echo "$HOME/Nextcloud/Transfer"; fi`
 
-# Clear QML cache
-clear-qml-cache:
-    @echo "Clearing QML cache..."
-    @rm -rf ~/.cache/pbek/nixbit/qmlcache 2>/dev/null || true
-    @rm -rf ~/.cache/pbek/nixbit-debug/qmlcache 2>/dev/null || true
-    @echo "QML cache cleared"
-
 # Configure the project with CMake
 configure:
     mkdir -p build
@@ -29,12 +22,12 @@ build:
     cd build && cmake .. && cmake --build .
 
 # Clean build artifacts
-clean: clear-qml-cache
+clean:
     rm -rf build
 
 # Run the application
 run: build
-    QML_DISABLE_DISK_CACHE=1 ./build/nixbit --debug
+    ./build/nixbit --debug
 
 # Rebuild from scratch
 rebuild: clean build
@@ -48,11 +41,11 @@ test: build
     cd build && ctest --output-on-failure
 
 # Build the Nix package
-nix-build: clear-qml-cache
+nix-build:
     nix-build -E '(import <nixpkgs> {}).callPackage ./package.nix {}'
 
 # Build the Nix package using flakes (if available)
-flake-build: clear-qml-cache
+flake-build:
     nix build .#nixbit
 
 # Install the Nix package to user profile

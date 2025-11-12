@@ -4,6 +4,11 @@
 
 - Fixed visual window movement that occurred when closing the application
 
+## 0.2.1
+
+- The issue with the UI of the old version of Nixbit showing up after an update
+  has been fixed (for [#11](https://github.com/pbek/nixbit/issues/11))
+
 ## 0.2.0
 
 - Some font sizes have been increased for better readability
