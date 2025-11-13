@@ -1,5 +1,10 @@
 # Nixbit Changelog
 
+## 0.2.2
+
+- The color scheme of the application has been improved for better visibility
+  in dark and light modes
+
 ## 0.2.1
 
 - The issue with the UI of the old version of Nixbit showing up after an update

@@ -436,8 +436,8 @@ Kirigami.ApplicationWindow {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        color: "#1e1e1e"
-                        border.color: "#3e3e3e"
+                        color: "#0d1117"
+                        border.color: "#30363d"
                         border.width: 1
                         radius: 4
 
@@ -453,7 +453,7 @@ Kirigami.ApplicationWindow {
                                 wrapMode: TextEdit.Wrap
                                 font.family: "Monospace"
                                 font.pixelSize: 14
-                                color: "#00ff00"
+                                color: Kirigami.Theme.textColor.hslLightness > 0.5 ? "#2ea043" : "#58d68d"
                                 text: processManager ? processManager.output : ""
                                 background: Rectangle {
                                     color: "transparent"
@@ -472,7 +472,7 @@ Kirigami.ApplicationWindow {
 
                         Label {
                             text: processManager ? (processManager.isRunning ? "Process running..." : "Ready") : "Ready"
-                            color: processManager ? (processManager.isRunning ? "#ffaa00" : "#00ff00") : "#00ff00"
+                            color: processManager ? (processManager.isRunning ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
                             font.family: "Monospace"
                             font.pixelSize: 14
                         }
