@@ -39,7 +39,7 @@ inputs.nixbit.inputs.nixpkgs.follows = "nixpkgs";
 {
   imports = [ inputs.nixbit.nixosModules.nixbit ];
 
-  services.nixbit = {
+  nixbit = {
     enable = true;
     repository = "https://github.com/youruser/nixcfg.git";
   };
