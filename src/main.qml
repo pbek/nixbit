@@ -150,7 +150,7 @@ Kirigami.ApplicationWindow {
     }
 
     pageStack.initialPage: Kirigami.Page {
-        title: (typeof isDebugMode !== 'undefined' && isDebugMode) ? "Repository Manager (Debug Mode)" : "Repository Manager"
+        title: (typeof isDebugMode !== 'undefined' && isDebugMode) ? "System Configuration (Debug Mode)" : "System Configuration"
 
         ColumnLayout {
             anchors.fill: parent

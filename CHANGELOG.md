@@ -5,6 +5,7 @@
 - The memory usage calculation has been improved to show correct values in the
   system resource monitoring bar and is now using `/proc/meminfo` now instead
   of the `free` command
+- The page title was changed to `System Configuration`
 
 ## 0.2.2
 
