@@ -86,26 +86,42 @@ void SystemMonitor::updateCpuUsage() {
 }
 
 void SystemMonitor::updateMemoryUsage() {
-  QProcess process;
-  process.start("free", QStringList() << "-b");
-  process.waitForFinished();
-
-  QByteArray output = process.readAllStandardOutput();
-  QList<QByteArray> lines = output.split('\n');
+  QFile file("/proc/meminfo");
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    return;
+  }
 
   unsigned long long totalMem = 0, availableMem = 0;
 
-  for (const QByteArray &line : lines) {
-    qDebug() << __func__ << "line: " << line;
-    if (line.startsWith("Mem:")) {
-      QList<QByteArray> parts = line.split(' ');
-      parts.removeAll(QByteArray()); // Remove empty parts
-      if (parts.size() >= 7) {
-        totalMem = parts[1].toULongLong();
-        availableMem = parts[6].toULongLong();
+  // Read entire file content at once
+  QByteArray content = file.readAll();
+  file.close();
+
+  // Split into lines
+  QList<QByteArray> lines = content.split('\n');
+
+  for (const QByteArray &lineData : lines) {
+    QString line = QString::fromLatin1(lineData);
+
+    if (line.startsWith("MemTotal:")) {
+      // Extract number from "MemTotal:       65747368 kB"
+      QStringList parts =
+          line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+      if (parts.size() >= 2) {
+        totalMem = parts[1].toULongLong() * 1024; // Convert kB to bytes
       }
-      break;
+    } else if (line.startsWith("MemAvailable:")) {
+      // Extract number from "MemAvailable:   49541176 kB"
+      QStringList parts =
+          line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+      if (parts.size() >= 2) {
+        availableMem = parts[1].toULongLong() * 1024; // Convert kB to bytes
+      }
     }
+
+    // Stop early if we have both values
+    if (totalMem > 0 && availableMem > 0)
+      break;
   }
 
   if (totalMem > 0) {

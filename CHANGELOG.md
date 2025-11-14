@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## 0.2.3
+
+- The memory usage calculation has been improved to show correct values in the
+  system resource monitoring bar and is now using `/proc/meminfo` now instead
+  of the `free` command
+
 ## 0.2.2
 
 - The color scheme of the application has been improved for better visibility
