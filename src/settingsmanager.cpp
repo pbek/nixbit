@@ -142,8 +142,8 @@ bool SettingsManager::createAutostartFile() {
     }
   }
 
-  // Get the executable path
-  QString execPath = QCoreApplication::applicationFilePath();
+  // Set the executable
+  QString execPath = QStringLiteral("nixbit");
 
   // Create the desktop file content
   QString desktopContent =

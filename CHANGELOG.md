@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## 0.2.4
+
+- The autostart setting now will set `nixbit` as exec path instead of the full
+  path to the binary, to allow updates of the application without breaking
+  the autostart entry (for [#6](https://github.com/pbek/nixbit/issues/6))
+
 ## 0.2.3
 
 - The memory usage calculation has been improved to show correct values in the
