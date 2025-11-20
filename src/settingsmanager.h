@@ -63,6 +63,7 @@ signals:
 private:
   void loadSettings();
   void saveSettings();
+  void migrateSettings(int fromVersion);
   QString getSystemHostname() const;
   QString getAutostartFilePath() const;
   bool autostartFileExists() const;
@@ -77,6 +78,7 @@ private:
   int m_windowX;
   int m_windowY;
   QString m_buildHost;
+  int m_settingsVersion;
 };
 
 #endif // SETTINGSMANAGER_H

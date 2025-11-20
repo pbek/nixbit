@@ -8,7 +8,8 @@
 
 SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent), m_startHidden(false), m_windowWidth(1000),
-      m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost("") {
+      m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost(""),
+      m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -198,6 +199,11 @@ bool SettingsManager::removeAutostartFile() {
 
 void SettingsManager::loadSettings() {
   QSettings settings("pbek", "nixbit");
+
+  // Load settings version
+  int oldVersion = settings.value("General/SettingsVersion", 0).toInt();
+  m_settingsVersion = 1; // Current settings version
+
   m_startHidden = settings.value("General/StartHidden", false).toBool();
   m_hostname =
       settings.value("General/Hostname", getSystemHostname()).toString();
@@ -207,16 +213,24 @@ void SettingsManager::loadSettings() {
   m_windowY = settings.value("Window/Y", -1).toInt();
   m_buildHost = settings.value("General/BuildHost", "").toString();
 
+  qDebug() << "Loaded settings version:" << oldVersion;
+  qDebug() << "Current settings version:" << m_settingsVersion;
   qDebug() << "Loaded start hidden setting:" << m_startHidden;
   qDebug() << "Loaded hostname:" << m_hostname;
   qDebug() << "Loaded window size:" << m_windowWidth << "x" << m_windowHeight;
   qDebug() << "Loaded window position:" << m_windowX << "," << m_windowY;
   qDebug() << "Loaded build host:" << m_buildHost;
   qDebug() << "Autostart file exists:" << autostartFileExists();
+
+  // Perform migration if needed
+  if (oldVersion < m_settingsVersion) {
+    migrateSettings(oldVersion);
+  }
 }
 
 void SettingsManager::saveSettings() {
   QSettings settings("pbek", "nixbit");
+  settings.setValue("General/SettingsVersion", m_settingsVersion);
   settings.setValue("General/StartHidden", m_startHidden);
   settings.setValue("General/Hostname", m_hostname);
   settings.setValue("Window/Width", m_windowWidth);
@@ -225,4 +239,25 @@ void SettingsManager::saveSettings() {
   settings.setValue("Window/Y", m_windowY);
   settings.setValue("General/BuildHost", m_buildHost);
   settings.sync();
+}
+
+void SettingsManager::migrateSettings(int fromVersion) {
+  qDebug() << "Migrating settings from version" << fromVersion << "to"
+           << m_settingsVersion;
+
+  // Migration from version 0 to 1
+  if (fromVersion == 0 && m_settingsVersion >= 1) {
+    qDebug() << "Performing migration from version 0 to 1";
+
+    // If autostart was enabled (file exists), recreate it
+    if (autostartFileExists()) {
+      qDebug() << "Autostart was enabled, recreating autostart file";
+      removeAutostartFile();
+      createAutostartFile();
+    }
+
+    saveSettings();
+    qDebug() << "Migration complete, settings version is now"
+             << m_settingsVersion;
+  }
 }

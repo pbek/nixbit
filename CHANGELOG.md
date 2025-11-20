@@ -5,6 +5,7 @@
 - The autostart setting now will set `nixbit` as exec path instead of the full
   path to the binary, to allow updates of the application without breaking
   the autostart entry (for [#6](https://github.com/pbek/nixbit/issues/6))
+  - The autostart entry will be re-created on next start once
 
 ## 0.2.3
 
