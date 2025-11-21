@@ -13,6 +13,7 @@ class SystemMonitor : public QObject {
   Q_PROPERTY(QString usedMemory READ usedMemory NOTIFY usedMemoryChanged)
   Q_PROPERTY(QString networkStats READ networkStats NOTIFY networkStatsChanged)
   Q_PROPERTY(double systemLoad READ systemLoad NOTIFY systemLoadChanged)
+  Q_PROPERTY(QString diskStats READ diskStats NOTIFY diskStatsChanged)
   Q_PROPERTY(bool active READ active WRITE setActive NOTIFY activeChanged)
 
 public:
@@ -24,6 +25,7 @@ public:
   QString totalMemory() const { return m_totalMemory; }
   QString usedMemory() const { return m_usedMemory; }
   QString networkStats() const { return m_networkStats; }
+  QString diskStats() const { return m_diskStats; }
   double systemLoad() const { return m_systemLoad; }
   bool active() const { return m_active; }
 
@@ -34,6 +36,7 @@ signals:
   void memoryUsageChanged();
   void totalMemoryChanged();
   void usedMemoryChanged();
+  void diskStatsChanged();
   void networkStatsChanged();
   void systemLoadChanged();
   void activeChanged();
@@ -43,6 +46,7 @@ private slots:
 
 private:
   void updateCpuUsage();
+  void updateDiskStats();
   void updateMemoryUsage();
   void updateNetworkStats();
   void updateSystemLoad();
@@ -51,6 +55,7 @@ private:
   QTimer *m_timer;
   double m_cpuUsage;
   double m_memoryUsage;
+  QString m_diskStats;
   QString m_totalMemory;
   QString m_usedMemory;
   QString m_networkStats;
@@ -59,6 +64,10 @@ private:
 
   // For CPU calculation
   unsigned long long m_prevTotal;
+
+  // For disk I/O calculation
+  unsigned long long m_prevReadBytes;
+  unsigned long long m_prevWriteBytes;
   unsigned long long m_prevIdle;
 
   // For network calculation

@@ -19,6 +19,11 @@
 - Build commands now use the selected build host based on current mode
   - Empty or "(local)" selection results in local builds
   - Named host selections use the configured address for `--build-host` parameter
+- Added disk I/O monitoring to system resources display
+  - Shows cumulative read/write rates for all physical disks during builds
+  - Supports NVMe, SATA, SCSI, virtio, IDE, and MMC/SD block devices
+  - Uses `/sys/block` for reliable disk statistics with `/proc/diskstats` fallback
+  - Displays real-time I/O rates in human-readable format (B/s, KB/s, MB/s, GB/s)
 
 ## 0.2.4
 

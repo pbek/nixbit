@@ -1,15 +1,17 @@
 #include "systemmonitor.h"
 #include <QDateTime>
 #include <QDebug>
+#include <QDir>
 #include <QFile>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QTextStream>
 
 SystemMonitor::SystemMonitor(QObject *parent)
-    : QObject(parent), m_cpuUsage(0.0), m_memoryUsage(0.0), m_totalMemory(""),
-      m_usedMemory(""), m_networkStats(""), m_systemLoad(0.0), m_active(false),
-      m_prevTotal(0), m_prevIdle(0), m_prevRxBytes(0), m_prevTxBytes(0) {
+    : QObject(parent), m_cpuUsage(0.0), m_memoryUsage(0.0), m_diskStats(""),
+      m_totalMemory(""), m_usedMemory(""), m_networkStats(""),
+      m_systemLoad(0.0), m_active(false), m_prevTotal(0), m_prevReadBytes(0),
+      m_prevWriteBytes(0), m_prevIdle(0), m_prevRxBytes(0), m_prevTxBytes(0) {
   m_timer = new QTimer(this);
   connect(m_timer, &QTimer::timeout, this, &SystemMonitor::updateStats);
 }
@@ -26,6 +28,7 @@ void SystemMonitor::setActive(bool active) {
   if (active) {
     // Initialize previous values
     updateCpuUsage();
+    updateDiskStats();
     updateNetworkStats();
     updateMemoryUsage();
     updateSystemLoad();
@@ -37,6 +40,7 @@ void SystemMonitor::setActive(bool active) {
 
 void SystemMonitor::updateStats() {
   updateCpuUsage();
+  updateDiskStats();
   updateMemoryUsage();
   updateNetworkStats();
   updateSystemLoad();
@@ -193,6 +197,113 @@ void SystemMonitor::updateNetworkStats() {
   m_prevRxBytes = rxBytes;
   m_prevTxBytes = txBytes;
   lastUpdate = now;
+}
+
+void SystemMonitor::updateDiskStats() {
+  unsigned long long readBytes = 0, writeBytes = 0;
+
+  // Try /sys/block approach first - more reliable
+  QDir sysBlock("/sys/block");
+  if (sysBlock.exists()) {
+    QStringList devices = sysBlock.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+
+    for (const QString &device : devices) {
+      // Skip loop, ram, and other virtual devices
+      if (device.startsWith("loop") || device.startsWith("ram") ||
+          device.startsWith("dm-") || device.startsWith("sr"))
+        continue;
+
+      // Read sectors read
+      QFile readFile(QString("/sys/block/%1/stat").arg(device));
+      if (readFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QString line = readFile.readAll().trimmed();
+        QStringList parts =
+            line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+
+        // Format: reads reads_merged sectors_read time_reading writes
+        // writes_merged sectors_written time_writing ... 0=reads,
+        // 2=sectors_read, 4=writes, 6=sectors_written
+        if (parts.size() >= 7) {
+          readBytes += parts[2].toULongLong() * 512;  // sectors read
+          writeBytes += parts[6].toULongLong() * 512; // sectors written
+        }
+        readFile.close();
+      }
+    }
+  }
+
+  // Fallback to /proc/diskstats if /sys/block didn't work
+  if (readBytes == 0 && writeBytes == 0) {
+    QFile file("/proc/diskstats");
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      QTextStream in(&file);
+
+      while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        if (line.isEmpty())
+          continue;
+
+        QStringList parts =
+            line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+
+        // Format: major minor name reads reads_merged sectors_read ...
+        if (parts.size() >= 10) {
+          const QString &device = parts[2];
+
+          // Skip virtual devices
+          if (device.startsWith("loop") || device.startsWith("ram") ||
+              device.startsWith("dm-") || device.startsWith("sr"))
+            continue;
+
+          bool isPhysicalDisk = false;
+
+          // NVMe: nvme0n1, nvme1n1 are physical
+          if (device.startsWith("nvme") &&
+              device.contains(QRegularExpression("nvme\\d+n\\d+$"))) {
+            isPhysicalDisk = true;
+          }
+          // SATA/SCSI/virtio/IDE: sda, sdb, vda, hda
+          else if ((device.startsWith("sd") || device.startsWith("vd") ||
+                    device.startsWith("hd")) &&
+                   device.length() == 3) {
+            isPhysicalDisk = true;
+          }
+          // MMC/SD cards: mmcblk0, mmcblk1
+          else if (device.startsWith("mmcblk") &&
+                   device.contains(QRegularExpression("mmcblk\\d+$"))) {
+            isPhysicalDisk = true;
+          }
+
+          if (isPhysicalDisk) {
+            readBytes += parts[5].toULongLong() * 512;  // sectors read
+            writeBytes += parts[9].toULongLong() * 512; // sectors written
+          }
+        }
+      }
+      file.close();
+    }
+  }
+
+  // Calculate rates (bytes per second)
+  static qint64 lastDiskUpdate = 0;
+  qint64 now = QDateTime::currentMSecsSinceEpoch();
+  double timeDiff = (now - lastDiskUpdate) / 1000.0;
+
+  if (lastDiskUpdate > 0 && timeDiff > 0) {
+    double readRate = (readBytes - m_prevReadBytes) / timeDiff;
+    double writeRate = (writeBytes - m_prevWriteBytes) / timeDiff;
+
+    QString stats = QString("↓ %1/s ↑ %2/s")
+                        .arg(formatBytes(readRate), formatBytes(writeRate));
+    if (stats != m_diskStats) {
+      m_diskStats = stats;
+      emit diskStatsChanged();
+    }
+  }
+
+  m_prevReadBytes = readBytes;
+  m_prevWriteBytes = writeBytes;
+  lastDiskUpdate = now;
 }
 
 void SystemMonitor::updateSystemLoad() {

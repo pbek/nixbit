@@ -502,6 +502,21 @@ Kirigami.ApplicationWindow {
                         }
                     }
 
+                    // Disk I/O
+                    ColumnLayout {
+                        spacing: 2
+                        Label {
+                            text: "Disk I/O"
+                            font.bold: true
+                            // font.pointSize: 14
+                        }
+                        Label {
+                            text: systemMonitor ? systemMonitor.diskStats : "↓ 0 B/s ↑ 0 B/s"
+                            // font.pointSize: 14
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
                     // Load
                     ColumnLayout {
                         spacing: 2
