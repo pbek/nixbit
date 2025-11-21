@@ -32,6 +32,10 @@
   - Supports NVMe, SATA, SCSI, virtio, IDE, and MMC/SD block devices
   - Uses `/sys/block` for reliable disk statistics with `/proc/diskstats` fallback
   - Displays real-time I/O rates in human-readable format (B/s, KB/s, MB/s, GB/s)
+- Added descriptive label below Rebuild Mode selector explaining the difference between modes
+  - Dynamically shows explanation for "build" mode (tests configuration without applying changes, no sudo required)
+  - Dynamically shows explanation for "switch" mode (builds and activates new configuration, requires sudo)
+  - Helps users understand the purpose of each rebuild mode before executing
 
 ## 0.2.4
 

@@ -249,6 +249,15 @@ Kirigami.ApplicationWindow {
                     }
                 }
 
+                Label {
+                    text: rebuildModeComboBox.currentText === "build" ? "• Build: Tests the configuration without applying changes (no sudo required)" : "• Switch: Builds and activates the new configuration (requires sudo)"
+                    font.italic: true
+                    font.pixelSize: 12
+                    color: Kirigami.Theme.disabledTextColor
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+
                 ComboBox {
                     id: buildHostComboBox
                     Kirigami.FormData.label: "Build Host:"
