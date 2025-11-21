@@ -1,6 +1,7 @@
 #ifndef SETTINGSMANAGER_H
 #define SETTINGSMANAGER_H
 
+#include <QMap>
 #include <QObject>
 #include <QSettings>
 
@@ -20,6 +21,11 @@ class SettingsManager : public QObject {
   Q_PROPERTY(int windowY READ windowY WRITE setWindowY NOTIFY windowYChanged)
   Q_PROPERTY(QString buildHost READ buildHost WRITE setBuildHost NOTIFY
                  buildHostChanged)
+  Q_PROPERTY(QStringList buildHosts READ buildHosts NOTIFY buildHostsChanged)
+  Q_PROPERTY(QString selectedBuildHost READ selectedBuildHost WRITE
+                 setSelectedBuildHost NOTIFY selectedBuildHostChanged)
+  Q_PROPERTY(QString selectedSwitchHost READ selectedSwitchHost WRITE
+                 setSelectedSwitchHost NOTIFY selectedSwitchHostChanged)
 
 public:
   explicit SettingsManager(QObject *parent = nullptr);
@@ -50,6 +56,20 @@ public:
   QString buildHost() const { return m_buildHost; }
   void setBuildHost(const QString &buildHost);
 
+  QStringList buildHosts() const { return m_buildHosts; }
+  Q_INVOKABLE void addBuildHost(const QString &name, const QString &address);
+  Q_INVOKABLE void removeBuildHost(const QString &name);
+  Q_INVOKABLE void updateBuildHost(const QString &oldName,
+                                   const QString &newName,
+                                   const QString &newAddress);
+  Q_INVOKABLE QString getBuildHostAddress(const QString &name) const;
+
+  QString selectedBuildHost() const { return m_selectedBuildHost; }
+  void setSelectedBuildHost(const QString &host);
+
+  QString selectedSwitchHost() const { return m_selectedSwitchHost; }
+  void setSelectedSwitchHost(const QString &host);
+
 signals:
   void startHiddenChanged();
   void hostnameChanged();
@@ -59,6 +79,9 @@ signals:
   void windowXChanged();
   void windowYChanged();
   void buildHostChanged();
+  void buildHostsChanged();
+  void selectedBuildHostChanged();
+  void selectedSwitchHostChanged();
 
 private:
   void loadSettings();
@@ -78,6 +101,10 @@ private:
   int m_windowX;
   int m_windowY;
   QString m_buildHost;
+  QStringList m_buildHosts;
+  QMap<QString, QString> m_buildHostAddresses;
+  QString m_selectedBuildHost;
+  QString m_selectedSwitchHost;
   int m_settingsVersion;
 };
 

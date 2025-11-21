@@ -1,5 +1,25 @@
 # Nixbit Changelog
 
+## 0.3.0
+
+- Added comprehensive build host management system in Settings Dialog
+  - Create, update, and delete build host configurations with name and address
+  - Each build host entry stores a friendly name and SSH address (e.g., user@hostname)
+  - Build host list displays in a scrollable view with inline editing
+- Added build host selector in main UI next to Rebuild Mode selector
+  - Displays "(local)" option plus all configured build hosts
+  - Each rebuild mode (build/switch) independently remembers its selected build host
+  - Selections persist across application restarts
+  - Build host selection automatically restores when switching between modes
+- Improved Settings Dialog layout
+  - Increased dialog size for better readability (580x460)
+  - Build host fields now properly aligned
+  - Update and Remove buttons converted to icon-only ToolButtons to save space
+  - Address fields expand to fill available space
+- Build commands now use the selected build host based on current mode
+  - Empty or "(local)" selection results in local builds
+  - Named host selections use the configured address for `--build-host` parameter
+
 ## 0.2.4
 
 - The autostart setting now will set `nixbit` as exec path instead of the full

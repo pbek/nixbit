@@ -242,6 +242,102 @@ Kirigami.ApplicationWindow {
                     enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
                     ToolTip.visible: hovered
                     ToolTip.text: currentIndex === 0 ? "Build the system without activating (no sudo required)" : "Build and activate the new system (requires sudo)"
+                    onCurrentTextChanged: {
+                        // Restore build host selector when mode text changes
+                        console.log("Mode changed to:", currentText);
+                        buildHostComboBox.restoreSelectionForMode(currentText);
+                    }
+                }
+
+                ComboBox {
+                    id: buildHostComboBox
+                    Kirigami.FormData.label: "Build Host:"
+                    property var hostList: {
+                        var hosts = ["(local)"];
+                        if (settingsManager && settingsManager.buildHosts) {
+                            hosts = hosts.concat(settingsManager.buildHosts);
+                        }
+                        return hosts;
+                    }
+                    property bool ignoreChanges: false
+                    property string currentMode: rebuildModeComboBox.currentText
+                    model: hostList
+                    enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Select which host to use for building. Each mode remembers its own selection."
+
+                    Component.onCompleted: {
+                        restoreSelectionForMode(rebuildModeComboBox.currentText);
+                    }
+
+                    onCurrentIndexChanged: {
+                        // Save immediately when selection changes
+                        if (ignoreChanges || !settingsManager) {
+                            console.log("Ignoring change, ignoreChanges:", ignoreChanges);
+                            return;
+                        }
+
+                        var selectedHost = currentIndex === 0 ? "" : hostList[currentIndex];
+                        console.log("Saving selection for mode:", currentMode, "host:", selectedHost);
+
+                        if (currentMode === "build") {
+                            settingsManager.selectedBuildHost = selectedHost;
+                        } else {
+                            settingsManager.selectedSwitchHost = selectedHost;
+                        }
+                    }
+
+                    function restoreSelectionForMode(mode) {
+                        if (!settingsManager) {
+                            console.log("No settingsManager");
+                            return;
+                        }
+
+                        ignoreChanges = true;
+                        currentMode = mode;
+
+                        var selectedHost = mode === "build" ? settingsManager.selectedBuildHost : settingsManager.selectedSwitchHost;
+                        console.log("Restoring selection for mode:", mode, "saved host:", selectedHost);
+
+                        if (selectedHost === "" || selectedHost === "(local)") {
+                            currentIndex = 0;
+                        } else {
+                            var found = false;
+                            for (var i = 0; i < hostList.length; i++) {
+                                if (hostList[i] === selectedHost) {
+                                    currentIndex = i;
+                                    found = true;
+                                    console.log("Found host at index:", i);
+                                    break;
+                                }
+                            }
+                            // If previously selected host not found, default to local
+                            if (!found) {
+                                console.log("Host not found, defaulting to local");
+                                currentIndex = 0;
+                            }
+                        }
+
+                        // Small delay before re-enabling changes to ensure index is fully set
+                        Qt.callLater(function () {
+                            ignoreChanges = false;
+                        });
+                    }
+
+                    Connections {
+                        target: settingsManager
+                        function onBuildHostsChanged() {
+                            console.log("Build hosts changed, updating list");
+                            buildHostComboBox.hostList = (function () {
+                                    var hosts = ["(local)"];
+                                    if (settingsManager && settingsManager.buildHosts) {
+                                        hosts = hosts.concat(settingsManager.buildHosts);
+                                    }
+                                    return hosts;
+                                })();
+                            buildHostComboBox.restoreSelectionForMode(rebuildModeComboBox.currentText);
+                        }
+                    }
                 }
 
                 Label {
@@ -535,7 +631,15 @@ Kirigami.ApplicationWindow {
             var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
             var rebuildMode = rebuildModeComboBox.currentText;
-            var buildHost = settingsManager.buildHost;
+
+            // Get the selected build host based on the current mode
+            var selectedHost = rebuildMode === "build" ? settingsManager.selectedBuildHost : settingsManager.selectedSwitchHost;
+            var buildHost = "";
+
+            // If a host is selected, get its address
+            if (selectedHost && selectedHost !== "" && selectedHost !== "(local)") {
+                buildHost = settingsManager.getBuildHostAddress(selectedHost);
+            }
 
             // Sanitize hostname to prevent command injection
             // Only allow alphanumeric characters, hyphens, underscores, and dots

@@ -9,7 +9,7 @@
 SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent), m_startHidden(false), m_windowWidth(1000),
       m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost(""),
-      m_settingsVersion(0) {
+      m_selectedBuildHost(""), m_selectedSwitchHost(""), m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -72,6 +72,110 @@ void SettingsManager::setBuildHost(const QString &buildHost) {
     saveSettings();
     emit buildHostChanged();
     qDebug() << "Build host changed to:" << buildHost;
+  }
+}
+
+void SettingsManager::addBuildHost(const QString &name,
+                                   const QString &address) {
+  if (name.isEmpty()) {
+    qDebug() << "Cannot add build host with empty name";
+    return;
+  }
+
+  if (!m_buildHosts.contains(name)) {
+    m_buildHosts.append(name);
+    m_buildHostAddresses[name] = address;
+    saveSettings();
+    emit buildHostsChanged();
+    qDebug() << "Added build host:" << name << "=" << address;
+  } else {
+    qDebug() << "Build host already exists:" << name;
+  }
+}
+
+void SettingsManager::removeBuildHost(const QString &name) {
+  if (m_buildHosts.contains(name)) {
+    m_buildHosts.removeAll(name);
+    m_buildHostAddresses.remove(name);
+
+    // Clear selections if they match the removed host
+    if (m_selectedBuildHost == name) {
+      m_selectedBuildHost = "";
+      emit selectedBuildHostChanged();
+    }
+    if (m_selectedSwitchHost == name) {
+      m_selectedSwitchHost = "";
+      emit selectedSwitchHostChanged();
+    }
+
+    saveSettings();
+    emit buildHostsChanged();
+    qDebug() << "Removed build host:" << name;
+  }
+}
+
+void SettingsManager::updateBuildHost(const QString &oldName,
+                                      const QString &newName,
+                                      const QString &newAddress) {
+  if (oldName.isEmpty() || newName.isEmpty()) {
+    qDebug() << "Cannot update build host with empty name";
+    return;
+  }
+
+  int index = m_buildHosts.indexOf(oldName);
+  if (index != -1) {
+    // Update name if changed
+    if (oldName != newName) {
+      // Check if new name already exists
+      if (m_buildHosts.contains(newName) && oldName != newName) {
+        qDebug() << "Build host with new name already exists:" << newName;
+        return;
+      }
+      m_buildHosts[index] = newName;
+
+      // Update selections if they match the old name
+      if (m_selectedBuildHost == oldName) {
+        m_selectedBuildHost = newName;
+        emit selectedBuildHostChanged();
+      }
+      if (m_selectedSwitchHost == oldName) {
+        m_selectedSwitchHost = newName;
+        emit selectedSwitchHostChanged();
+      }
+    }
+
+    // Update or add address
+    m_buildHostAddresses.remove(oldName);
+    m_buildHostAddresses[newName] = newAddress;
+
+    saveSettings();
+    emit buildHostsChanged();
+    qDebug() << "Updated build host from" << oldName << "to" << newName << "="
+             << newAddress;
+  } else {
+    qDebug() << "Build host not found:" << oldName;
+  }
+}
+
+QString SettingsManager::getBuildHostAddress(const QString &name) const {
+  return m_buildHostAddresses.value(name, "");
+}
+
+void SettingsManager::setSelectedBuildHost(const QString &host) {
+  if (m_selectedBuildHost != host) {
+    m_selectedBuildHost = host;
+    saveSettings();
+    emit selectedBuildHostChanged();
+    qDebug() << "Selected build host changed to:" << host;
+  }
+}
+
+void SettingsManager::setSelectedSwitchHost(const QString &host) {
+  if (m_selectedSwitchHost != host) {
+    m_selectedSwitchHost = host;
+    saveSettings();
+    emit selectedSwitchHostChanged();
+    qDebug() << "Selected switch host changed to:" << host;
   }
 }
 
@@ -213,6 +317,27 @@ void SettingsManager::loadSettings() {
   m_windowY = settings.value("Window/Y", -1).toInt();
   m_buildHost = settings.value("General/BuildHost", "").toString();
 
+  // Load build hosts
+  int buildHostCount = settings.beginReadArray("BuildHosts");
+  m_buildHosts.clear();
+  m_buildHostAddresses.clear();
+  for (int i = 0; i < buildHostCount; ++i) {
+    settings.setArrayIndex(i);
+    QString name = settings.value("name").toString();
+    QString address = settings.value("address").toString();
+    if (!name.isEmpty()) {
+      m_buildHosts.append(name);
+      m_buildHostAddresses[name] = address;
+    }
+  }
+  settings.endArray();
+
+  // Load selected hosts
+  m_selectedBuildHost =
+      settings.value("General/SelectedBuildHost", "").toString();
+  m_selectedSwitchHost =
+      settings.value("General/SelectedSwitchHost", "").toString();
+
   qDebug() << "Loaded settings version:" << oldVersion;
   qDebug() << "Current settings version:" << m_settingsVersion;
   qDebug() << "Loaded start hidden setting:" << m_startHidden;
@@ -220,6 +345,9 @@ void SettingsManager::loadSettings() {
   qDebug() << "Loaded window size:" << m_windowWidth << "x" << m_windowHeight;
   qDebug() << "Loaded window position:" << m_windowX << "," << m_windowY;
   qDebug() << "Loaded build host:" << m_buildHost;
+  qDebug() << "Loaded build hosts:" << m_buildHosts;
+  qDebug() << "Loaded selected build host:" << m_selectedBuildHost;
+  qDebug() << "Loaded selected switch host:" << m_selectedSwitchHost;
   qDebug() << "Autostart file exists:" << autostartFileExists();
 
   // Perform migration if needed
@@ -238,6 +366,21 @@ void SettingsManager::saveSettings() {
   settings.setValue("Window/X", m_windowX);
   settings.setValue("Window/Y", m_windowY);
   settings.setValue("General/BuildHost", m_buildHost);
+
+  // Save build hosts
+  settings.beginWriteArray("BuildHosts");
+  for (int i = 0; i < m_buildHosts.size(); ++i) {
+    settings.setArrayIndex(i);
+    QString name = m_buildHosts[i];
+    settings.setValue("name", name);
+    settings.setValue("address", m_buildHostAddresses.value(name, ""));
+  }
+  settings.endArray();
+
+  // Save selected hosts
+  settings.setValue("General/SelectedBuildHost", m_selectedBuildHost);
+  settings.setValue("General/SelectedSwitchHost", m_selectedSwitchHost);
+
   settings.sync();
 }
 
