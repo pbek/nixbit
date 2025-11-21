@@ -1,3 +1,4 @@
+#include "generationmanager.h"
 #include "gitmanager.h"
 #include "processmanager.h"
 #include "settingsmanager.h"
@@ -136,6 +137,11 @@ int main(int argc, char *argv[]) {
   // Create and register SystemMonitor
   SystemMonitor systemMonitor;
   engine.rootContext()->setContextProperty("systemMonitor", &systemMonitor);
+
+  // Create and register GenerationManager
+  GenerationManager generationManager;
+  engine.rootContext()->setContextProperty("generationManager",
+                                           &generationManager);
 
   // Create SystemResumeDetector to check for updates after system resume
   SystemResumeDetector resumeDetector;

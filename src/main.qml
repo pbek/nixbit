@@ -435,6 +435,74 @@ Kirigami.ApplicationWindow {
                 }
             }
 
+            // NixOS Generations Section
+            GroupBox {
+                title: "NixOS Generations"
+                Layout.fillWidth: true
+                visible: processManager ? !processManager.isRunning : true
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Label {
+                        text: "Current Generation:"
+                        font.bold: true
+                    }
+
+                    Label {
+                        text: generationManager ? "#" + generationManager.currentGenerationNumber : "N/A"
+                        font.pixelSize: 16
+                        font.bold: true
+                        color: Kirigami.Theme.positiveTextColor
+                    }
+
+                    Label {
+                        text: "•"
+                        color: Kirigami.Theme.disabledTextColor
+                    }
+
+                    Label {
+                        text: generationManager && generationManager.currentGenerationDate ? generationManager.currentGenerationDate : "Unknown"
+                        font.pixelSize: 14
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                    }
+
+                    Button {
+                        icon.name: "view-refresh"
+                        text: "Refresh"
+                        enabled: generationManager ? !generationManager.isLoading : false
+                        onClicked: {
+                            if (generationManager)
+                                generationManager.loadGenerations();
+                        }
+                    }
+
+                    Button {
+                        icon.name: "view-list-details"
+                        text: "View All Generations"
+                        onClicked: {
+                            generationsDialog.open();
+                        }
+                    }
+                }
+
+                Component.onCompleted: {
+                    if (generationManager)
+                        generationManager.loadGenerations();
+                }
+            }
+
+            // Generations Dialog
+            GenerationsDialog {
+                id: generationsDialog
+                x: (parent.width - width) / 2
+                y: (parent.height - height) / 2
+            }
+
             // System Resources Section
             GroupBox {
                 title: "System Resources"
@@ -703,6 +771,11 @@ Kirigami.ApplicationWindow {
         function onIsRunningChanged() {
             if (systemMonitor) {
                 systemMonitor.active = processManager.isRunning;
+            }
+            // Refresh generations when process completes (in case a new generation was created)
+            // Only refresh after switch mode since build mode doesn't create a new generation
+            if (!processManager.isRunning && generationManager && rebuildModeComboBox.currentText === "switch") {
+                generationManager.loadGenerations();
             }
         }
     }

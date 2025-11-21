@@ -2,6 +2,14 @@
 
 ## 0.3.0
 
+- Added NixOS generations display and management
+  - Shows current generation number and date in main UI
+  - Compact display that hides during builds to avoid clutter
+  - "View All Generations" button opens a dialog with full generation history
+  - "Refresh" button to manually update generation list
+  - Automatically refreshes after "switch" operations (when new generation is created)
+  - Generations list shows generation number, timestamp, and highlights current generation
+  - Uses system profile links for reliable generation tracking
 - Added comprehensive build host management system in Settings Dialog
   - Create, update, and delete build host configurations with name and address
   - Each build host entry stores a friendly name and SSH address (e.g., user@hostname)

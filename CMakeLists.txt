@@ -51,6 +51,8 @@ qt_add_executable(
   src/systemmonitor.h
   src/systemresumedetector.cpp
   src/systemresumedetector.h
+  src/generationmanager.cpp
+  src/generationmanager.h
   src/utils/cli.cpp
   src/utils/cli.h)
 
@@ -69,7 +71,8 @@ qt_add_qml_module(
   NO_PLUGIN
   QML_FILES
   src/main.qml
-  src/SettingsDialog.qml)
+  src/SettingsDialog.qml
+  src/GenerationsDialog.qml)
 
 target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                           ${LIBGIT2_INCLUDE_DIRS})
