@@ -89,14 +89,14 @@ When the module is enabled, it:
 
 ## Features
 
-### NixOS Generations
+### 🔄 NixOS Generations
 
 - **Current Generation Display**: Shows current generation number and date in main UI (hides during builds)
 - **Generation History**: "View All Generations" button opens a dialog with complete generation history
 - **Generation Management**: Manual refresh capability and automatic refresh after "switch" operations
 - **Visual Indicators**: Generation list highlights the current generation for easy identification
 
-### Repository Management
+### 📦 Repository Management
 
 - **Repository URL Configuration**: Input field for Git repository URLs with confirmation dialog for changes
 - **Local Repository Management**: Display local path, delete repository with safety checks and confirmation, open terminal in repository directory
@@ -104,7 +104,7 @@ When the module is enabled, it:
 - **Auto-fetch Interval**: Configurable automatic fetch interval in minutes
 - **Network Resilience**: Waits for network availability after system resume before checking for updates
 
-### System Update
+### 🚀 System Update
 
 - **Hostname Configuration**: Input field for NixOS system hostname
 - **Rebuild Mode Selection**: Choose between 'build' (no activation) and 'switch' (build and activate) modes with descriptive explanations
@@ -114,7 +114,7 @@ When the module is enabled, it:
 - **Check for Updates**: Button to manually check for repository updates
 - **Process Control**: Pause and resume system update processes during builds
 
-### System Monitoring
+### 📊 System Monitoring
 
 - **CPU Usage**: Real-time CPU utilization display during builds
 - **Memory Usage**: Current RAM usage with used/available memory information
@@ -122,7 +122,7 @@ When the module is enabled, it:
 - **Disk I/O**: Read/write rates for all physical disks (NVMe, SATA, SCSI, virtio, IDE, MMC/SD)
 - **System Load**: Current system load average monitoring
 
-### User Interface
+### 🎨 User Interface
 
 - **Modern KDE Integration**: Built with Kirigami for native KDE Plasma look and feel
 - **Menu Bar**: File menu with Quit option, Tools menu with Check for Updates
@@ -137,7 +137,7 @@ When the module is enabled, it:
 - **Window State Persistence**: Window size and position remembered across sessions
 - **Debug Mode**: `--debug` CLI argument for testing with separate settings directory
 
-## Technology Stack
+## 🛠️ Technology Stack
 
 - **Language**: C++ (Qt6)
 - **UI Framework**: QML with KDE Kirigami
@@ -148,7 +148,7 @@ When the module is enabled, it:
   - KF6 Kirigami
   - Git (runtime dependency)
 
-## Building
+## 🔨 Building
 
 ### Prerequisites
 
@@ -180,11 +180,11 @@ just nix-build
 just nix-run
 ```
 
-## License
+## 📄 License
 
 See [LICENSE.md](LICENSE.md) for details.
 
-## Contributing
+## 🤝 Contributing
 
 This is an early-stage project. Contributions are welcome!
 
