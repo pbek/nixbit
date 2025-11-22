@@ -28,7 +28,10 @@ so you can preset it for all systems in your fleet.
 
 ## NixOS Module
 
-The flake includes a NixOS module to configure nixbit system-wide:
+The flake includes a NixOS module to configure nixbit system-wide.
+This allows you to manage Nixbit configuration declaratively in your NixOS configuration.
+
+### Basic Usage
 
 ```nix
 # In your flake.nix inputs
@@ -46,7 +49,43 @@ inputs.nixbit.inputs.nixpkgs.follows = "nixpkgs";
 }
 ```
 
-This will install nixbit and create a configuration file at `/etc/nixbit.conf` with the specified repository URL.
+### Module Options
+
+The module provides the following configuration options:
+
+#### `nixbit.enable`
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Enables the Nixbit module. When enabled, the package will be installed system-wide and configuration will be written to `/etc/nixbit.conf`.
+
+#### `nixbit.package`
+
+- **Type**: `package`
+- **Default**: `pkgs.callPackage ./package.nix { }`
+- **Description**: The Nixbit package to install. This allows you to override the default package if you want to use a custom build or different version.
+
+#### `nixbit.repository`
+
+- **Type**: `string`
+- **Required**: Yes
+- **Description**: The Git repository URL that Nixbit will use for system updates. This URL will be written to `/etc/nixbit.conf` and cannot be changed by users through the UI, ensuring consistent configuration across your fleet. Example: `"https://github.com/youruser/nixcfg.git"`
+
+#### `nixbit.forceAutostart`
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: When enabled, forces the creation of an autostart desktop entry every time the application starts. This is useful for ensuring Nixbit starts automatically on all systems in your fleet, regardless of user preferences. The setting is written to `/etc/nixbit.conf`.
+
+### What the Module Does
+
+When the module is enabled, it:
+
+1. **Installs the package**: Adds the Nixbit package to `environment.systemPackages`, making it available system-wide
+2. **Creates configuration file**: Generates `/etc/nixbit.conf` with:
+   - The specified repository URL (in the `[Repository]` section with `Url` key)
+   - The autostart force setting (in the `[Autostart]` section with `Force` key)
+3. **Locks settings**: Any settings written to `/etc/nixbit.conf` cannot be modified through the Nixbit UI, ensuring your fleet configuration remains consistent
 
 ## Features
 
