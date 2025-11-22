@@ -50,19 +50,38 @@ This will install nixbit and create a configuration file at `/etc/nixbit.conf` w
 
 ## Features
 
+### NixOS Generations
+
+- **Current Generation Display**: Shows current generation number and date in main UI (hides during builds)
+- **Generation History**: "View All Generations" button opens a dialog with complete generation history
+- **Generation Management**: Manual refresh capability and automatic refresh after "switch" operations
+- **Visual Indicators**: Generation list highlights the current generation for easy identification
+
 ### Repository Management
 
 - **Repository URL Configuration**: Input field for Git repository URLs with confirmation dialog for changes
 - **Local Repository Management**: Display local path, delete repository with safety checks and confirmation, open terminal in repository directory
 - **Status Monitoring**: Real-time display of repository status, commits behind, and busy indicators
 - **Auto-fetch Interval**: Configurable automatic fetch interval in minutes
+- **Network Resilience**: Waits for network availability after system resume before checking for updates
 
 ### System Update
 
 - **Hostname Configuration**: Input field for NixOS system hostname
-- **Rebuild Mode Selection**: Choose between 'build' (no activation) and 'switch' (build and activate) modes
+- **Rebuild Mode Selection**: Choose between 'build' (no activation) and 'switch' (build and activate) modes with descriptive explanations
+- **Build Host Management**: Configure multiple build hosts with friendly names and SSH addresses
+- **Build Host Selection**: Choose between local or remote build hosts for each rebuild mode independently
 - **Update System**: One-click button to pull repository updates and rebuild the system
 - **Check for Updates**: Button to manually check for repository updates
+- **Process Control**: Pause and resume system update processes during builds
+
+### System Monitoring
+
+- **CPU Usage**: Real-time CPU utilization display during builds
+- **Memory Usage**: Current RAM usage with used/available memory information
+- **Network Transfer**: Upload and download rates during system updates
+- **Disk I/O**: Read/write rates for all physical disks (NVMe, SATA, SCSI, virtio, IDE, MMC/SD)
+- **System Load**: Current system load average monitoring
 
 ### User Interface
 
@@ -72,8 +91,12 @@ This will install nixbit and create a configuration file at `/etc/nixbit.conf` w
 - **Terminal Output Panel**: Real-time command output display with clear and kill process buttons
 - **Progress Indicators**: Progress bar for cloning operations and busy indicators for ongoing tasks
 - **System Tray Support**: Option to start the application hidden in the system tray
+- **Autostart Option**: Checkbox to create or remove autostart desktop entry
+- **Settings Dialog**: Dedicated dialog for configuring build hosts, autostart, and other settings
 - **Confirmation Dialogs**: Safety prompts for deleting repositories and changing URLs
 - **Status Notifications**: Inline messages for operation results and errors
+- **Window State Persistence**: Window size and position remembered across sessions
+- **Debug Mode**: `--debug` CLI argument for testing with separate settings directory
 
 ## Technology Stack
 
