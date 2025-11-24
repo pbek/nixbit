@@ -1,5 +1,24 @@
 # Nixbit Changelog
 
+## 0.3.1
+
+- Moved Local Path display from main window to Settings Dialog
+- Added automatic data refresh when window becomes visible
+  - Checks for repository updates when window is shown or unhidden
+  - Refreshes NixOS generations list when window becomes visible
+- Added build result status message that shows success or failure after builds
+  - Displays a green success message ("✓ Build completed successfully!") when exit code is 0
+  - Displays a red error message with exit code ("✗ Build failed with exit code N") when build fails
+  - Message persists until another action is taken (new build, clear output, etc.)
+  - Users can manually dismiss the message using the close button
+  - Correctly interprets Nix build process exit codes
+- Added syntax highlighting to terminal output for better readability
+  - Success messages (e.g., "Done. The new configuration is", "Process finished with exit code: 0") highlighted in green
+  - Error messages (e.g., "error:", "failed", "Process finished with exit code: [1-9]") highlighted in red and bold
+  - Warning messages highlighted in yellow/orange
+  - Build activity messages (e.g., "building", "copying", "evaluating") highlighted in cyan
+  - Process status markers (e.g., "=== Process finished ===") highlighted in magenta and bold
+
 ## 0.3.0
 
 - Added NixOS generations display and management

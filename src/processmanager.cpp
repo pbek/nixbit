@@ -6,7 +6,7 @@
 
 ProcessManager::ProcessManager(QObject *parent)
     : QObject(parent), m_process(nullptr), m_isRunning(false),
-      m_isPaused(false) {
+      m_isPaused(false), m_lastExitCode(0), m_hasFinished(false) {
   m_process = new QProcess(this);
 
   // Set up the process to create a new process group
@@ -41,6 +41,9 @@ void ProcessManager::runCommand(const QString &program,
 
   m_output.clear();
   emit outputChanged();
+
+  m_hasFinished = false;
+  emit hasFinishedChanged();
 
   QString commandLine = program;
   if (!arguments.isEmpty()) {
@@ -134,6 +137,12 @@ void ProcessManager::onReadyReadStandardError() {
 void ProcessManager::onProcessFinished(int exitCode,
                                        QProcess::ExitStatus exitStatus) {
   setIsRunning(false);
+
+  m_lastExitCode = exitCode;
+  emit lastExitCodeChanged();
+
+  m_hasFinished = true;
+  emit hasFinishedChanged();
 
   QString statusText;
   if (exitStatus == QProcess::CrashExit) {

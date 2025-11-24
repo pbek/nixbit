@@ -37,6 +37,24 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    // Fetch updates and generations when window becomes visible
+    onVisibilityChanged: {
+        if (visibility === Window.Windowed || visibility === Window.Maximized || visibility === Window.FullScreen) {
+            // Window is now visible, refresh data
+            console.log("Window became visible, fetching updates and generations");
+
+            // Check for updates if not already busy
+            if (gitManager && !gitManager.isBusy) {
+                gitManager.checkForUpdates();
+            }
+
+            // Refresh generations if not already loading
+            if (generationManager && !generationManager.isLoading) {
+                generationManager.loadGenerations();
+            }
+        }
+    }
+
     // Confirmation dialog for deleting local repository
     Kirigami.PromptDialog {
         id: deleteConfirmDialog
@@ -174,50 +192,6 @@ Kirigami.ApplicationWindow {
                             // Open confirmation dialog before changing URL
                             changeUrlConfirmDialog.newUrl = text;
                             changeUrlConfirmDialog.open();
-                        }
-                    }
-                }
-
-                RowLayout {
-                    Kirigami.FormData.label: "Local Path:"
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
-
-                    TextEdit {
-                        id: localPathLabel
-                        text: gitManager ? gitManager.localPath : ""
-                        readOnly: true
-                        selectByMouse: true
-                        wrapMode: Text.WrapAnywhere
-                        color: Kirigami.Theme.textColor
-                        Layout.fillWidth: true
-                    }
-
-                    ToolButton {
-                        icon.name: "edit-delete"
-                        display: AbstractButton.IconOnly
-                        ToolTip.visible: hovered
-                        ToolTip.text: "Delete local repository"
-                        enabled: (gitManager ? gitManager.localPath !== "" : false) && (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
-                        onClicked: {
-                            deleteConfirmDialog.open();
-                        }
-                    }
-
-                    ToolButton {
-                        icon.name: "utilities-terminal"
-                        display: AbstractButton.IconOnly
-                        ToolTip.visible: hovered
-                        ToolTip.text: "Open terminal here"
-                        enabled: gitManager ? gitManager.localPath !== "" : false
-                        onClicked: {
-                            if (!gitManager)
-                                return;
-                            // Build command with proper syntax for each terminal emulator
-                            var path = gitManager.localPath;
-                            var cmd = "if command -v konsole >/dev/null 2>&1; then konsole --workdir '" + path + "' & " + "elif command -v gnome-terminal >/dev/null 2>&1; then gnome-terminal --working-directory='" + path + "' & " + "elif command -v xfce4-terminal >/dev/null 2>&1; then xfce4-terminal --working-directory='" + path + "' & " + "elif command -v alacritty >/dev/null 2>&1; then alacritty --working-directory '" + path + "' & " + "elif command -v kitty >/dev/null 2>&1; then kitty --directory '" + path + "' & " + "elif command -v ghostty >/dev/null 2>&1; then ghostty --working-directory='" + path + "' & " + "elif command -v xterm >/dev/null 2>&1; then cd '" + path + "' && xterm & " + "else notify-send 'Nixbit' 'No supported terminal emulator found'; fi";
-                            if (processManager)
-                                processManager.startDetached("bash", ["-c", cmd]);
                         }
                     }
                 }
@@ -621,6 +595,25 @@ Kirigami.ApplicationWindow {
                     anchors.fill: parent
                     spacing: 5
 
+                    // Build Result Status Message
+                    Kirigami.InlineMessage {
+                        id: buildResultMessage
+                        Layout.fillWidth: true
+                        visible: processManager && processManager.hasFinished && !processManager.isRunning
+                        type: processManager && processManager.lastExitCode === 0 ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error
+                        text: {
+                            if (!processManager || !processManager.hasFinished) {
+                                return "";
+                            }
+                            if (processManager.lastExitCode === 0) {
+                                return "✓ Build completed successfully!";
+                            } else {
+                                return "✗ Build failed with exit code " + processManager.lastExitCode;
+                            }
+                        }
+                        showCloseButton: true
+                    }
+
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -630,26 +623,82 @@ Kirigami.ApplicationWindow {
                         radius: 4
 
                         ScrollView {
+                            id: terminalScrollView
                             anchors.fill: parent
                             anchors.margins: 5
                             clip: true
+                            ScrollBar.vertical.policy: ScrollBar.AlwaysOn
 
-                            TextArea {
-                                id: terminalOutput
-                                readOnly: true
-                                textFormat: TextEdit.PlainText
-                                wrapMode: TextEdit.Wrap
-                                font.family: "Monospace"
-                                font.pixelSize: 14
-                                color: Kirigami.Theme.textColor.hslLightness > 0.5 ? "#2ea043" : "#58d68d"
-                                text: processManager ? processManager.output : ""
-                                background: Rectangle {
-                                    color: "transparent"
+                            Flickable {
+                                id: terminalFlickable
+                                contentWidth: terminalText.width
+                                contentHeight: terminalText.height
+                                boundsBehavior: Flickable.StopAtBounds
+
+                                function scrollToBottom() {
+                                    if (contentHeight > height) {
+                                        contentY = contentHeight - height;
+                                    }
                                 }
 
-                                // Auto-scroll to bottom when output changes
-                                onTextChanged: {
-                                    cursorPosition = text.length;
+                                Text {
+                                    id: terminalText
+                                    width: terminalScrollView.availableWidth
+                                    textFormat: Text.RichText
+                                    wrapMode: Text.Wrap
+                                    font.family: "Monospace"
+                                    font.pixelSize: 14
+                                    color: "#c9d1d9"
+
+                                    text: {
+                                        if (!processManager || !processManager.output) {
+                                            return "";
+                                        }
+                                        return highlightOutput(processManager.output);
+                                    }
+
+                                    onTextChanged: {
+                                        Qt.callLater(terminalFlickable.scrollToBottom);
+                                    }
+
+                                    function highlightOutput(rawText) {
+                                        // Escape HTML special characters first
+                                        var escaped = rawText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+                                        // Split into lines for processing
+                                        var lines = escaped.split('\n');
+                                        var processedLines = [];
+
+                                        for (var i = 0; i < lines.length; i++) {
+                                            var line = lines[i];
+                                            var processed = line;
+
+                                            // Success patterns (green)
+                                            if (line.match(/✓|Done\. The new configuration is|Process finished with exit code: 0|successfully|Success|completed successfully|Build succeeded/i)) {
+                                                processed = '<span style="color: #3fb950; font-weight: bold;">' + line + '</span>';
+                                            } else
+                                            // Error patterns (red)
+                                            if (line.match(/✗|error:|Error:|ERROR|failed|Failed|FAILED|Process finished with exit code: [1-9]|Process crashed|fatal:|Fatal:|FATAL|exception|Exception|EXCEPTION/)) {
+                                                processed = '<span style="color: #f85149; font-weight: bold;">' + line + '</span>';
+                                            } else
+                                            // Warning patterns (yellow/orange)
+                                            if (line.match(/warning:|Warning:|WARNING|warn:|Warn:/)) {
+                                                processed = '<span style="color: #d29922;">' + line + '</span>';
+                                            } else
+                                            // Building/running patterns (cyan)
+                                            if (line.match(/building|Building|Running:|Copying|copying|Cloning|evaluating/)) {
+                                                processed = '<span style="color: #79c0ff;">' + line + '</span>';
+                                            } else
+                                            // Process status markers (magenta)
+                                            if (line.match(/===.*===/)) {
+                                                processed = '<span style="color: #d2a8ff; font-weight: bold;">' + line + '</span>';
+                                            }
+
+                                            processedLines.push(processed);
+                                        }
+
+                                        return processedLines.join('<br/>');
+                                    }
                                 }
                             }
                         }
