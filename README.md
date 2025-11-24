@@ -99,10 +99,11 @@ When the module is enabled, it:
 ### 📦 Repository Management
 
 - **Repository URL Configuration**: Input field for Git repository URLs with confirmation dialog for changes
-- **Local Repository Management**: Display local path, delete repository with safety checks and confirmation, open terminal in repository directory
+- **Local Repository Management**: Local path displayed in Settings Dialog, delete repository with safety checks and confirmation, open terminal in repository directory
 - **Status Monitoring**: Real-time display of repository status, commits behind, and busy indicators
 - **Auto-fetch Interval**: Configurable automatic fetch interval in minutes
 - **Network Resilience**: Waits for network availability after system resume before checking for updates
+- **Smart Refresh**: Automatically checks for repository updates when window becomes visible or is unhidden
 
 ### 🚀 System Update
 
@@ -127,14 +128,24 @@ When the module is enabled, it:
 - **Modern KDE Integration**: Built with Kirigami for native KDE Plasma look and feel
 - **Menu Bar**: File menu with Quit option, Tools menu with Check for Updates
 - **Action Buttons**: Quick access to system update and update check operations
-- **Terminal Output Panel**: Real-time command output display with clear and kill process buttons
+- **Terminal Output Panel**: Real-time command output display with syntax highlighting and clear/kill process buttons
+  - Success messages highlighted in green (e.g., "Done. The new configuration is", "Process finished with exit code: 0")
+  - Error messages highlighted in red and bold (e.g., "error:", "failed", non-zero exit codes)
+  - Warning messages highlighted in yellow/orange
+  - Build activity messages highlighted in cyan (e.g., "building", "copying", "evaluating")
+  - Process status markers highlighted in magenta and bold (e.g., "=== Process finished ===")
+- **Build Status Messages**: Clear feedback after builds
+  - Green success message ("✓ Build completed successfully!") when exit code is 0
+  - Red error message with exit code ("✗ Build failed with exit code N") when build fails
+  - Messages persist until dismissed or next action
 - **Progress Indicators**: Progress bar for cloning operations and busy indicators for ongoing tasks
 - **System Tray Support**: Option to start the application hidden in the system tray
 - **Autostart Option**: Checkbox to create or remove autostart desktop entry
-- **Settings Dialog**: Dedicated dialog for configuring build hosts, autostart, and other settings
+- **Settings Dialog**: Dedicated dialog for configuring build hosts, autostart, local path display, and other settings
 - **Confirmation Dialogs**: Safety prompts for deleting repositories and changing URLs
 - **Status Notifications**: Inline messages for operation results and errors
 - **Window State Persistence**: Window size and position remembered across sessions
+- **Automatic Data Refresh**: When window becomes visible, automatically checks for repository updates and refreshes generations list
 - **Debug Mode**: `--debug` CLI argument for testing with separate settings directory
 
 ## 🛠️ Technology Stack
