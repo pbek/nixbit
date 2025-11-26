@@ -55,21 +55,24 @@ void TrayIconManager::createTrayIcon() {
 
   // Set initial icon
   updateIcon(0);
-
-  m_trayIcon->setToolTip("Nixbit - NixOS Updater");
 }
 
 void TrayIconManager::updateIcon(int commitsBehind) {
+  qDebug() << "TrayIconManager::updateIcon called with commitsBehind:"
+           << commitsBehind;
   QPixmap pixmap;
 
   if (commitsBehind > 0) {
     // Create icon showing updates available (orange/yellow theme)
+    qDebug() << "Creating update available icon for" << commitsBehind
+             << "commits";
     pixmap = createUpdateAvailableIcon(commitsBehind);
     m_trayIcon->setToolTip(
         QString("Nixbit - %1 update(s) available").arg(commitsBehind));
 
     // Show a notification if commits behind increased
     if (commitsBehind > m_currentCommitsBehind && m_currentCommitsBehind >= 0) {
+      qDebug() << "Showing notification for increased commits";
       m_trayIcon->showMessage(
           "Nixbit - Updates Available",
           QString("%1 new commit(s) available from origin").arg(commitsBehind),
@@ -77,16 +80,22 @@ void TrayIconManager::updateIcon(int commitsBehind) {
     }
   } else if (commitsBehind == 0) {
     // Create icon showing system is up to date (green theme)
+    qDebug() << "Creating up-to-date icon";
     pixmap = createUpToDateIcon();
     m_trayIcon->setToolTip("Nixbit - System up to date");
   } else {
     // Unknown state or error
+    qDebug() << "Creating default/unknown icon";
     pixmap = createDefaultIcon();
     m_trayIcon->setToolTip("Nixbit - Repository status unknown");
   }
 
+  qDebug() << "Setting tray icon, pixmap size:" << pixmap.size()
+           << "isNull:" << pixmap.isNull();
   m_trayIcon->setIcon(QIcon(pixmap));
   m_currentCommitsBehind = commitsBehind;
+  qDebug() << "Icon updated, m_currentCommitsBehind now:"
+           << m_currentCommitsBehind;
 }
 
 QPixmap TrayIconManager::createDefaultIcon() {
@@ -196,8 +205,13 @@ QPixmap TrayIconManager::createUpdateAvailableIcon(int count) {
 }
 
 void TrayIconManager::setCommitsBehind(int count) {
+  qDebug() << "TrayIconManager::setCommitsBehind called with count:" << count
+           << "current:" << m_currentCommitsBehind;
   if (count != m_currentCommitsBehind) {
+    qDebug() << "Updating icon from" << m_currentCommitsBehind << "to" << count;
     updateIcon(count);
+  } else {
+    qDebug() << "Icon update skipped - count unchanged";
   }
 }
 

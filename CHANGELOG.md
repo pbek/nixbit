@@ -1,5 +1,9 @@
 # Nixbit Changelog
 
+## 0.3.2
+
+- The tray icon will now correctly reflect the amount of commits behind
+
 ## 0.3.1
 
 - Moved Local Path display from main window to Settings Dialog

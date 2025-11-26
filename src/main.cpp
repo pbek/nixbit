@@ -217,6 +217,9 @@ int main(int argc, char *argv[]) {
                          gitManager.commitsBehind());
                    });
 
+  // Sync initial state
+  trayIconManager.setCommitsBehind(gitManager.commitsBehind());
+
   // Show the tray icon
   trayIconManager.show();
 
