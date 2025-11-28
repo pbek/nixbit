@@ -1,5 +1,6 @@
 #include "gitmanager.h"
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QSettings>
@@ -272,6 +273,14 @@ void GitManager::setCommitsBehind(int count) {
   }
 }
 
+void GitManager::setCommitsBehindList(const QVariantList &list) {
+  if (m_commitsBehindList != list) {
+    m_commitsBehindList = list;
+    qDebug() << "Commits behind list updated with" << list.size() << "commits";
+    emit commitsBehindListChanged();
+  }
+}
+
 void GitManager::setFetchIntervalMinutes(int minutes) {
   if (m_fetchIntervalMinutes != minutes && minutes > 0) {
     m_fetchIntervalMinutes = minutes;
@@ -355,6 +364,10 @@ void GitManager::checkForUpdates() {
   if (success) {
     int behind = calculateCommitsBehind();
     setCommitsBehind(behind);
+
+    // Get detailed commit information
+    QVariantList commitDetails = getCommitsBehindDetails();
+    setCommitsBehindList(commitDetails);
 
     if (behind > 0) {
       setStatus(
@@ -444,6 +457,10 @@ void GitManager::cloneOrPullRepository() {
   if (success) {
     int behind = calculateCommitsBehind();
     setCommitsBehind(behind);
+
+    // Get detailed commit information
+    QVariantList commitDetails = getCommitsBehindDetails();
+    setCommitsBehindList(commitDetails);
   }
 
   setIsBusy(false);
@@ -476,6 +493,7 @@ void GitManager::pullRepository() {
       setStatus("Repository cloned successfully");
       // After cloning, we're up to date
       setCommitsBehind(0);
+      setCommitsBehindList(QVariantList());
       emit pullCompletedForUpdate();
     } else {
       setStatus("Failed to clone repository");
@@ -496,6 +514,7 @@ void GitManager::pullRepository() {
   // After successful pull, we should be up to date
   if (success) {
     setCommitsBehind(0);
+    setCommitsBehindList(QVariantList());
     emit pullCompletedForUpdate();
   }
 
@@ -799,4 +818,160 @@ bool GitManager::fetchRepository() {
   git_repository_free(repo);
 
   return true;
+}
+
+// Helper function to convert datetime to relative time string
+static QString getRelativeTime(const QDateTime &dateTime) {
+  qint64 seconds = dateTime.secsTo(QDateTime::currentDateTime());
+
+  if (seconds < 60) {
+    return QString::number(seconds) + " seconds ago";
+  } else if (seconds < 3600) {
+    int minutes = seconds / 60;
+    return QString::number(minutes) +
+           (minutes == 1 ? " minute ago" : " minutes ago");
+  } else if (seconds < 86400) {
+    int hours = seconds / 3600;
+    return QString::number(hours) + (hours == 1 ? " hour ago" : " hours ago");
+  } else if (seconds < 604800) {
+    int days = seconds / 86400;
+    return QString::number(days) + (days == 1 ? " day ago" : " days ago");
+  } else if (seconds < 2592000) {
+    int weeks = seconds / 604800;
+    return QString::number(weeks) + (weeks == 1 ? " week ago" : " weeks ago");
+  } else if (seconds < 31536000) {
+    int months = seconds / 2592000;
+    return QString::number(months) +
+           (months == 1 ? " month ago" : " months ago");
+  } else {
+    int years = seconds / 31536000;
+    return QString::number(years) + (years == 1 ? " year ago" : " years ago");
+  }
+}
+
+QVariantList GitManager::getCommitsBehindDetails() {
+  QVariantList commitList;
+  git_repository *repo = nullptr;
+  git_oid local_oid, remote_oid;
+  git_reference *head_ref = nullptr;
+  int error;
+
+  // Open the repository
+  error = git_repository_open(&repo, m_localPath.toUtf8().constData());
+  if (error != 0) {
+    qDebug() << "Failed to open repository for commit details";
+    return commitList;
+  }
+
+  // Get HEAD reference and resolve it to a commit
+  error = git_repository_head(&head_ref, repo);
+  if (error != 0) {
+    qDebug() << "Failed to get HEAD reference";
+    git_repository_free(repo);
+    return commitList;
+  }
+
+  // Get the OID that HEAD points to
+  const git_oid *head_target = git_reference_target(head_ref);
+  if (!head_target) {
+    qDebug() << "Failed to get HEAD target OID";
+    git_reference_free(head_ref);
+    git_repository_free(repo);
+    return commitList;
+  }
+  git_oid_cpy(&local_oid, head_target);
+  git_reference_free(head_ref);
+
+  // Try to find the remote tracking branch
+  const char *remote_branch_names[] = {"refs/remotes/origin/main",
+                                       "refs/remotes/origin/master",
+                                       "refs/remotes/origin/HEAD"};
+
+  bool found_remote = false;
+  for (const char *branch_name : remote_branch_names) {
+    error = git_reference_name_to_id(&remote_oid, repo, branch_name);
+    if (error == 0) {
+      qDebug() << "Found remote branch:" << branch_name;
+      found_remote = true;
+      break;
+    }
+  }
+
+  if (!found_remote) {
+    qDebug() << "Failed to find remote tracking branch";
+    git_repository_free(repo);
+    return commitList;
+  }
+
+  // If commits are the same, we're up to date
+  if (git_oid_equal(&local_oid, &remote_oid)) {
+    qDebug() << "Local and remote are at the same commit";
+    git_repository_free(repo);
+    return commitList;
+  }
+
+  // Create a revwalk to iterate through commits
+  git_revwalk *walker = nullptr;
+  error = git_revwalk_new(&walker, repo);
+  if (error != 0) {
+    qDebug() << "Failed to create revwalk";
+    git_repository_free(repo);
+    return commitList;
+  }
+
+  // Push the remote OID (where we want to walk to)
+  git_revwalk_push(walker, &remote_oid);
+
+  // Hide commits reachable from local HEAD
+  git_revwalk_hide(walker, &local_oid);
+
+  // Sort commits by time
+  git_revwalk_sorting(walker, GIT_SORT_TIME);
+
+  // Walk through commits
+  git_oid oid;
+  while (git_revwalk_next(&oid, walker) == 0) {
+    git_commit *commit = nullptr;
+    error = git_commit_lookup(&commit, repo, &oid);
+    if (error != 0) {
+      continue;
+    }
+
+    // Get commit information
+    const char *message = git_commit_message(commit);
+    const git_signature *author = git_commit_author(commit);
+    git_time_t time = author->when.time;
+
+    // Convert git_time_t to QDateTime
+    QDateTime dateTime = QDateTime::fromSecsSinceEpoch(time);
+
+    // Get short SHA
+    char short_sha[8];
+    git_oid_tostr(short_sha, 8, &oid);
+
+    // Get first line of commit message
+    QString fullMessage = QString::fromUtf8(message);
+    QString shortMessage = fullMessage.split('\n').first();
+    if (shortMessage.length() > 80) {
+      shortMessage = shortMessage.left(77) + "...";
+    }
+
+    // Create a map for this commit
+    QVariantMap commitInfo;
+    commitInfo["sha"] = QString(short_sha);
+    commitInfo["message"] = shortMessage;
+    commitInfo["author"] = QString::fromUtf8(author->name);
+    commitInfo["date"] = dateTime.toString("yyyy-MM-dd HH:mm:ss");
+    commitInfo["dateRelative"] = getRelativeTime(dateTime);
+
+    commitList.append(commitInfo);
+
+    git_commit_free(commit);
+  }
+
+  git_revwalk_free(walker);
+  git_repository_free(repo);
+
+  qDebug() << "Retrieved" << commitList.size() << "commits behind";
+  return commitList;
 }

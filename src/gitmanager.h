@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 #include <QString>
 #include <QTimer>
+#include <QVariantList>
 #include <git2.h>
 
 class GitManager : public QObject {
@@ -19,6 +20,8 @@ class GitManager : public QObject {
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(bool isBusy READ isBusy NOTIFY isBusyChanged)
   Q_PROPERTY(int commitsBehind READ commitsBehind NOTIFY commitsBehindChanged)
+  Q_PROPERTY(QVariantList commitsBehindList READ commitsBehindList NOTIFY
+                 commitsBehindListChanged)
   Q_PROPERTY(int fetchIntervalMinutes READ fetchIntervalMinutes WRITE
                  setFetchIntervalMinutes NOTIFY fetchIntervalMinutesChanged)
   Q_PROPERTY(int progress READ progress NOTIFY progressChanged)
@@ -38,6 +41,7 @@ public:
   QString status() const { return m_status; }
   bool isBusy() const { return m_isBusy; }
   int commitsBehind() const { return m_commitsBehind; }
+  QVariantList commitsBehindList() const { return m_commitsBehindList; }
   int fetchIntervalMinutes() const { return m_fetchIntervalMinutes; }
   void setFetchIntervalMinutes(int minutes);
   int progress() const { return m_progress; }
@@ -57,6 +61,7 @@ signals:
   void statusChanged();
   void isBusyChanged();
   void commitsBehindChanged();
+  void commitsBehindListChanged();
   void fetchIntervalMinutesChanged();
   void progressChanged();
   void operationCompleted(bool success, const QString &message);
@@ -71,6 +76,7 @@ private:
   void saveSettings();
   void setIsBusy(bool busy);
   void setCommitsBehind(int count);
+  void setCommitsBehindList(const QVariantList &list);
   void startFetchTimer();
   void stopFetchTimer();
 
@@ -78,6 +84,7 @@ private:
   bool pullRepository_internal();
   bool fetchRepository();
   int calculateCommitsBehind();
+  QVariantList getCommitsBehindDetails();
   QString getRepositoryLocalPath() const;
 
   QString m_repositoryUrl;
@@ -85,6 +92,7 @@ private:
   QString m_status;
   bool m_isBusy;
   int m_commitsBehind;
+  QVariantList m_commitsBehindList;
   int m_fetchIntervalMinutes;
   int m_progress;
   bool m_isUrlFromGlobalSettings;

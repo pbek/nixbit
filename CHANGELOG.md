@@ -1,5 +1,28 @@
 # Nixbit Changelog
 
+## 0.3.3
+
+- Added detailed commit information display for available updates
+  - New "View Commits" button appears when the repository is behind remote
+  - Opens a dialog showing all commits available for update
+  - Each commit displays:
+    - Short SHA hash (7 characters, monospace font)
+    - Commit author name
+    - Commit message
+    - Relative time (e.g., "2 hours ago", "3 days ago")
+    - Full timestamp
+  - Dialog includes a refresh button to check for new updates
+  - Commits are sorted by time with most recent first
+  - Commit hashes are clickable links when using a GitHub repository
+    - Automatically detects GitHub repositories (git@github.com or https://github.com)
+    - Clicking a commit hash opens the commit page in your web browser
+    - Handles both SSH (git@github.com:user/repo.git) and HTTPS formats
+    - Non-GitHub repositories show plain text commit hashes
+- Console output now supports text selection with mouse and keyboard
+  - Right-click context menu added with Copy, Select All, and Deselect options
+  - Standard keyboard shortcuts (Ctrl+C) work for copying selected text
+- The highlighting colors in the generations list dialog have been improved for better visibility
+
 ## 0.3.2
 
 - The tray icon will now correctly reflect the amount of commits behind

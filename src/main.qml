@@ -330,11 +330,22 @@ Kirigami.ApplicationWindow {
                     color: gitManager ? (gitManager.isBusy ? Kirigami.Theme.activeTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
                 }
 
-                Label {
+                RowLayout {
                     Kirigami.FormData.label: "Commits Behind:"
-                    text: gitManager ? (gitManager.commitsBehind >= 0 ? gitManager.commitsBehind.toString() : "N/A") : "N/A"
-                    font.bold: gitManager ? gitManager.commitsBehind > 0 : false
-                    color: gitManager ? (gitManager.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Label {
+                        text: gitManager ? (gitManager.commitsBehind >= 0 ? gitManager.commitsBehind.toString() : "N/A") : "N/A"
+                        font.bold: gitManager ? gitManager.commitsBehind > 0 : false
+                        color: gitManager ? (gitManager.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
+                    }
+
+                    Button {
+                        text: "View Commits"
+                        icon.name: "view-list-details"
+                        visible: gitManager && gitManager.commitsBehind > 0
+                        onClicked: commitsDialog.open()
+                    }
                 }
             }
 
@@ -482,6 +493,13 @@ Kirigami.ApplicationWindow {
             // Generations Dialog
             GenerationsDialog {
                 id: generationsDialog
+                x: (parent.width - width) / 2
+                y: (parent.height - height) / 2
+            }
+
+            // Commits Dialog
+            CommitsDialog {
+                id: commitsDialog
                 x: (parent.width - width) / 2
                 y: (parent.height - height) / 2
             }
@@ -641,14 +659,17 @@ Kirigami.ApplicationWindow {
                                     }
                                 }
 
-                                Text {
+                                TextEdit {
                                     id: terminalText
                                     width: terminalScrollView.availableWidth
-                                    textFormat: Text.RichText
-                                    wrapMode: Text.Wrap
+                                    textFormat: TextEdit.RichText
+                                    wrapMode: TextEdit.Wrap
                                     font.family: "Monospace"
                                     font.pixelSize: 14
                                     color: "#c9d1d9"
+                                    readOnly: true
+                                    selectByMouse: true
+                                    selectByKeyboard: true
 
                                     text: {
                                         if (!processManager || !processManager.output) {
@@ -659,6 +680,39 @@ Kirigami.ApplicationWindow {
 
                                     onTextChanged: {
                                         Qt.callLater(terminalFlickable.scrollToBottom);
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        acceptedButtons: Qt.RightButton
+                                        onClicked: {
+                                            contextMenu.popup();
+                                        }
+                                    }
+
+                                    Menu {
+                                        id: contextMenu
+
+                                        MenuItem {
+                                            text: "Copy"
+                                            icon.name: "edit-copy"
+                                            enabled: terminalText.selectedText.length > 0
+                                            onTriggered: terminalText.copy()
+                                        }
+
+                                        MenuItem {
+                                            text: "Select All"
+                                            icon.name: "edit-select-all"
+                                            onTriggered: terminalText.selectAll()
+                                        }
+
+                                        MenuSeparator {}
+
+                                        MenuItem {
+                                            text: "Deselect"
+                                            enabled: terminalText.selectedText.length > 0
+                                            onTriggered: terminalText.deselect()
+                                        }
                                     }
 
                                     function highlightOutput(rawText) {

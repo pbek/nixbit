@@ -54,6 +54,7 @@ Dialog {
                 spacing: 2
 
                 delegate: ItemDelegate {
+                    id: delegateItem
                     width: ListView.view.width
                     highlighted: model.isCurrent
 
@@ -65,12 +66,13 @@ Dialog {
                             font.bold: model.isCurrent
                             font.pixelSize: 14
                             Layout.preferredWidth: 60
+                            color: (delegateItem.hovered && !model.isCurrent) ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
                         }
 
                         Label {
                             text: model.isCurrent ? "●" : ""
                             font.bold: true
-                            color: Kirigami.Theme.positiveTextColor
+                            color: (delegateItem.hovered && !model.isCurrent) ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.positiveTextColor
                             font.pixelSize: 16
                             Layout.preferredWidth: 20
                         }
@@ -80,11 +82,12 @@ Dialog {
                             font.bold: model.isCurrent
                             font.pixelSize: 14
                             Layout.fillWidth: true
+                            color: (delegateItem.hovered && !model.isCurrent) ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
                         }
 
                         Label {
                             text: model.isCurrent ? "(current)" : ""
-                            color: Kirigami.Theme.positiveTextColor
+                            color: (delegateItem.hovered && !model.isCurrent) ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.positiveTextColor
                             font.pixelSize: 14
                             font.italic: true
                         }
