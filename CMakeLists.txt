@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
   nixbit
-  VERSION 0.3.2
+  VERSION 0.3.3
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -72,7 +72,8 @@ qt_add_qml_module(
   QML_FILES
   src/main.qml
   src/SettingsDialog.qml
-  src/GenerationsDialog.qml)
+  src/GenerationsDialog.qml
+  src/CommitsDialog.qml)
 
 target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                           ${LIBGIT2_INCLUDE_DIRS})
