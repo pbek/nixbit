@@ -1,6 +1,6 @@
 # Nixbit Changelog
 
-## 0.3.3
+## 0.4.0
 
 - Added detailed commit information display for available updates
   - New "View Commits" button appears when the repository is behind remote
