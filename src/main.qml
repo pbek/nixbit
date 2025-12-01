@@ -2,8 +2,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "Utils.js" as Utils
 
-Kirigami.ApplicationWindow {
+ApplicationWindow {
     id: root
     title: "NixOS Updater"
     width: settingsManager ? settingsManager.windowWidth : 1000
@@ -167,8 +168,9 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    pageStack.initialPage: Kirigami.Page {
-        title: (typeof isDebugMode !== 'undefined' && isDebugMode) ? "System Configuration (Debug Mode)" : "System Configuration"
+    // Main content
+    Item {
+        anchors.fill: parent
 
         ColumnLayout {
             anchors.fill: parent
@@ -220,12 +222,9 @@ Kirigami.ApplicationWindow {
                         ToolTip.text: "Open terminal here"
                         enabled: gitManager && gitManager.localPath !== ""
                         onClicked: {
-                            if (!gitManager)
-                                return;
-                            var path = gitManager.localPath;
-                            var cmd = "if command -v konsole >/dev/null 2>&1; then konsole --workdir '" + path + "' & " + "elif command -v gnome-terminal >/dev/null 2>&1; then gnome-terminal --working-directory='" + path + "' & " + "elif command -v xfce4-terminal >/dev/null 2>&1; then xfce4-terminal --working-directory='" + path + "' & " + "elif command -v alacritty >/dev/null 2>&1; then alacritty --working-directory '" + path + "' & " + "elif command -v kitty >/dev/null 2>&1; then kitty --directory '" + path + "' & " + "elif command -v ghostty >/dev/null 2>&1; then ghostty --working-directory='" + path + "' & " + "elif command -v xterm >/dev/null 2>&1; then cd '" + path + "' && xterm & " + "else notify-send 'Nixbit' 'No supported terminal emulator found'; fi";
-                            if (processManager)
-                                processManager.startDetached("bash", ["-c", cmd]);
+                            if (gitManager && gitManager.localPath) {
+                                Utils.openTerminalInDirectory(gitManager.localPath, processManager);
+                            }
                         }
                     }
                 }

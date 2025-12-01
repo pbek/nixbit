@@ -78,7 +78,8 @@ qt_add_qml_module(
   src/SettingsDialog.qml
   src/GenerationsDialog.qml
   src/CommitsDialog.qml
-  src/LogsDialog.qml)
+  src/LogsDialog.qml
+  src/Utils.js)
 
 target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                           ${LIBGIT2_INCLUDE_DIRS})

@@ -240,6 +240,11 @@ int main(int argc, char *argv[]) {
     if (mainWindow) {
       mainWindow->hide();
     }
+  } else {
+    // Show window by default if not set to start hidden
+    if (mainWindow) {
+      mainWindow->show();
+    }
   }
 
   return app.exec();
