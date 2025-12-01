@@ -19,6 +19,11 @@
   - Open logs in system default editor with one click
   - Delete individual logs with confirmation
   - Logs stored in `~/.local/share/nixbit/logs/` directory
+- **Redesigned Settings Dialog** - KDE System Settings-style interface
+  - Vertical category menu with icons (General, Performance, Repository, Build Hosts)
+  - Split-view layout for better organization and navigation
+  - Larger dialog (900x600) for improved usability
+  - Each category has its own dedicated page with clear section headers
 - **New settings in Settings Dialog**
   - Max Terminal Lines: Configure memory usage (500-20,000 lines, default 5,000)
   - Max Stored Logs: Configure log retention (0-100 files, default 10, 0 = unlimited)
