@@ -1,5 +1,19 @@
 # Nixbit Changelog
 
+## 0.5.0
+
+- **Fixed critical memory issue** - Application could consume a lot of RAM and
+  become unresponsive during long builds
+- **Added output buffer limiting** - Terminal output now limited to last 5,000
+  lines by default (configurable 500-20,000)
+  - Prevents unbounded memory growth during lengthy builds
+  - Older output automatically truncated with indicator
+- **Optimized terminal rendering** - 5-10x faster syntax highlighting with
+  caching and pre-compiled regex patterns
+- **New setting: Max Terminal Lines** - Configure memory usage vs. output
+  history trade-off in Settings Dialog
+  - Lower values (1,000-2,000) recommended for systems with limited RAM
+
 ## 0.4.0
 
 - Added detailed commit information display for available updates

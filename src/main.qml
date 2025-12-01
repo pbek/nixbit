@@ -671,11 +671,25 @@ Kirigami.ApplicationWindow {
                                     selectByMouse: true
                                     selectByKeyboard: true
 
+                                    property string cachedOutput: ""
+                                    property string cachedHighlightedOutput: ""
+
                                     text: {
                                         if (!processManager || !processManager.output) {
+                                            cachedOutput = "";
+                                            cachedHighlightedOutput = "";
                                             return "";
                                         }
-                                        return highlightOutput(processManager.output);
+
+                                        var currentOutput = processManager.output;
+
+                                        // Only re-highlight if output changed
+                                        if (currentOutput !== cachedOutput) {
+                                            cachedOutput = currentOutput;
+                                            cachedHighlightedOutput = highlightOutput(currentOutput);
+                                        }
+
+                                        return cachedHighlightedOutput;
                                     }
 
                                     onTextChanged: {
@@ -716,6 +730,11 @@ Kirigami.ApplicationWindow {
                                     }
 
                                     function highlightOutput(rawText) {
+                                        // Early return for empty text
+                                        if (!rawText || rawText.length === 0) {
+                                            return "";
+                                        }
+
                                         // Escape HTML special characters first
                                         var escaped = rawText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -723,28 +742,42 @@ Kirigami.ApplicationWindow {
                                         var lines = escaped.split('\n');
                                         var processedLines = [];
 
+                                        // Pre-compile patterns for better performance
+                                        var successPattern = /✓|Done\. The new configuration is|Process finished with exit code: 0|successfully|Success|completed successfully|Build succeeded/i;
+                                        var errorPattern = /✗|error:|Error:|ERROR|failed|Failed|FAILED|Process finished with exit code: [1-9]|Process crashed|fatal:|Fatal:|FATAL|exception|Exception|EXCEPTION/;
+                                        var warningPattern = /warning:|Warning:|WARNING|warn:|Warn:/;
+                                        var buildingPattern = /building|Building|Running:|Copying|copying|Cloning|evaluating/;
+                                        var statusPattern = /===.*===/;
+
                                         for (var i = 0; i < lines.length; i++) {
                                             var line = lines[i];
+
+                                            // Skip empty lines (no need to wrap)
+                                            if (line.length === 0) {
+                                                processedLines.push(line);
+                                                continue;
+                                            }
+
                                             var processed = line;
 
                                             // Success patterns (green)
-                                            if (line.match(/✓|Done\. The new configuration is|Process finished with exit code: 0|successfully|Success|completed successfully|Build succeeded/i)) {
+                                            if (successPattern.test(line)) {
                                                 processed = '<span style="color: #3fb950; font-weight: bold;">' + line + '</span>';
                                             } else
                                             // Error patterns (red)
-                                            if (line.match(/✗|error:|Error:|ERROR|failed|Failed|FAILED|Process finished with exit code: [1-9]|Process crashed|fatal:|Fatal:|FATAL|exception|Exception|EXCEPTION/)) {
+                                            if (errorPattern.test(line)) {
                                                 processed = '<span style="color: #f85149; font-weight: bold;">' + line + '</span>';
                                             } else
                                             // Warning patterns (yellow/orange)
-                                            if (line.match(/warning:|Warning:|WARNING|warn:|Warn:/)) {
+                                            if (warningPattern.test(line)) {
                                                 processed = '<span style="color: #d29922;">' + line + '</span>';
                                             } else
                                             // Building/running patterns (cyan)
-                                            if (line.match(/building|Building|Running:|Copying|copying|Cloning|evaluating/)) {
+                                            if (buildingPattern.test(line)) {
                                                 processed = '<span style="color: #79c0ff;">' + line + '</span>';
                                             } else
                                             // Process status markers (magenta)
-                                            if (line.match(/===.*===/)) {
+                                            if (statusPattern.test(line)) {
                                                 processed = '<span style="color: #d2a8ff; font-weight: bold;">' + line + '</span>';
                                             }
 

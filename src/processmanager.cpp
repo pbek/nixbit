@@ -6,7 +6,8 @@
 
 ProcessManager::ProcessManager(QObject *parent)
     : QObject(parent), m_process(nullptr), m_isRunning(false),
-      m_isPaused(false), m_lastExitCode(0), m_hasFinished(false) {
+      m_isPaused(false), m_lastExitCode(0), m_hasFinished(false),
+      m_maxOutputLines(5000) {
   m_process = new QProcess(this);
 
   // Set up the process to create a new process group
@@ -119,6 +120,7 @@ bool ProcessManager::startDetached(const QString &program,
 
 void ProcessManager::clearOutput() {
   m_output.clear();
+  m_outputLines.clear();
   emit outputChanged();
 }
 
@@ -157,8 +159,51 @@ void ProcessManager::onProcessFinished(int exitCode,
 }
 
 void ProcessManager::appendOutput(const QString &text) {
-  m_output += text;
+  // Split new text into lines and append to buffer
+  QStringList newLines = text.split('\n');
+
+  // If we already have lines and the first new item doesn't start a new line,
+  // append it to the last existing line
+  if (!m_outputLines.isEmpty() && !text.startsWith('\n')) {
+    m_outputLines.last() += newLines.first();
+    newLines.removeFirst();
+  }
+
+  // Add remaining lines
+  m_outputLines.append(newLines);
+
+  // Trim to max lines if needed
+  trimOutputToLimit();
+
+  // Rebuild the output string from lines
+  m_output = m_outputLines.join('\n');
   emit outputChanged();
+}
+
+void ProcessManager::trimOutputToLimit() {
+  if (m_maxOutputLines > 0 && m_outputLines.size() > m_maxOutputLines) {
+    // Keep only the last N lines
+    int linesToRemove = m_outputLines.size() - m_maxOutputLines;
+    m_outputLines = m_outputLines.mid(linesToRemove);
+
+    // Add indicator that output was truncated
+    if (!m_outputLines.isEmpty() &&
+        !m_outputLines.first().startsWith("... (output truncated)")) {
+      m_outputLines.prepend("... (output truncated, showing last " +
+                            QString::number(m_maxOutputLines) +
+                            " lines) ...\n");
+    }
+  }
+}
+
+void ProcessManager::setMaxOutputLines(int lines) {
+  if (m_maxOutputLines != lines) {
+    m_maxOutputLines = lines;
+    trimOutputToLimit();
+    m_output = m_outputLines.join('\n');
+    emit maxOutputLinesChanged();
+    emit outputChanged();
+  }
 }
 
 void ProcessManager::setIsRunning(bool running) {

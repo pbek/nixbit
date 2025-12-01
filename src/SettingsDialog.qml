@@ -60,6 +60,30 @@ Kirigami.Dialog {
             }
 
             RowLayout {
+                Kirigami.FormData.label: "Max Terminal Lines:"
+                spacing: Kirigami.Units.smallSpacing
+
+                SpinBox {
+                    id: maxLinesSpinBox
+                    from: 500
+                    to: 20000
+                    stepSize: 500
+                    value: processManager ? processManager.maxOutputLines : 5000
+                    editable: true
+                    onValueModified: {
+                        if (processManager)
+                            processManager.maxOutputLines = value;
+                    }
+                }
+
+                Label {
+                    text: "lines (lower = less memory)"
+                    font.italic: true
+                    color: Kirigami.Theme.disabledTextColor
+                }
+            }
+
+            RowLayout {
                 Kirigami.FormData.label: "Local Path:"
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
