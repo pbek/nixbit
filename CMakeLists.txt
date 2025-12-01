@@ -43,6 +43,8 @@ qt_add_executable(
   src/gitmanager.h
   src/processmanager.cpp
   src/processmanager.h
+  src/outputhighlighter.cpp
+  src/outputhighlighter.h
   src/trayiconmanager.cpp
   src/trayiconmanager.h
   src/settingsmanager.cpp

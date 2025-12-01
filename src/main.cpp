@@ -1,5 +1,6 @@
 #include "generationmanager.h"
 #include "gitmanager.h"
+#include "outputhighlighter.h"
 #include "processmanager.h"
 #include "settingsmanager.h"
 #include "systemmonitor.h"
@@ -142,6 +143,11 @@ int main(int argc, char *argv[]) {
   GenerationManager generationManager;
   engine.rootContext()->setContextProperty("generationManager",
                                            &generationManager);
+
+  // Create and register OutputHighlighter
+  OutputHighlighter outputHighlighter;
+  engine.rootContext()->setContextProperty("outputHighlighter",
+                                           &outputHighlighter);
 
   // Create SystemResumeDetector to check for updates after system resume
   SystemResumeDetector resumeDetector;

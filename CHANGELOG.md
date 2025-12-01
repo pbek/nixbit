@@ -8,8 +8,10 @@
   lines by default (configurable 500-20,000)
   - Prevents unbounded memory growth during lengthy builds
   - Older output automatically truncated with indicator
-- **Optimized terminal rendering** - 5-10x faster syntax highlighting with
-  caching and pre-compiled regex patterns
+- **Rewrote syntax highlighting in C++** - Moved from JavaScript to native C++ implementation
+  - Uses `QRegularExpression` with optimized and pre-compiled patterns
+  - Significantly faster and more memory-efficient than JavaScript regex
+  - Caching prevents re-processing of unchanged output
 - **New setting: Max Terminal Lines** - Configure memory usage vs. output
   history trade-off in Settings Dialog
   - Lower values (1,000-2,000) recommended for systems with limited RAM
