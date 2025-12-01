@@ -38,6 +38,10 @@
   - If build fails, switch phase is cancelled with clear error message
   - Shows progress messages for each phase
   - Allows testing configuration with a remote build host before applying locally
+- **Dynamic button labels** - Main action button now reflects the selected mode
+  - Shows "Build System" when build mode is selected
+  - Shows "Switch System" when switch mode is selected (was "Update System")
+  - Provides clearer indication of what action will be performed
 
 ## 0.4.0
 

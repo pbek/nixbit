@@ -391,7 +391,7 @@ ApplicationWindow {
                 spacing: Kirigami.Units.smallSpacing
 
                 Button {
-                    text: "Update System"
+                    text: rebuildModeComboBox.currentText === "build" ? "Build System" : "Update System"
                     icon.name: "system-software-update"
                     enabled: (processManager ? !processManager.isRunning : false) && (gitManager ? !gitManager.isBusy : false)
                     onClicked: {
