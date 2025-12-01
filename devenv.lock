@@ -101,10 +101,10 @@
     "shared": {
       "flake": false,
       "locked": {
-        "lastModified": 1761069179,
+        "lastModified": 1764616996,
         "owner": "pbek",
         "repo": "nix-shared",
-        "rev": "18b64d587e89e892ad98e223dc218626b14e70df",
+        "rev": "2b37b03fccd63657d644e2817b7fccc880302440",
         "type": "github"
       },
       "original": {
