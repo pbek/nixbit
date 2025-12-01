@@ -254,6 +254,9 @@ void ProcessManager::resumeProcess() {
 void ProcessManager::runNixosRebuildBuild(const QString &repoPath,
                                           const QString &hostname,
                                           const QString &buildHost) {
+  // Clear output before starting build
+  clearOutput();
+
   // Sanitize hostname to prevent command injection
   QString sanitizedHostname = hostname;
   sanitizedHostname.replace(QRegularExpression("[^a-zA-Z0-9._-]"), "");
@@ -289,6 +292,9 @@ void ProcessManager::runNixosRebuildBuild(const QString &repoPath,
 void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
                                            const QString &hostname,
                                            const QString &buildHost) {
+  // Clear output before starting switch
+  clearOutput();
+
   // Sanitize hostname to prevent command injection
   QString sanitizedHostname = hostname;
   sanitizedHostname.replace(QRegularExpression("[^a-zA-Z0-9._-]"), "");
