@@ -24,6 +24,11 @@
   - Split-view layout for better organization and navigation
   - Larger dialog (900x600) for improved usability
   - Each category has its own dedicated page with clear section headers
+- **Repository quick access buttons** - Added to main window
+  - "Open in file manager" button opens repository folder with xdg-open
+  - "Open terminal" button launches terminal in repository directory
+  - Both buttons positioned next to Repository URL field for easy access
+  - Support for multiple terminal emulators (konsole, gnome-terminal, xfce4-terminal, alacritty, kitty, ghostty, xterm)
 - **New settings in Settings Dialog**
   - Max Terminal Lines: Configure memory usage (500-20,000 lines, default 5,000)
   - Max Stored Logs: Configure log retention (0-100 files, default 10, 0 = unlimited)

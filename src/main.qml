@@ -179,19 +179,53 @@ Kirigami.ApplicationWindow {
             Kirigami.FormLayout {
                 Layout.fillWidth: true
 
-                TextField {
-                    id: repoUrlField
+                RowLayout {
                     Kirigami.FormData.label: "Repository URL:"
-                    text: gitManager ? gitManager.repositoryUrl : ""
-                    placeholderText: "https://github.com/user/repo.git"
-                    enabled: gitManager ? (!gitManager.isBusy && !gitManager.isUrlFromGlobalSettings) : false
-                    ToolTip.visible: hovered && gitManager && gitManager.isUrlFromGlobalSettings
-                    ToolTip.text: "Repository URL is set by global settings and cannot be changed"
-                    onEditingFinished: {
-                        if (gitManager && text !== gitManager.repositoryUrl) {
-                            // Open confirmation dialog before changing URL
-                            changeUrlConfirmDialog.newUrl = text;
-                            changeUrlConfirmDialog.open();
+                    spacing: Kirigami.Units.smallSpacing
+
+                    TextField {
+                        id: repoUrlField
+                        Layout.fillWidth: true
+                        text: gitManager ? gitManager.repositoryUrl : ""
+                        placeholderText: "https://github.com/user/repo.git"
+                        enabled: gitManager ? (!gitManager.isBusy && !gitManager.isUrlFromGlobalSettings) : false
+                        ToolTip.visible: hovered && gitManager && gitManager.isUrlFromGlobalSettings
+                        ToolTip.text: "Repository URL is set by global settings and cannot be changed"
+                        onEditingFinished: {
+                            if (gitManager && text !== gitManager.repositoryUrl) {
+                                // Open confirmation dialog before changing URL
+                                changeUrlConfirmDialog.newUrl = text;
+                                changeUrlConfirmDialog.open();
+                            }
+                        }
+                    }
+
+                    Button {
+                        icon.name: "folder-open"
+                        display: AbstractButton.IconOnly
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Open repository in file manager"
+                        enabled: gitManager && gitManager.localPath !== ""
+                        onClicked: {
+                            if (gitManager && gitManager.localPath) {
+                                processManager.startDetached("xdg-open", [gitManager.localPath]);
+                            }
+                        }
+                    }
+
+                    Button {
+                        icon.name: "utilities-terminal"
+                        display: AbstractButton.IconOnly
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Open terminal here"
+                        enabled: gitManager && gitManager.localPath !== ""
+                        onClicked: {
+                            if (!gitManager)
+                                return;
+                            var path = gitManager.localPath;
+                            var cmd = "if command -v konsole >/dev/null 2>&1; then konsole --workdir '" + path + "' & " + "elif command -v gnome-terminal >/dev/null 2>&1; then gnome-terminal --working-directory='" + path + "' & " + "elif command -v xfce4-terminal >/dev/null 2>&1; then xfce4-terminal --working-directory='" + path + "' & " + "elif command -v alacritty >/dev/null 2>&1; then alacritty --working-directory '" + path + "' & " + "elif command -v kitty >/dev/null 2>&1; then kitty --directory '" + path + "' & " + "elif command -v ghostty >/dev/null 2>&1; then ghostty --working-directory='" + path + "' & " + "elif command -v xterm >/dev/null 2>&1; then cd '" + path + "' && xterm & " + "else notify-send 'Nixbit' 'No supported terminal emulator found'; fi";
+                            if (processManager)
+                                processManager.startDetached("bash", ["-c", cmd]);
                         }
                     }
                 }
