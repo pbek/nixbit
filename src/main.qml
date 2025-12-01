@@ -12,6 +12,9 @@ ApplicationWindow {
     x: settingsManager && settingsManager.windowX >= 0 ? settingsManager.windowX : Screen.width / 2 - width / 2
     y: settingsManager && settingsManager.windowY >= 0 ? settingsManager.windowY : Screen.height / 2 - height / 2
 
+    // Property to track if we're in a chained build-then-switch operation
+    property bool isChainedBuildSwitch: false
+
     // Save window size when it changes
     onWidthChanged: {
         if (settingsManager && width > 0) {
@@ -395,6 +398,40 @@ ApplicationWindow {
                         // First pull the repository, then update system
                         if (gitManager)
                             gitManager.pullRepository();
+                    }
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: "Build & Switch"
+                    icon.name: "run-build"
+                    enabled: (processManager ? !processManager.isRunning : false) && (gitManager ? !gitManager.isBusy : false)
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Run build first (with build host), then switch (with switch host) if successful"
+                    onClicked: {
+                        if (!settingsManager || !gitManager || !processManager)
+                            return;
+
+                        // Set the flag to indicate we're doing a chained operation
+                        root.isChainedBuildSwitch = true;
+
+                        var hostname = settingsManager.hostname;
+                        var repoPath = gitManager.localPath;
+
+                        // Get the build host for the build phase
+                        var selectedBuildHost = settingsManager.selectedBuildHost;
+                        var buildHost = "";
+
+                        if (selectedBuildHost && selectedBuildHost !== "" && selectedBuildHost !== "(local)") {
+                            buildHost = settingsManager.getBuildHostAddress(selectedBuildHost);
+                        }
+
+                        messageBox.text = "Starting build phase...";
+                        messageBox.type = Kirigami.MessageType.Information;
+                        messageBox.visible = true;
+
+                        // Use C++ method to run build
+                        processManager.runNixosRebuildBuild(repoPath, hostname, buildHost);
                     }
                     Layout.fillWidth: true
                 }
@@ -847,6 +884,7 @@ ApplicationWindow {
             // Pull completed successfully, now run system update
             if (!settingsManager || !gitManager || !processManager)
                 return;
+
             var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
             var rebuildMode = rebuildModeComboBox.currentText;
@@ -860,44 +898,12 @@ ApplicationWindow {
                 buildHost = settingsManager.getBuildHostAddress(selectedHost);
             }
 
-            // Sanitize hostname to prevent command injection
-            // Only allow alphanumeric characters, hyphens, underscores, and dots
-            var sanitizedHostname = hostname.replace(/[^a-zA-Z0-9._-]/g, '');
-            if (sanitizedHostname === "" || sanitizedHostname !== hostname) {
-                messageBox.text = "Error: Invalid hostname. Only alphanumeric characters, hyphens, underscores, and dots are allowed.";
-                messageBox.type = Kirigami.MessageType.Error;
-                messageBox.visible = true;
-                return;
-            }
-
-            // Sanitize build host to prevent command injection
-            // Allow alphanumeric, hyphens, underscores, dots, and @ for user@host format
-            var sanitizedBuildHost = "";
-            if (buildHost && buildHost.trim() !== "") {
-                sanitizedBuildHost = buildHost.trim().replace(/[^a-zA-Z0-9._@-]/g, '');
-                if (sanitizedBuildHost === "" || sanitizedBuildHost !== buildHost.trim()) {
-                    messageBox.text = "Error: Invalid build host. Only alphanumeric characters, hyphens, underscores, dots, and @ are allowed.";
-                    messageBox.type = Kirigami.MessageType.Error;
-                    messageBox.visible = true;
-                    return;
-                }
-            }
-
-            // Build the nixos-rebuild command with optional --build-host parameter
-            var buildHostParam = sanitizedBuildHost !== "" ? " --build-host " + sanitizedBuildHost : "";
-
-            var cmd;
+            // Use the C++ methods to run the commands
             if (rebuildMode === "switch") {
-                // Switch mode: copy to temp repo and use pkexec for sudo
-                var tempScript = "/tmp/nixbit-rebuild-" + Date.now() + ".sh";
-                cmd = "printf '#!/usr/bin/env bash\\n" + "set -e\\n" + "TEMP_REPO=/tmp/nixbit-repo-$$\\n" + "echo \\\"Copying repository to temporary location...\\\"\\n" + "cp -r " + repoPath + " $TEMP_REPO\\n" + "cd $TEMP_REPO\\n" + "env TERM=dumb nixos-rebuild " + rebuildMode + " --flake .#" + sanitizedHostname + buildHostParam + " -L\\n" + "echo \\\"Cleaning up temporary repository...\\\"\\n" + "rm -rf $TEMP_REPO\\n' > " + tempScript + " && chmod +x " + tempScript;
-                cmd += " && pkexec " + tempScript + " ; rm -f " + tempScript;
+                processManager.runNixosRebuildSwitch(repoPath, hostname, buildHost);
             } else {
-                // Build mode: run directly from repo (no temp copy, no temp script, no sudo)
-                cmd = "cd " + repoPath + " && env TERM=dumb nixos-rebuild " + rebuildMode + " --flake .#" + sanitizedHostname + buildHostParam + " -L";
+                processManager.runNixosRebuildBuild(repoPath, hostname, buildHost);
             }
-
-            processManager.runCommand("bash", ["-c", cmd]);
         }
     }
 
@@ -921,6 +927,47 @@ ApplicationWindow {
                 var logDir = settingsManager.getLogDirectory();
                 var maxLogs = settingsManager.maxStoredLogs;
                 logManager.saveLog(output, exitCode, logDir, maxLogs);
+            }
+
+            // Handle chained build-switch operation
+            if (root.isChainedBuildSwitch) {
+                if (exitCode === 0) {
+                    // Build succeeded, now run switch
+                    messageBox.text = "Build completed successfully! Starting switch phase...";
+                    messageBox.type = Kirigami.MessageType.Positive;
+                    messageBox.visible = true;
+
+                    // Reset the flag before starting switch
+                    root.isChainedBuildSwitch = false;
+
+                    if (!settingsManager || !gitManager || !processManager)
+                        return;
+
+                    var hostname = settingsManager.hostname;
+                    var repoPath = gitManager.localPath;
+
+                    // Get the switch host for the switch phase
+                    var selectedSwitchHost = settingsManager.selectedSwitchHost;
+                    var switchHost = "";
+
+                    if (selectedSwitchHost && selectedSwitchHost !== "" && selectedSwitchHost !== "(local)") {
+                        switchHost = settingsManager.getBuildHostAddress(selectedSwitchHost);
+                    }
+
+                    // Use C++ method to run switch
+                    processManager.runNixosRebuildSwitch(repoPath, hostname, switchHost);
+
+                    // After switch completes, refresh generations
+                    if (generationManager) {
+                        generationManager.loadGenerations();
+                    }
+                } else {
+                    // Build failed, reset the flag
+                    root.isChainedBuildSwitch = false;
+                    messageBox.text = "Build failed with exit code " + exitCode + ". Switch phase cancelled.";
+                    messageBox.type = Kirigami.MessageType.Error;
+                    messageBox.visible = true;
+                }
             }
         }
     }

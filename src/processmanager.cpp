@@ -1,5 +1,7 @@
 #include "processmanager.h"
+#include <QDateTime>
 #include <QDebug>
+#include <QRegularExpression>
 #include <QSysInfo>
 #include <csignal>
 #include <unistd.h>
@@ -247,4 +249,91 @@ void ProcessManager::resumeProcess() {
     setIsPaused(false);
     appendOutput("\n\n=== Process resumed ===\n");
   }
+}
+
+void ProcessManager::runNixosRebuildBuild(const QString &repoPath,
+                                          const QString &hostname,
+                                          const QString &buildHost) {
+  // Sanitize hostname to prevent command injection
+  QString sanitizedHostname = hostname;
+  sanitizedHostname.replace(QRegularExpression("[^a-zA-Z0-9._-]"), "");
+
+  if (sanitizedHostname.isEmpty() || sanitizedHostname != hostname) {
+    appendOutput("Error: Invalid hostname. Only alphanumeric characters, "
+                 "hyphens, underscores, and dots are allowed.\n");
+    return;
+  }
+
+  // Sanitize build host if provided
+  QString sanitizedBuildHost = buildHost.trimmed();
+  if (!sanitizedBuildHost.isEmpty()) {
+    sanitizedBuildHost.replace(QRegularExpression("[^a-zA-Z0-9._@-]"), "");
+    if (sanitizedBuildHost.isEmpty() ||
+        sanitizedBuildHost != buildHost.trimmed()) {
+      appendOutput("Error: Invalid build host. Only alphanumeric characters, "
+                   "hyphens, underscores, dots, and @ are allowed.\n");
+      return;
+    }
+  }
+
+  // Build the nixos-rebuild build command
+  QString buildHostParam =
+      sanitizedBuildHost.isEmpty() ? "" : " --build-host " + sanitizedBuildHost;
+  QString cmd = "cd " + repoPath +
+                " && env TERM=dumb nixos-rebuild build --flake .#" +
+                sanitizedHostname + buildHostParam + " -L";
+
+  runCommand("bash", QStringList() << "-c" << cmd);
+}
+
+void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
+                                           const QString &hostname,
+                                           const QString &buildHost) {
+  // Sanitize hostname to prevent command injection
+  QString sanitizedHostname = hostname;
+  sanitizedHostname.replace(QRegularExpression("[^a-zA-Z0-9._-]"), "");
+
+  if (sanitizedHostname.isEmpty() || sanitizedHostname != hostname) {
+    appendOutput("Error: Invalid hostname. Only alphanumeric characters, "
+                 "hyphens, underscores, and dots are allowed.\n");
+    return;
+  }
+
+  // Sanitize build host if provided
+  QString sanitizedBuildHost = buildHost.trimmed();
+  if (!sanitizedBuildHost.isEmpty()) {
+    sanitizedBuildHost.replace(QRegularExpression("[^a-zA-Z0-9._@-]"), "");
+    if (sanitizedBuildHost.isEmpty() ||
+        sanitizedBuildHost != buildHost.trimmed()) {
+      appendOutput("Error: Invalid build host. Only alphanumeric characters, "
+                   "hyphens, underscores, dots, and @ are allowed.\n");
+      return;
+    }
+  }
+
+  // Build the nixos-rebuild switch command with pkexec for sudo
+  QString buildHostParam =
+      sanitizedBuildHost.isEmpty() ? "" : " --build-host " + sanitizedBuildHost;
+  QString timestamp = QString::number(QDateTime::currentMSecsSinceEpoch());
+  QString tempScript = "/tmp/nixbit-rebuild-" + timestamp + ".sh";
+
+  QString scriptContent =
+      "#!/usr/bin/env bash\n"
+      "set -e\n"
+      "TEMP_REPO=/tmp/nixbit-repo-$$\n"
+      "echo \"Copying repository to temporary location...\"\n"
+      "cp -r " +
+      repoPath +
+      " $TEMP_REPO\n"
+      "cd $TEMP_REPO\n"
+      "env TERM=dumb nixos-rebuild switch --flake .#" +
+      sanitizedHostname + buildHostParam +
+      " -L\n"
+      "echo \"Cleaning up temporary repository...\"\n"
+      "rm -rf $TEMP_REPO\n";
+
+  QString cmd = "printf '%1' > " + tempScript + " && chmod +x " + tempScript +
+                " && pkexec " + tempScript + " ; rm -f " + tempScript;
+
+  runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
 }

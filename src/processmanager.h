@@ -40,6 +40,12 @@ public:
   Q_INVOKABLE void clearOutput();
   Q_INVOKABLE void pauseProcess();
   Q_INVOKABLE void resumeProcess();
+  Q_INVOKABLE void runNixosRebuildBuild(const QString &repoPath,
+                                        const QString &hostname,
+                                        const QString &buildHost = QString());
+  Q_INVOKABLE void runNixosRebuildSwitch(const QString &repoPath,
+                                         const QString &hostname,
+                                         const QString &buildHost = QString());
 
 signals:
   void outputChanged();

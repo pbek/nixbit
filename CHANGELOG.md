@@ -32,6 +32,12 @@
 - **New settings in Settings Dialog**
   - Max Terminal Lines: Configure memory usage (500-20,000 lines, default 5,000)
   - Max Stored Logs: Configure log retention (0-100 files, default 10, 0 = unlimited)
+- **Added "Build & Switch" button** - New button to chain build and switch operations
+  - Runs `nixos-rebuild build` first using the build host setting
+  - If build succeeds, automatically runs `nixos-rebuild switch` using the switch host setting
+  - If build fails, switch phase is cancelled with clear error message
+  - Shows progress messages for each phase
+  - Allows testing configuration with a remote build host before applying locally
 
 ## 0.4.0
 
