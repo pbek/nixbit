@@ -12,9 +12,16 @@
   - Uses `QRegularExpression` with optimized and pre-compiled patterns
   - Significantly faster and more memory-efficient than JavaScript regex
   - Caching prevents re-processing of unchanged output
-- **New setting: Max Terminal Lines** - Configure memory usage vs. output
-  history trade-off in Settings Dialog
-  - Lower values (1,000-2,000) recommended for systems with limited RAM
+- **Added build log storage and management**
+  - Automatically saves last 10 build logs to disk (configurable 0-100)
+  - New "View Logs" button to access past build logs
+  - Logs dialog shows timestamp, exit status, and quick actions
+  - Open logs in system default editor with one click
+  - Delete individual logs with confirmation
+  - Logs stored in `~/.local/share/nixbit/logs/` directory
+- **New settings in Settings Dialog**
+  - Max Terminal Lines: Configure memory usage (500-20,000 lines, default 5,000)
+  - Max Stored Logs: Configure log retention (0-100 files, default 10, 0 = unlimited)
 
 ## 0.4.0
 

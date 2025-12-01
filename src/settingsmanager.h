@@ -26,6 +26,8 @@ class SettingsManager : public QObject {
                  setSelectedBuildHost NOTIFY selectedBuildHostChanged)
   Q_PROPERTY(QString selectedSwitchHost READ selectedSwitchHost WRITE
                  setSelectedSwitchHost NOTIFY selectedSwitchHostChanged)
+  Q_PROPERTY(int maxStoredLogs READ maxStoredLogs WRITE setMaxStoredLogs NOTIFY
+                 maxStoredLogsChanged)
 
 public:
   explicit SettingsManager(QObject *parent = nullptr);
@@ -70,6 +72,11 @@ public:
   QString selectedSwitchHost() const { return m_selectedSwitchHost; }
   void setSelectedSwitchHost(const QString &host);
 
+  int maxStoredLogs() const { return m_maxStoredLogs; }
+  void setMaxStoredLogs(int count);
+
+  Q_INVOKABLE QString getLogDirectory() const;
+
 signals:
   void startHiddenChanged();
   void hostnameChanged();
@@ -82,6 +89,7 @@ signals:
   void buildHostsChanged();
   void selectedBuildHostChanged();
   void selectedSwitchHostChanged();
+  void maxStoredLogsChanged();
 
 private:
   void loadSettings();
@@ -105,6 +113,7 @@ private:
   QMap<QString, QString> m_buildHostAddresses;
   QString m_selectedBuildHost;
   QString m_selectedSwitchHost;
+  int m_maxStoredLogs;
   int m_settingsVersion;
 };
 

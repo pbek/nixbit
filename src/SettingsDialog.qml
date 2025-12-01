@@ -84,6 +84,30 @@ Kirigami.Dialog {
             }
 
             RowLayout {
+                Kirigami.FormData.label: "Max Stored Logs:"
+                spacing: Kirigami.Units.smallSpacing
+
+                SpinBox {
+                    id: maxLogsSpinBox
+                    from: 0
+                    to: 100
+                    stepSize: 1
+                    value: settingsManager ? settingsManager.maxStoredLogs : 10
+                    editable: true
+                    onValueModified: {
+                        if (settingsManager)
+                            settingsManager.maxStoredLogs = value;
+                    }
+                }
+
+                Label {
+                    text: "log files (0 = unlimited)"
+                    font.italic: true
+                    color: Kirigami.Theme.disabledTextColor
+                }
+            }
+
+            RowLayout {
                 Kirigami.FormData.label: "Local Path:"
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing

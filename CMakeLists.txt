@@ -45,6 +45,8 @@ qt_add_executable(
   src/processmanager.h
   src/outputhighlighter.cpp
   src/outputhighlighter.h
+  src/logmanager.cpp
+  src/logmanager.h
   src/trayiconmanager.cpp
   src/trayiconmanager.h
   src/settingsmanager.cpp
@@ -75,7 +77,8 @@ qt_add_qml_module(
   src/main.qml
   src/SettingsDialog.qml
   src/GenerationsDialog.qml
-  src/CommitsDialog.qml)
+  src/CommitsDialog.qml
+  src/LogsDialog.qml)
 
 target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                           ${LIBGIT2_INCLUDE_DIRS})

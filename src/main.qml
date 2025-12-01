@@ -504,6 +504,13 @@ Kirigami.ApplicationWindow {
                 y: (parent.height - height) / 2
             }
 
+            // Logs Dialog
+            LogsDialog {
+                id: logsDialog
+                x: (parent.width - width) / 2
+                y: (parent.height - height) / 2
+            }
+
             // System Resources Section
             GroupBox {
                 title: "System Resources"
@@ -780,6 +787,14 @@ Kirigami.ApplicationWindow {
                                 }
                             }
                         }
+
+                        Button {
+                            icon.name: "documentation"
+                            text: "View Logs"
+                            onClicked: {
+                                logsDialog.open();
+                            }
+                        }
                     }
                 }
             }
@@ -864,6 +879,15 @@ Kirigami.ApplicationWindow {
             // Only refresh after switch mode since build mode doesn't create a new generation
             if (!processManager.isRunning && generationManager && rebuildModeComboBox.currentText === "switch") {
                 generationManager.loadGenerations();
+            }
+        }
+
+        function onCommandFinished(exitCode, output) {
+            // Save build log when command finishes
+            if (logManager && settingsManager && output.length > 0) {
+                var logDir = settingsManager.getLogDirectory();
+                var maxLogs = settingsManager.maxStoredLogs;
+                logManager.saveLog(output, exitCode, logDir, maxLogs);
             }
         }
     }

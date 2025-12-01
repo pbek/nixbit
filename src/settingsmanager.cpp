@@ -9,7 +9,8 @@
 SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent), m_startHidden(false), m_windowWidth(1000),
       m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost(""),
-      m_selectedBuildHost(""), m_selectedSwitchHost(""), m_settingsVersion(0) {
+      m_selectedBuildHost(""), m_selectedSwitchHost(""), m_maxStoredLogs(10),
+      m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -179,6 +180,30 @@ void SettingsManager::setSelectedSwitchHost(const QString &host) {
   }
 }
 
+void SettingsManager::setMaxStoredLogs(int count) {
+  if (m_maxStoredLogs != count && count >= 0) {
+    m_maxStoredLogs = count;
+    saveSettings();
+    emit maxStoredLogsChanged();
+    qDebug() << "Max stored logs changed to:" << count;
+  }
+}
+
+QString SettingsManager::getLogDirectory() const {
+  QString dataPath =
+      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+  QString logDir = dataPath + "/logs";
+
+  // Create log directory if it doesn't exist
+  QDir dir;
+  if (!dir.exists(logDir)) {
+    dir.mkpath(logDir);
+    qDebug() << "Created log directory:" << logDir;
+  }
+
+  return logDir;
+}
+
 bool SettingsManager::autostartEnabled() const { return autostartFileExists(); }
 
 void SettingsManager::setAutostartEnabled(bool enabled) {
@@ -338,6 +363,9 @@ void SettingsManager::loadSettings() {
   m_selectedSwitchHost =
       settings.value("General/SelectedSwitchHost", "").toString();
 
+  // Load max stored logs
+  m_maxStoredLogs = settings.value("General/MaxStoredLogs", 10).toInt();
+
   qDebug() << "Loaded settings version:" << oldVersion;
   qDebug() << "Current settings version:" << m_settingsVersion;
   qDebug() << "Loaded start hidden setting:" << m_startHidden;
@@ -380,6 +408,9 @@ void SettingsManager::saveSettings() {
   // Save selected hosts
   settings.setValue("General/SelectedBuildHost", m_selectedBuildHost);
   settings.setValue("General/SelectedSwitchHost", m_selectedSwitchHost);
+
+  // Save max stored logs
+  settings.setValue("General/MaxStoredLogs", m_maxStoredLogs);
 
   settings.sync();
 }
