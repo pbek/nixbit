@@ -18,13 +18,16 @@ QVariantList LogManager::logFiles() const {
     map["timestamp"] = entry.timestamp;
     map["displayName"] = entry.displayName;
     map["exitCode"] = entry.exitCode;
+    map["buildType"] = entry.buildType;
+    map["fileSize"] = entry.fileSize;
     result.append(map);
   }
   return result;
 }
 
 void LogManager::saveLog(const QString &output, int exitCode,
-                         const QString &logDir, int maxLogs) {
+                         const QString &logDir, int maxLogs,
+                         const QString &buildType) {
   if (output.isEmpty()) {
     qDebug() << "Not saving empty log";
     return;
@@ -39,11 +42,11 @@ void LogManager::saveLog(const QString &output, int exitCode,
     }
   }
 
-  // Generate filename with timestamp
+  // Generate filename with timestamp and build type
   QString timestamp =
       QDateTime::currentDateTime().toString("yyyy-MM-dd_HH-mm-ss");
   QString fileName =
-      QString("build_%1_exit%2.log").arg(timestamp).arg(exitCode);
+      QString("%1_%2_exit%3.log").arg(buildType).arg(timestamp).arg(exitCode);
   QString filePath = logDir + "/" + fileName;
 
   // Write log file
@@ -122,39 +125,52 @@ QList<LogEntry> LogManager::parseLogFiles(const QString &logDir) {
 
   // Get all .log files
   QStringList filters;
-  filters << "build_*.log";
+  filters << "*.log";
   QFileInfoList fileList =
       dir.entryInfoList(filters, QDir::Files, QDir::Time | QDir::Reversed);
 
-  // Parse each log file
-  QRegularExpression filenamePattern(
+  // Parse each log file - support both formats with and without build type
+  QRegularExpression patternWithBuildType(
+      R"((build|switch)_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_exit(\d+)\.log)");
+  QRegularExpression patternLegacyFormat(
       R"(build_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_exit(\d+)\.log)");
 
   for (const QFileInfo &fileInfo : fileList) {
     LogEntry entry;
     entry.fileName = fileInfo.fileName();
     entry.filePath = fileInfo.absoluteFilePath();
+    entry.fileSize = fileInfo.size();
 
-    QRegularExpressionMatch match = filenamePattern.match(entry.fileName);
+    // Try pattern with build type first
+    QRegularExpressionMatch match = patternWithBuildType.match(entry.fileName);
     if (match.hasMatch()) {
-      QString timestampStr = match.captured(1);
+      entry.buildType = match.captured(1);
+      QString timestampStr = match.captured(2);
       entry.timestamp =
           QDateTime::fromString(timestampStr, "yyyy-MM-dd_HH-mm-ss");
-      entry.exitCode = match.captured(2).toInt();
+      entry.exitCode = match.captured(3).toInt();
 
       // Create display name
-      QString exitStatus =
-          entry.exitCode == 0 ? "Success"
-                              : QString("Failed (exit %1)").arg(entry.exitCode);
-      entry.displayName =
-          QString("%1 - %2")
-              .arg(entry.timestamp.toString("yyyy-MM-dd HH:mm:ss"))
-              .arg(exitStatus);
+      entry.displayName = entry.timestamp.toString("yyyy-MM-dd HH:mm:ss");
     } else {
-      // Fallback for files that don't match the pattern
-      entry.timestamp = fileInfo.lastModified();
-      entry.exitCode = -1;
-      entry.displayName = entry.fileName;
+      // Try legacy format (without build type prefix)
+      match = patternLegacyFormat.match(entry.fileName);
+      if (match.hasMatch()) {
+        entry.buildType = "build"; // Default to "build" for legacy logs
+        QString timestampStr = match.captured(1);
+        entry.timestamp =
+            QDateTime::fromString(timestampStr, "yyyy-MM-dd_HH-mm-ss");
+        entry.exitCode = match.captured(2).toInt();
+
+        // Create display name
+        entry.displayName = entry.timestamp.toString("yyyy-MM-dd HH:mm:ss");
+      } else {
+        // Fallback for files that don't match any pattern
+        entry.timestamp = fileInfo.lastModified();
+        entry.exitCode = -1;
+        entry.buildType = "unknown";
+        entry.displayName = entry.fileName;
+      }
     }
 
     entries.append(entry);

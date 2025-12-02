@@ -2,6 +2,12 @@
 
 ## 0.5.1
 
+- **Enhanced build logs display**
+  - Logs now show whether the build was done using "build" or "switch" mode
+  - Added build type badge (BUILD/SWITCH) in the logs dialog for quick identification
+  - Display file size for each log (formatted in B, KB, MB, or GB)
+  - Log filenames now include build type for better organization
+  - Legacy log files (without build type) are still supported and default to "build" mode
 - **Added keyboard shortcuts for terminal output**
   - `Ctrl+C` to copy selected text
   - `Ctrl+A` to select all terminal output

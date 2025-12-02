@@ -11,6 +11,18 @@ Dialog {
     modal: true
     standardButtons: Dialog.Close
 
+    // Helper function to format file size
+    function formatFileSize(bytes) {
+        if (bytes < 1024)
+            return bytes + " B";
+        else if (bytes < 1024 * 1024)
+            return (bytes / 1024).toFixed(1) + " KB";
+        else if (bytes < 1024 * 1024 * 1024)
+            return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+        else
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+    }
+
     onAboutToShow: {
         if (logManager && settingsManager) {
             logManager.refreshLogs(settingsManager.getLogDirectory());
@@ -70,12 +82,35 @@ Dialog {
                             Layout.preferredWidth: 30
                         }
 
+                        // Build type badge
+                        Label {
+                            text: modelData.buildType ? modelData.buildType.toUpperCase() : "BUILD"
+                            font.pixelSize: 10
+                            font.bold: true
+                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.backgroundColor
+                            padding: 4
+                            background: Rectangle {
+                                color: delegateItem.hovered ? Kirigami.Theme.highlightColor : (modelData.buildType === "switch" ? Kirigami.Theme.focusColor : Kirigami.Theme.neutralTextColor)
+                                radius: 3
+                            }
+                            Layout.preferredWidth: 55
+                        }
+
                         // Timestamp
                         Label {
                             text: modelData.displayName
                             font.pixelSize: 14
                             Layout.fillWidth: true
                             color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+                        }
+
+                        // File size
+                        Label {
+                            text: logsDialog.formatFileSize(modelData.fileSize || 0)
+                            font.pixelSize: 12
+                            font.italic: true
+                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.disabledTextColor
+                            Layout.preferredWidth: 70
                         }
 
                         // Status text

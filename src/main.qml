@@ -15,6 +15,9 @@ ApplicationWindow {
     // Property to track if we're in a chained build-then-switch operation
     property bool isChainedBuildSwitch: false
 
+    // Property to track the current rebuild mode (for logging purposes)
+    property string currentRebuildMode: "build"
+
     // Save window size when it changes
     onWidthChanged: {
         if (settingsManager && width > 0) {
@@ -907,8 +910,10 @@ ApplicationWindow {
 
             // Use the C++ methods to run the commands
             if (rebuildMode === "switch") {
+                root.currentRebuildMode = "switch";
                 processManager.runNixosRebuildSwitch(repoPath, hostname, buildHost);
             } else {
+                root.currentRebuildMode = "build";
                 processManager.runNixosRebuildBuild(repoPath, hostname, buildHost);
             }
         }
@@ -933,7 +938,8 @@ ApplicationWindow {
             if (logManager && settingsManager && output.length > 0) {
                 var logDir = settingsManager.getLogDirectory();
                 var maxLogs = settingsManager.maxStoredLogs;
-                logManager.saveLog(output, exitCode, logDir, maxLogs);
+                var buildType = root.currentRebuildMode;
+                logManager.saveLog(output, exitCode, logDir, maxLogs, buildType);
             }
 
             // Handle chained build-switch operation
@@ -962,6 +968,7 @@ ApplicationWindow {
                     }
 
                     // Use C++ method to run switch
+                    root.currentRebuildMode = "switch";
                     processManager.runNixosRebuildSwitch(repoPath, hostname, switchHost);
 
                     // After switch completes, refresh generations
