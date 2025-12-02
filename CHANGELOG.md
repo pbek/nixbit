@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## 0.5.2
+
+- **Fixed build success message display**
+  - Build logs now show the complete "Done. The new configuration is..." message including the full Nix store path
+  - Previously the path was being cut off after "Done. The new configuration is "
+
 ## 0.5.1
 
 - **Enhanced build logs display**

@@ -4,7 +4,7 @@
 OutputHighlighter::OutputHighlighter(QObject *parent) : QObject(parent) {
   // Pre-compile all regex patterns for better performance
   m_successPattern.setPattern(
-      "✓|Done\\. The new configuration is|Process finished with exit code: "
+      "✓|Done\\. The new configuration is.*|Process finished with exit code: "
       "0|successfully|Success|completed successfully|Build succeeded");
   m_successPattern.setPatternOptions(QRegularExpression::CaseInsensitiveOption);
 
