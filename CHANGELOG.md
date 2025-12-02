@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 0.5.1
+
+- **Added keyboard shortcuts for terminal output**
+  - `Ctrl+C` to copy selected text
+  - `Ctrl+A` to select all terminal output
+  - Shortcuts are displayed in the context menu
+
 ## 0.5.0
 
 - **Fixed critical memory issue** - Application could consume a lot of RAM and

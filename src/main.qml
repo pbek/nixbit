@@ -747,6 +747,7 @@ ApplicationWindow {
                                     readOnly: true
                                     selectByMouse: true
                                     selectByKeyboard: true
+                                    focus: true
 
                                     property string cachedOutput: ""
                                     property string cachedHighlightedOutput: ""
@@ -786,16 +787,22 @@ ApplicationWindow {
                                         id: contextMenu
 
                                         MenuItem {
-                                            text: "Copy"
-                                            icon.name: "edit-copy"
-                                            enabled: terminalText.selectedText.length > 0
-                                            onTriggered: terminalText.copy()
+                                            action: Action {
+                                                text: "Copy"
+                                                icon.name: "edit-copy"
+                                                shortcut: StandardKey.Copy
+                                                enabled: terminalText.selectedText.length > 0
+                                                onTriggered: terminalText.copy()
+                                            }
                                         }
 
                                         MenuItem {
-                                            text: "Select All"
-                                            icon.name: "edit-select-all"
-                                            onTriggered: terminalText.selectAll()
+                                            action: Action {
+                                                text: "Select All"
+                                                icon.name: "edit-select-all"
+                                                shortcut: StandardKey.SelectAll
+                                                onTriggered: terminalText.selectAll()
+                                            }
                                         }
 
                                         MenuSeparator {}
