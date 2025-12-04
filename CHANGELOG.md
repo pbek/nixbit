@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 0.5.3
+
+- **Fixed "Build & Switch" to update git repository first**
+  - "Build & Switch" now pulls from the git repository before building, just like "Build System" and "Update System" do
+  - Ensures all operations work with the latest code from the repository
+  - Maintains consistency across all update operations
+
 ## 0.5.2
 
 - **Fixed build success message display**

@@ -412,29 +412,14 @@ ApplicationWindow {
                     ToolTip.visible: hovered
                     ToolTip.text: "Run build first (with build host), then switch (with switch host) if successful"
                     onClicked: {
-                        if (!settingsManager || !gitManager || !processManager)
+                        if (!gitManager)
                             return;
 
                         // Set the flag to indicate we're doing a chained operation
                         root.isChainedBuildSwitch = true;
 
-                        var hostname = settingsManager.hostname;
-                        var repoPath = gitManager.localPath;
-
-                        // Get the build host for the build phase
-                        var selectedBuildHost = settingsManager.selectedBuildHost;
-                        var buildHost = "";
-
-                        if (selectedBuildHost && selectedBuildHost !== "" && selectedBuildHost !== "(local)") {
-                            buildHost = settingsManager.getBuildHostAddress(selectedBuildHost);
-                        }
-
-                        messageBox.text = "Starting build phase...";
-                        messageBox.type = Kirigami.MessageType.Information;
-                        messageBox.visible = true;
-
-                        // Use C++ method to run build
-                        processManager.runNixosRebuildBuild(repoPath, hostname, buildHost);
+                        // First pull the repository, then build and switch
+                        gitManager.pullRepository();
                     }
                     Layout.fillWidth: true
                 }
@@ -897,24 +882,45 @@ ApplicationWindow {
 
             var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
-            var rebuildMode = rebuildModeComboBox.currentText;
 
-            // Get the selected build host based on the current mode
-            var selectedHost = rebuildMode === "build" ? settingsManager.selectedBuildHost : settingsManager.selectedSwitchHost;
-            var buildHost = "";
+            // Check if we're doing a chained build-switch operation
+            if (root.isChainedBuildSwitch) {
+                // Get the build host for the build phase
+                var selectedBuildHost = settingsManager.selectedBuildHost;
+                var buildHost = "";
 
-            // If a host is selected, get its address
-            if (selectedHost && selectedHost !== "" && selectedHost !== "(local)") {
-                buildHost = settingsManager.getBuildHostAddress(selectedHost);
-            }
+                if (selectedBuildHost && selectedBuildHost !== "" && selectedBuildHost !== "(local)") {
+                    buildHost = settingsManager.getBuildHostAddress(selectedBuildHost);
+                }
 
-            // Use the C++ methods to run the commands
-            if (rebuildMode === "switch") {
-                root.currentRebuildMode = "switch";
-                processManager.runNixosRebuildSwitch(repoPath, hostname, buildHost);
-            } else {
+                messageBox.text = "Starting build phase...";
+                messageBox.type = Kirigami.MessageType.Information;
+                messageBox.visible = true;
+
+                // Use C++ method to run build
                 root.currentRebuildMode = "build";
                 processManager.runNixosRebuildBuild(repoPath, hostname, buildHost);
+            } else {
+                // Normal single operation
+                var rebuildMode = rebuildModeComboBox.currentText;
+
+                // Get the selected build host based on the current mode
+                var selectedHost = rebuildMode === "build" ? settingsManager.selectedBuildHost : settingsManager.selectedSwitchHost;
+                var buildHost = "";
+
+                // If a host is selected, get its address
+                if (selectedHost && selectedHost !== "" && selectedHost !== "(local)") {
+                    buildHost = settingsManager.getBuildHostAddress(selectedHost);
+                }
+
+                // Use the C++ methods to run the commands
+                if (rebuildMode === "switch") {
+                    root.currentRebuildMode = "switch";
+                    processManager.runNixosRebuildSwitch(repoPath, hostname, buildHost);
+                } else {
+                    root.currentRebuildMode = "build";
+                    processManager.runNixosRebuildBuild(repoPath, hostname, buildHost);
+                }
             }
         }
     }
