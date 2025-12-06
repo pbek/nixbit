@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 0.5.4
+
+- **Fixed log file cleanup bug**
+  - Log files are now properly retained instead of being immediately deleted after creation
+  - The cleanup function was incorrectly deleting the newest logs instead of the oldest ones
+  - Now correctly maintains the configured number of log files (default: 10)
+
 ## 0.5.3
 
 - **Fixed "Build & Switch" to update git repository first**

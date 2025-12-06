@@ -104,11 +104,13 @@ void LogManager::cleanupOldLogs(const QString &logDir, int maxLogs) {
   QList<LogEntry> logs = parseLogFiles(logDir);
 
   // If we have more logs than the limit, delete the oldest ones
+  // Note: logs are sorted newest first, so delete from the end
   if (logs.size() > maxLogs) {
     int logsToDelete = logs.size() - maxLogs;
     qDebug() << "Cleaning up" << logsToDelete << "old log(s)";
 
-    for (int i = 0; i < logsToDelete; ++i) {
+    // Delete from the end of the list (oldest logs)
+    for (int i = logs.size() - logsToDelete; i < logs.size(); ++i) {
       QFile::remove(logs[i].filePath);
       qDebug() << "Deleted old log:" << logs[i].filePath;
     }
