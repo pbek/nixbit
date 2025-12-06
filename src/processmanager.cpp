@@ -338,8 +338,10 @@ void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
       "echo \"Cleaning up temporary repository...\"\n"
       "rm -rf $TEMP_REPO\n";
 
+  // Use a subshell to ensure cleanup happens but exit code is preserved
   QString cmd = "printf '%1' > " + tempScript + " && chmod +x " + tempScript +
-                " && pkexec " + tempScript + " ; rm -f " + tempScript;
+                " && (pkexec " + tempScript + "; EXIT_CODE=$?; rm -f " +
+                tempScript + "; exit $EXIT_CODE)";
 
   runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
 }

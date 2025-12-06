@@ -6,6 +6,10 @@
   - Log files are now properly retained instead of being immediately deleted after creation
   - The cleanup function was incorrectly deleting the newest logs instead of the oldest ones
   - Now correctly maintains the configured number of log files (default: 10)
+- **Fixed exit code handling when password prompt is cancelled**
+  - When cancelling the password prompt during a "switch" operation, the process now correctly reports a non-zero exit code
+  - Previously, the cleanup command would mask the failure, making cancelled operations appear successful (exit code 0)
+  - Now properly preserves the pkexec exit code while still cleaning up temporary files
 
 ## 0.5.3
 
