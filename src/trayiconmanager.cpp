@@ -7,9 +7,9 @@
 #include <QPainterPath>
 #include <QPixmap>
 
-TrayIconManager::TrayIconManager(QObject *parent)
+TrayIconManager::TrayIconManager(bool debugMode, QObject *parent)
     : QObject(parent), m_trayIcon(nullptr), m_trayMenu(nullptr),
-      m_currentCommitsBehind(0) {
+      m_currentCommitsBehind(0), m_debugMode(debugMode) {
   createTrayIcon();
 }
 
@@ -62,13 +62,16 @@ void TrayIconManager::updateIcon(int commitsBehind) {
            << commitsBehind;
   QPixmap pixmap;
 
+  QString debugSuffix = m_debugMode ? " (Debug Mode)" : "";
+
   if (commitsBehind > 0) {
     // Create icon showing updates available (orange/yellow theme)
     qDebug() << "Creating update available icon for" << commitsBehind
              << "commits";
     pixmap = createUpdateAvailableIcon(commitsBehind);
-    m_trayIcon->setToolTip(
-        QString("Nixbit - %1 update(s) available").arg(commitsBehind));
+    m_trayIcon->setToolTip(QString("Nixbit - %1 update(s) available%2")
+                               .arg(commitsBehind)
+                               .arg(debugSuffix));
 
     // Show a notification if commits behind increased
     if (commitsBehind > m_currentCommitsBehind && m_currentCommitsBehind >= 0) {
@@ -82,12 +85,14 @@ void TrayIconManager::updateIcon(int commitsBehind) {
     // Create icon showing system is up to date (green theme)
     qDebug() << "Creating up-to-date icon";
     pixmap = createUpToDateIcon();
-    m_trayIcon->setToolTip("Nixbit - System up to date");
+    m_trayIcon->setToolTip(
+        QString("Nixbit - System up to date%1").arg(debugSuffix));
   } else {
     // Unknown state or error
     qDebug() << "Creating default/unknown icon";
     pixmap = createDefaultIcon();
-    m_trayIcon->setToolTip("Nixbit - Repository status unknown");
+    m_trayIcon->setToolTip(
+        QString("Nixbit - Repository status unknown%1").arg(debugSuffix));
   }
 
   qDebug() << "Setting tray icon, pixmap size:" << pixmap.size()
@@ -100,6 +105,7 @@ void TrayIconManager::updateIcon(int commitsBehind) {
 
 QPixmap TrayIconManager::createDefaultIcon() {
   // Create a neutral gray/blue icon (like system-software-update)
+  // In debug mode, use purple/magenta tones
   QPixmap pixmap(48, 48);
   pixmap.fill(Qt::transparent);
 
@@ -107,15 +113,20 @@ QPixmap TrayIconManager::createDefaultIcon() {
   painter.setRenderHint(QPainter::Antialiasing);
 
   // Draw a downward arrow in a circle (update symbol)
-  QPen pen(QColor(100, 100, 120), 3);
+  QColor penColor = m_debugMode ? QColor(150, 80, 150) : QColor(100, 100, 120);
+  QColor fillColor =
+      m_debugMode ? QColor(230, 200, 230) : QColor(220, 220, 230);
+  QColor arrowColor = m_debugMode ? QColor(120, 60, 120) : QColor(80, 80, 100);
+
+  QPen pen(penColor, 3);
   painter.setPen(pen);
-  painter.setBrush(QBrush(QColor(220, 220, 230)));
+  painter.setBrush(QBrush(fillColor));
 
   // Circle
   painter.drawEllipse(4, 4, 40, 40);
 
   // Arrow pointing down
-  painter.setBrush(QBrush(QColor(80, 80, 100)));
+  painter.setBrush(QBrush(arrowColor));
   painter.setPen(Qt::NoPen);
 
   // Arrow shaft
@@ -131,16 +142,20 @@ QPixmap TrayIconManager::createDefaultIcon() {
 
 QPixmap TrayIconManager::createUpToDateIcon() {
   // Create a green checkmark icon (system is up to date)
+  // In debug mode, use cyan/blue tones
   QPixmap pixmap(48, 48);
   pixmap.fill(Qt::transparent);
 
   QPainter painter(&pixmap);
   painter.setRenderHint(QPainter::Antialiasing);
 
-  // Draw a green circle background
-  QPen pen(QColor(40, 150, 60), 2);
+  // Draw a green circle background (cyan in debug mode)
+  QColor penColor = m_debugMode ? QColor(40, 120, 180) : QColor(40, 150, 60);
+  QColor fillColor = m_debugMode ? QColor(80, 180, 230) : QColor(100, 200, 120);
+
+  QPen pen(penColor, 2);
   painter.setPen(pen);
-  painter.setBrush(QBrush(QColor(100, 200, 120)));
+  painter.setBrush(QBrush(fillColor));
   painter.drawEllipse(4, 4, 40, 40);
 
   // Draw checkmark
@@ -159,16 +174,20 @@ QPixmap TrayIconManager::createUpToDateIcon() {
 
 QPixmap TrayIconManager::createUpdateAvailableIcon(int count) {
   // Create an orange/amber icon with update count (updates available)
+  // In debug mode, use orange-red/coral tones
   QPixmap pixmap(48, 48);
   pixmap.fill(Qt::transparent);
 
   QPainter painter(&pixmap);
   painter.setRenderHint(QPainter::Antialiasing);
 
-  // Draw orange circle background
-  QPen pen(QColor(220, 130, 20), 2);
+  // Draw orange circle background (darker orange in debug mode)
+  QColor penColor = m_debugMode ? QColor(180, 70, 20) : QColor(220, 130, 20);
+  QColor fillColor = m_debugMode ? QColor(220, 100, 40) : QColor(255, 160, 50);
+
+  QPen pen(penColor, 2);
   painter.setPen(pen);
-  painter.setBrush(QBrush(QColor(255, 160, 50)));
+  painter.setBrush(QBrush(fillColor));
   painter.drawEllipse(4, 4, 40, 40);
 
   // Draw downward arrow (update symbol)
@@ -185,8 +204,9 @@ QPixmap TrayIconManager::createUpdateAvailableIcon(int count) {
 
   // Draw count badge if more than 1 update
   if (count > 1) {
-    // Red notification badge in top-right corner
-    painter.setBrush(QBrush(QColor(220, 50, 50)));
+    // Red notification badge in top-right corner (darker red in debug mode)
+    QColor badgeColor = m_debugMode ? QColor(200, 50, 50) : QColor(220, 50, 50);
+    painter.setBrush(QBrush(badgeColor));
     painter.setPen(QPen(Qt::white, 1.5));
     painter.drawEllipse(28, 0, 20, 20);
 

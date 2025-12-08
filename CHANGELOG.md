@@ -6,6 +6,12 @@
   - Generations list now properly refreshes after completing a "Build & Switch" operation
   - Fixed issue where the generation check was using combo box value instead of actual operation mode
   - Ensures the generations dialog shows the newly created generation immediately
+- **Enhanced debug mode visibility**
+  - Tray icons now use different colors in debug mode for easier identification
+    - Up-to-date icon: cyan/blue instead of green
+    - Updates available icon: darker orange instead of bright orange
+    - Unknown status icon: purple/magenta instead of gray/blue
+  - Tooltip now indicates "(Debug Mode)" when running with `--debug` flag
 
 ## 0.5.4
 

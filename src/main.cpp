@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
   engine.rootContext()->setContextProperty("processManager", &processManager);
 
   // Create and register TrayIconManager
-  TrayIconManager trayIconManager;
+  TrayIconManager trayIconManager(debugMode);
   engine.rootContext()->setContextProperty("trayIconManager", &trayIconManager);
 
   // Create and register SettingsManager

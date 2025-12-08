@@ -11,7 +11,7 @@ class TrayIconManager : public QObject {
   Q_OBJECT
 
 public:
-  explicit TrayIconManager(QObject *parent = nullptr);
+  explicit TrayIconManager(bool debugMode = false, QObject *parent = nullptr);
   ~TrayIconManager();
 
   void setCommitsBehind(int count);
@@ -41,6 +41,7 @@ private:
   QAction *m_pullAction;
   QAction *m_quitAction;
   int m_currentCommitsBehind;
+  bool m_debugMode;
 };
 
 #endif // TRAYICONMANAGER_H
