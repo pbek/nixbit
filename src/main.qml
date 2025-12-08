@@ -934,7 +934,8 @@ ApplicationWindow {
             }
             // Refresh generations when process completes (in case a new generation was created)
             // Only refresh after switch mode since build mode doesn't create a new generation
-            if (!processManager.isRunning && generationManager && rebuildModeComboBox.currentText === "switch") {
+            // Use currentRebuildMode to check actual operation type (handles Build & Switch correctly)
+            if (!processManager.isRunning && generationManager && root.currentRebuildMode === "switch") {
                 generationManager.loadGenerations();
             }
         }
@@ -976,11 +977,6 @@ ApplicationWindow {
                     // Use C++ method to run switch
                     root.currentRebuildMode = "switch";
                     processManager.runNixosRebuildSwitch(repoPath, hostname, switchHost);
-
-                    // After switch completes, refresh generations
-                    if (generationManager) {
-                        generationManager.loadGenerations();
-                    }
                 } else {
                     // Build failed, reset the flag
                     root.isChainedBuildSwitch = false;

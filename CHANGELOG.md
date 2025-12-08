@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 0.5.5
+
+- **Fixed generation refresh after "Build & Switch"**
+  - Generations list now properly refreshes after completing a "Build & Switch" operation
+  - Fixed issue where the generation check was using combo box value instead of actual operation mode
+  - Ensures the generations dialog shows the newly created generation immediately
+
 ## 0.5.4
 
 - **Fixed log file cleanup bug**
