@@ -227,6 +227,9 @@ See [LICENSE.md](LICENSE.md) for details.
 
 This is an early-stage project. Contributions are welcome!
 
+> [!NOTE]
+> This project was developed with AI assistance.
+
 ---
 
 Built with ❤️ for the NixOS community
