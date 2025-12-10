@@ -102,21 +102,30 @@ When the module is enabled, it:
 ### 📦 Repository Management
 
 - **Repository URL Configuration**: Input field for Git repository URLs with confirmation dialog for changes
-- **Local Repository Management**: Local path displayed in Settings Dialog, delete repository with safety checks and confirmation, open terminal in repository directory
+- **Local Repository Management**: Local path displayed in Settings Dialog, delete repository with safety checks and confirmation
+- **Repository Quick Access**: "Open in file manager" and "Open terminal" buttons for direct access to repository folder (supports multiple terminal emulators: konsole, gnome-terminal, xfce4-terminal, alacritty, kitty, ghostty, xterm)
 - **Status Monitoring**: Real-time display of repository status, commits behind, and busy indicators
 - **Auto-fetch Interval**: Configurable automatic fetch interval in minutes
-- **Network Resilience**: Waits for network availability after system resume before checking for updates
+- **Network Resilience**: Waits for network availability after system resume before checking for updates (10-second timeout)
 - **Smart Refresh**: Automatically checks for repository updates when window becomes visible or is unhidden
+- **Commit History Viewer**: "View Commits" button displays all available updates with detailed information
+  - Short SHA hash (7 characters, monospace font)
+  - Commit author name and message
+  - Relative time (e.g., "2 hours ago") and full timestamp
+  - Clickable commit hashes for GitHub repositories (opens commit page in browser)
+  - Manual refresh capability
 
 ### 🚀 System Update
 
-- **Hostname Configuration**: Input field for NixOS system hostname
+- **Hostname Configuration**: Input field for NixOS system hostname with automatic sanitization
 - **Rebuild Mode Selection**: Choose between 'build' (no activation) and 'switch' (build and activate) modes with descriptive explanations
-- **Build Host Management**: Configure multiple build hosts with friendly names and SSH addresses
+- **Build Host Management**: Configure multiple build hosts with friendly names and SSH addresses in Settings Dialog
 - **Build Host Selection**: Choose between local or remote build hosts for each rebuild mode independently
+- **Dynamic Button Labels**: Main action button reflects selected mode ("Build System" or "Switch System")
+- **Build & Switch**: Chain build and switch operations - builds remotely first, then switches locally if successful
 - **Update System**: One-click button to pull repository updates and rebuild the system
 - **Check for Updates**: Button to manually check for repository updates
-- **Process Control**: Pause and resume system update processes during builds
+- **Process Control**: Pause and resume system update processes during builds (hidden in switch mode due to sudo limitations)
 
 ### 📊 System Monitoring
 
@@ -131,25 +140,41 @@ When the module is enabled, it:
 - **Modern KDE Integration**: Built with Kirigami for native KDE Plasma look and feel
 - **Menu Bar**: File menu with Quit option, Tools menu with Check for Updates
 - **Action Buttons**: Quick access to system update and update check operations
-- **Terminal Output Panel**: Real-time command output display with syntax highlighting and clear/kill process buttons
+- **Terminal Output Panel**: Real-time command output display with syntax highlighting and interactive features
   - Success messages highlighted in green (e.g., "Done. The new configuration is", "Process finished with exit code: 0")
   - Error messages highlighted in red and bold (e.g., "error:", "failed", non-zero exit codes)
   - Warning messages highlighted in yellow/orange
   - Build activity messages highlighted in cyan (e.g., "building", "copying", "evaluating")
   - Process status markers highlighted in magenta and bold (e.g., "=== Process finished ===")
+  - Text selection with mouse and keyboard (Ctrl+C to copy, Ctrl+A to select all)
+  - Right-click context menu with Copy, Select All, and Deselect options
+  - Output buffer limiting (last 5,000 lines by default, configurable 500-20,000) to prevent memory issues
+  - Clear and kill process buttons
+- **Build Logs Management**: "View Logs" button to access past build logs
+  - Stores last 10 build logs by default (configurable 0-100, 0 = unlimited)
+  - Shows timestamp, build type (BUILD/SWITCH), exit status, and file size
+  - Open logs in default editor or delete with confirmation
+  - Logs stored in `~/.local/share/nixbit/logs/` directory
 - **Build Status Messages**: Clear feedback after builds
   - Green success message ("✓ Build completed successfully!") when exit code is 0
   - Red error message with exit code ("✗ Build failed with exit code N") when build fails
   - Messages persist until dismissed or next action
 - **Progress Indicators**: Progress bar for cloning operations and busy indicators for ongoing tasks
 - **System Tray Support**: Option to start the application hidden in the system tray
+  - Tray icon reflects update status (up-to-date, updates available, unknown)
+  - Debug mode uses different colors for easier identification (cyan, darker orange, purple)
 - **Autostart Option**: Checkbox to create or remove autostart desktop entry
-- **Settings Dialog**: Dedicated dialog for configuring build hosts, autostart, local path display, and other settings
+- **Settings Dialog**: KDE System Settings-style interface with vertical category menu
+  - Categories: General, Performance, Repository, Build Hosts
+  - Split-view layout (900x600) for better organization
+  - Performance settings: Max Terminal Lines (500-20,000), Max Stored Logs (0-100)
+  - Repository settings: Local path display with delete option
+  - Build Hosts: Create, update, delete host configurations with inline editing
 - **Confirmation Dialogs**: Safety prompts for deleting repositories and changing URLs
 - **Status Notifications**: Inline messages for operation results and errors
 - **Window State Persistence**: Window size and position remembered across sessions
 - **Automatic Data Refresh**: When window becomes visible, automatically checks for repository updates and refreshes generations list
-- **Debug Mode**: `--debug` CLI argument for testing with separate settings directory
+- **Debug Mode**: `--debug` CLI argument for testing with separate settings directory and default build mode
 
 ## 🛠️ Technology Stack
 
