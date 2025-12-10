@@ -21,7 +21,10 @@ nix run github:pbek/nixbit
 > nix run github:pbek/nixbit --override-input nixpkgs nixpkgs
 > ```
 
-![Nixbit Screenshot](nixbit.webp)
+![Nixbit Screenshot Mainwindow](screenshots/mainwindow.webp)
+
+> [!NOTE]
+> See more [screenshots](screenshots/README.md) showcasing the system monitor and settings dialog.
 
 There also is a **NixOS Module** to allow the configuration of the Git repository,
 so you can preset it for all systems in your fleet.
