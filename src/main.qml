@@ -718,10 +718,22 @@ ApplicationWindow {
                                 contentHeight: terminalText.height
                                 boundsBehavior: Flickable.StopAtBounds
 
+                                property bool autoScroll: true
+
                                 function scrollToBottom() {
                                     if (contentHeight > height) {
                                         contentY = contentHeight - height;
                                     }
+                                }
+
+                                function isAtBottom() {
+                                    // Consider "at bottom" if within 50 pixels of the bottom
+                                    return contentHeight <= height || contentY >= (contentHeight - height - 50);
+                                }
+
+                                onContentYChanged: {
+                                    // Update autoScroll based on user's scroll position
+                                    autoScroll = isAtBottom();
                                 }
 
                                 TextEdit {
@@ -760,7 +772,10 @@ ApplicationWindow {
                                     }
 
                                     onTextChanged: {
-                                        Qt.callLater(terminalFlickable.scrollToBottom);
+                                        // Only auto-scroll if user hasn't scrolled up
+                                        if (terminalFlickable.autoScroll) {
+                                            Qt.callLater(terminalFlickable.scrollToBottom);
+                                        }
                                     }
 
                                     MouseArea {
@@ -803,6 +818,25 @@ ApplicationWindow {
                                     }
                                 }
                             }
+                        }
+
+                        // Scroll to bottom button (appears when scrolled up)
+                        Button {
+                            id: scrollToBottomButton
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.rightMargin: 10
+                            anchors.bottomMargin: 10
+                            visible: !terminalFlickable.autoScroll
+                            icon.name: "go-down"
+                            text: "Scroll to Bottom"
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Jump to the bottom of the log output"
+                            onClicked: {
+                                terminalFlickable.scrollToBottom();
+                                terminalFlickable.autoScroll = true;
+                            }
+                            z: 10
                         }
                     }
 

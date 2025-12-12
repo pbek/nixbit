@@ -1,5 +1,13 @@
 # Nixbit Changelog
 
+## 0.5.6
+
+- **Improved terminal output scrolling behavior**
+  - Terminal output no longer forces auto-scroll when users scroll up to read earlier logs
+  - Added "Scroll to Bottom" button that appears when scrolled away from the bottom
+  - Auto-scroll intelligently resumes only when user is near the bottom (within 50 pixels)
+  - Allows reviewing earlier build output while a process is still running without interruption
+
 ## 0.5.5
 
 - **Fixed generation refresh after "Build & Switch"**
