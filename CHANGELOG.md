@@ -1,7 +1,15 @@
 # Nixbit Changelog
 
-## 0.5.6
+## 0.6.0
 
+- **Added search functionality for terminal output**
+  - Press `Ctrl+F` to open search bar and find text in terminal output
+  - Navigate between matches with `F3` (next) and `Shift+F3` (previous)
+  - Search bar shows current match position (e.g., "3/10")
+  - Use arrow keys (Up/Down) or Enter/Shift+Enter to navigate matches
+  - Press `Escape` to close the search bar
+  - Search automatically highlights matches and scrolls to them
+  - Case-insensitive search works with both plain text and syntax-highlighted output
 - **Improved terminal output scrolling behavior**
   - Terminal output no longer forces auto-scroll when users scroll up to read earlier logs
   - Added "Scroll to Bottom" button that appears when scrolled away from the bottom

@@ -62,6 +62,36 @@ ApplicationWindow {
         }
     }
 
+    // Keyboard shortcut for search (Ctrl+F)
+    Shortcut {
+        sequence: StandardKey.Find
+        onActivated: searchBar.show()
+    }
+
+    // Keyboard shortcut for Find Next (F3)
+    Shortcut {
+        sequence: "F3"
+        onActivated: {
+            if (searchBar.visible) {
+                searchBar.findNext();
+            } else {
+                searchBar.show();
+            }
+        }
+    }
+
+    // Keyboard shortcut for Find Previous (Shift+F3)
+    Shortcut {
+        sequence: "Shift+F3"
+        onActivated: {
+            if (searchBar.visible) {
+                searchBar.findPrevious();
+            } else {
+                searchBar.show();
+            }
+        }
+    }
+
     // Confirmation dialog for deleting local repository
     Kirigami.PromptDialog {
         id: deleteConfirmDialog
@@ -749,26 +779,12 @@ ApplicationWindow {
                                     selectByKeyboard: true
                                     focus: true
 
-                                    property string cachedOutput: ""
-                                    property string cachedHighlightedOutput: ""
-
                                     text: {
                                         if (!processManager || !processManager.output) {
-                                            cachedOutput = "";
-                                            cachedHighlightedOutput = "";
                                             return "";
                                         }
-
-                                        var currentOutput = processManager.output;
-
-                                        // Only re-highlight if output changed
-                                        if (currentOutput !== cachedOutput) {
-                                            cachedOutput = currentOutput;
-                                            // Use C++ highlighter for better performance
-                                            cachedHighlightedOutput = outputHighlighter ? outputHighlighter.highlight(currentOutput) : currentOutput;
-                                        }
-
-                                        return cachedHighlightedOutput;
+                                        // Use C++ highlighter for better performance
+                                        return outputHighlighter ? outputHighlighter.highlight(processManager.output) : processManager.output;
                                     }
 
                                     onTextChanged: {
@@ -837,6 +853,217 @@ ApplicationWindow {
                                 terminalFlickable.autoScroll = true;
                             }
                             z: 10
+                        }
+                    }
+
+                    // Search Bar (at bottom of log area)
+                    Rectangle {
+                        id: searchBar
+                        Layout.fillWidth: true
+                        height: 40
+                        visible: false
+                        color: Kirigami.Theme.backgroundColor
+                        border.color: Kirigami.Theme.separatorColor
+                        border.width: 1
+                        radius: 4
+
+                        property var searchMatches: []
+                        property int currentMatchIndex: -1
+                        property string plainTextCache: ""
+
+                        function getPlainText() {
+                            // Get plain text from the cached output (before HTML highlighting)
+                            if (processManager && processManager.output) {
+                                return processManager.output;
+                            }
+                            return "";
+                        }
+
+                        function findMatches(searchTerm) {
+                            var matches = [];
+                            if (!searchTerm || searchTerm.length === 0) {
+                                return matches;
+                            }
+                            var plainText = getPlainText();
+                            if (!plainText || plainText.length === 0) {
+                                return matches;
+                            }
+                            var lowerText = plainText.toLowerCase();
+                            var lowerSearch = searchTerm.toLowerCase();
+                            var pos = 0;
+                            while ((pos = lowerText.indexOf(lowerSearch, pos)) !== -1) {
+                                matches.push(pos);
+                                pos += searchTerm.length;
+                            }
+                            return matches;
+                        }
+
+                        function search() {
+                            var searchTerm = searchInput.text;
+                            if (!searchTerm || searchTerm.length === 0) {
+                                searchMatches = [];
+                                currentMatchIndex = -1;
+                                searchResultLabel.text = "";
+                                terminalText.deselect();
+                                return;
+                            }
+
+                            searchMatches = findMatches(searchTerm);
+
+                            if (searchMatches.length > 0) {
+                                currentMatchIndex = 0;
+                                highlightMatch();
+                                searchResultLabel.text = (currentMatchIndex + 1) + "/" + searchMatches.length;
+                            } else {
+                                currentMatchIndex = -1;
+                                searchResultLabel.text = "0/0";
+                                terminalText.deselect();
+                            }
+                        }
+
+                        function highlightMatch() {
+                            if (currentMatchIndex < 0 || currentMatchIndex >= searchMatches.length) {
+                                return;
+                            }
+                            var plainText = getPlainText();
+                            var pos = searchMatches[currentMatchIndex];
+                            var len = searchInput.text.length;
+
+                            // We need to find the position in the rich text that corresponds to
+                            // the plain text position. Since the highlighter wraps text in HTML,
+                            // we can't directly use plain text positions.
+                            // Instead, let's search in the actual TextEdit text (which is rendered plain)
+                            var displayText = terminalText.getText(0, terminalText.length);
+                            var searchTerm = searchInput.text.toLowerCase();
+
+                            // Find the nth occurrence in the display text
+                            var displayPos = -1;
+                            var searchPos = 0;
+                            for (var i = 0; i <= currentMatchIndex; i++) {
+                                displayPos = displayText.toLowerCase().indexOf(searchTerm, searchPos);
+                                if (displayPos === -1)
+                                    break;
+                                searchPos = displayPos + 1;
+                            }
+
+                            if (displayPos !== -1) {
+                                terminalText.select(displayPos, displayPos + len);
+
+                                // Scroll to make selection visible
+                                var lineHeight = terminalText.font.pixelSize * 1.5;
+                                var estimatedY = (displayPos / 80) * lineHeight;
+                                if (estimatedY > terminalFlickable.contentY + terminalFlickable.height || estimatedY < terminalFlickable.contentY) {
+                                    terminalFlickable.contentY = Math.max(0, estimatedY - terminalFlickable.height / 2);
+                                }
+                            }
+                        }
+
+                        function findNext() {
+                            if (searchMatches.length === 0) {
+                                search();
+                                return;
+                            }
+                            currentMatchIndex = (currentMatchIndex + 1) % searchMatches.length;
+                            highlightMatch();
+                            searchResultLabel.text = (currentMatchIndex + 1) + "/" + searchMatches.length;
+                        }
+
+                        function findPrevious() {
+                            if (searchMatches.length === 0) {
+                                search();
+                                return;
+                            }
+                            currentMatchIndex = (currentMatchIndex - 1 + searchMatches.length) % searchMatches.length;
+                            highlightMatch();
+                            searchResultLabel.text = (currentMatchIndex + 1) + "/" + searchMatches.length;
+                        }
+
+                        function show() {
+                            visible = true;
+                            searchInput.forceActiveFocus();
+                            searchInput.selectAll();
+                        }
+
+                        function hide() {
+                            visible = false;
+                            searchMatches = [];
+                            currentMatchIndex = -1;
+                            searchResultLabel.text = "";
+                            terminalText.deselect();
+                            terminalText.forceActiveFocus();
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 5
+                            spacing: 5
+
+                            Label {
+                                text: "Find:"
+                            }
+
+                            TextField {
+                                id: searchInput
+                                Layout.fillWidth: true
+                                placeholderText: "Search..."
+                                onTextChanged: searchBar.search()
+
+                                Keys.onPressed: function (event) {
+                                    if (event.key === Qt.Key_Escape) {
+                                        searchBar.hide();
+                                        event.accepted = true;
+                                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                        if (event.modifiers & Qt.ShiftModifier) {
+                                            searchBar.findPrevious();
+                                        } else {
+                                            searchBar.findNext();
+                                        }
+                                        event.accepted = true;
+                                    } else if (event.key === Qt.Key_F3) {
+                                        if (event.modifiers & Qt.ShiftModifier) {
+                                            searchBar.findPrevious();
+                                        } else {
+                                            searchBar.findNext();
+                                        }
+                                        event.accepted = true;
+                                    } else if (event.key === Qt.Key_Down) {
+                                        searchBar.findNext();
+                                        event.accepted = true;
+                                    } else if (event.key === Qt.Key_Up) {
+                                        searchBar.findPrevious();
+                                        event.accepted = true;
+                                    }
+                                }
+                            }
+
+                            Label {
+                                id: searchResultLabel
+                                text: ""
+                                Layout.preferredWidth: 50
+                            }
+
+                            Button {
+                                icon.name: "go-up"
+                                ToolTip.visible: hovered
+                                ToolTip.text: "Find Previous (Shift+F3)"
+                                enabled: searchBar.searchMatches.length > 0
+                                onClicked: searchBar.findPrevious()
+                            }
+
+                            Button {
+                                icon.name: "go-down"
+                                ToolTip.visible: hovered
+                                ToolTip.text: "Find Next (F3)"
+                                enabled: searchBar.searchMatches.length > 0
+                                onClicked: searchBar.findNext()
+                            }
+
+                            Button {
+                                icon.name: "window-close"
+                                ToolTip.visible: hovered
+                                ToolTip.text: "Close (Escape)"
+                                onClicked: searchBar.hide()
+                            }
                         }
                     }
 
