@@ -1,5 +1,14 @@
 # Nixbit Changelog
 
+## 0.6.1
+
+- **Fixed search functionality scrolling issues**
+  - Search now properly wraps around from bottom to top when reaching the last match
+  - Fixed terminal staying locked to bottom when searching while at the bottom of output
+  - Search navigation now disables auto-scroll to prevent conflicting scroll behavior
+  - Terminal no longer flickers or jumps to bottom when searching during active build output
+  - Search results now consistently scroll to center the match in the viewport
+
 ## 0.6.0
 
 - **Added search functionality for terminal output**

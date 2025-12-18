@@ -788,8 +788,8 @@ ApplicationWindow {
                                     }
 
                                     onTextChanged: {
-                                        // Only auto-scroll if user hasn't scrolled up
-                                        if (terminalFlickable.autoScroll) {
+                                        // Only auto-scroll if user hasn't scrolled up and search bar is not visible
+                                        if (terminalFlickable.autoScroll && !searchBar.visible) {
                                             Qt.callLater(terminalFlickable.scrollToBottom);
                                         }
                                     }
@@ -908,6 +908,9 @@ ApplicationWindow {
                                 return;
                             }
 
+                            // Disable auto-scroll as soon as we start searching
+                            terminalFlickable.autoScroll = false;
+
                             searchMatches = findMatches(searchTerm);
 
                             if (searchMatches.length > 0) {
@@ -949,12 +952,17 @@ ApplicationWindow {
                             if (displayPos !== -1) {
                                 terminalText.select(displayPos, displayPos + len);
 
-                                // Scroll to make selection visible
+                                // Disable auto-scroll when manually navigating search results
+                                terminalFlickable.autoScroll = false;
+
+                                // Scroll to make selection visible - always scroll to center the match
                                 var lineHeight = terminalText.font.pixelSize * 1.5;
                                 var estimatedY = (displayPos / 80) * lineHeight;
-                                if (estimatedY > terminalFlickable.contentY + terminalFlickable.height || estimatedY < terminalFlickable.contentY) {
-                                    terminalFlickable.contentY = Math.max(0, estimatedY - terminalFlickable.height / 2);
-                                }
+
+                                // Always scroll to center the match in the viewport
+                                var targetY = Math.max(0, Math.min(estimatedY - terminalFlickable.height / 2, terminalFlickable.contentHeight - terminalFlickable.height));
+
+                                terminalFlickable.contentY = targetY;
                             }
                         }
 
@@ -980,6 +988,8 @@ ApplicationWindow {
 
                         function show() {
                             visible = true;
+                            // Disable auto-scroll as soon as search bar is shown
+                            terminalFlickable.autoScroll = false;
                             searchInput.forceActiveFocus();
                             searchInput.selectAll();
                         }
