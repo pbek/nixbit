@@ -37,6 +37,19 @@ Dialog {
             }
 
             Button {
+                text: "Ignore commits"
+                icon.name: "download"
+                enabled: gitManager ? !gitManager.isBusy && gitManager.commitsBehind > 0 : false
+                onClicked: {
+                    if (gitManager)
+                        gitManager.pullRepository();
+                }
+                ToolTip.visible: hovered
+                ToolTip.text: "Pulls changes from git to remove them from this list.\nNote: This doesn't actually ignore commits, it downloads them. Changes will be applied in the next build."
+                ToolTip.delay: 500
+            }
+
+            Button {
                 text: "Refresh"
                 icon.name: "view-refresh"
                 enabled: gitManager ? !gitManager.isBusy : false

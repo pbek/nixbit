@@ -8,6 +8,11 @@
   - Search navigation now disables auto-scroll to prevent conflicting scroll behavior
   - Terminal no longer flickers or jumps to bottom when searching during active build output
   - Search results now consistently scroll to center the match in the viewport
+- **Added "Ignore commits" button to Commits Dialog**
+  - New button pulls git changes to remove them from the pending commits list
+  - Button is only enabled when there are commits behind and git is not busy
+  - Tooltip clarifies that it downloads commits rather than ignoring them
+  - Changes will be applied in the next build operation
 
 ## 0.6.0
 
