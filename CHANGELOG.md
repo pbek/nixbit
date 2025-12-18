@@ -13,6 +13,11 @@
   - Button is only enabled when there are commits behind and git is not busy
   - Tooltip clarifies that it downloads commits rather than ignoring them
   - Changes will be applied in the next build operation
+- **Added About dialog**
+  - New "About" menu item in the Tools menu
+  - Displays application version, description, and links
+  - Includes direct links to GitHub repository and issue tracker
+  - Shows license and author information
 
 ## 0.6.0
 

@@ -76,6 +76,7 @@ qt_add_qml_module(
   QML_FILES
   src/main.qml
   src/SettingsDialog.qml
+  src/AboutDialog.qml
   src/GenerationsDialog.qml
   src/CommitsDialog.qml
   src/LogsDialog.qml

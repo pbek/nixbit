@@ -175,6 +175,10 @@ ApplicationWindow {
         id: settingsDialog
     }
 
+    AboutDialog {
+        id: aboutDialog
+    }
+
     menuBar: MenuBar {
         Menu {
             title: "&File"
@@ -199,6 +203,14 @@ ApplicationWindow {
                 text: "&Settings"
                 onTriggered: {
                     settingsDialog.open();
+                }
+            }
+            MenuSeparator {}
+            Action {
+                text: "&About"
+                icon.name: "help-about"
+                onTriggered: {
+                    aboutDialog.open();
                 }
             }
         }
