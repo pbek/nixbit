@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 0.6.2
+
+- **Fixed "Ignore commits" button triggering unwanted rebuild/switch**
+  - The "Ignore commits" button in the Commits Dialog now only pulls from git without triggering a build or switch operation
+  - Previously, clicking this button would automatically trigger the currently selected rebuild mode (build or switch)
+  - Now the button only downloads git changes as intended, with changes applied only in the next manual build
+
 ## 0.6.1
 
 - **Fixed search functionality scrolling issues**

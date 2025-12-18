@@ -14,6 +14,7 @@ ApplicationWindow {
 
     // Property to track if we're in a chained build-then-switch operation
     property bool isChainedBuildSwitch: false
+    property bool shouldRebuildAfterPull: false
 
     // Property to track the current rebuild mode (for logging purposes)
     property string currentRebuildMode: "build"
@@ -441,8 +442,10 @@ ApplicationWindow {
                     enabled: (processManager ? !processManager.isRunning : false) && (gitManager ? !gitManager.isBusy : false)
                     onClicked: {
                         // First pull the repository, then update system
-                        if (gitManager)
+                        if (gitManager) {
+                            root.shouldRebuildAfterPull = true;
                             gitManager.pullRepository();
+                        }
                     }
                     Layout.fillWidth: true
                 }
@@ -457,8 +460,9 @@ ApplicationWindow {
                         if (!gitManager)
                             return;
 
-                        // Set the flag to indicate we're doing a chained operation
+                        // Set the flags to indicate we're doing a chained operation and should rebuild
                         root.isChainedBuildSwitch = true;
+                        root.shouldRebuildAfterPull = true;
 
                         // First pull the repository, then build and switch
                         gitManager.pullRepository();
@@ -1159,18 +1163,31 @@ ApplicationWindow {
         }
 
         function onPullCompletedForUpdate() {
-            // Pull completed successfully, now run system update
+            // Pull completed successfully
             if (!settingsManager || !gitManager || !processManager)
                 return;
 
+            // Check if we should run a rebuild after pull
+            if (!root.shouldRebuildAfterPull) {
+                // Just pulled to update git, no rebuild needed
+                messageBox.text = "Repository updated successfully. Changes will be applied in the next build.";
+                messageBox.type = Kirigami.MessageType.Positive;
+                messageBox.visible = true;
+                return;
+            }
+
+            // Reset the flag
+            root.shouldRebuildAfterPull = false;
+
+            // Now run system update
             var hostname = settingsManager.hostname;
             var repoPath = gitManager.localPath;
+            var buildHost = "";
 
             // Check if we're doing a chained build-switch operation
             if (root.isChainedBuildSwitch) {
                 // Get the build host for the build phase
                 var selectedBuildHost = settingsManager.selectedBuildHost;
-                var buildHost = "";
 
                 if (selectedBuildHost && selectedBuildHost !== "" && selectedBuildHost !== "(local)") {
                     buildHost = settingsManager.getBuildHostAddress(selectedBuildHost);
@@ -1189,7 +1206,6 @@ ApplicationWindow {
 
                 // Get the selected build host based on the current mode
                 var selectedHost = rebuildMode === "build" ? settingsManager.selectedBuildHost : settingsManager.selectedSwitchHost;
-                var buildHost = "";
 
                 // If a host is selected, get its address
                 if (selectedHost && selectedHost !== "" && selectedHost !== "(local)") {
