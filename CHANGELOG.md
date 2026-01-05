@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 0.6.3
+
+- **Added Debug Mode with memory testing controls**
+  - New "Debug" section in Settings with memory testing functionality
+  - Added "Enable memory debugging controls" option to show test button in terminal area
+  - Test output generator can create 100-50,000 configurable log lines with syntax highlighting
+
 ## 0.6.2
 
 - **Fixed "Ignore commits" button triggering unwanted rebuild/switch**

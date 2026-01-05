@@ -345,3 +345,83 @@ void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
 
   runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
 }
+
+void ProcessManager::generateTestOutput(int lineCount) {
+  if (m_isRunning) {
+    qDebug() << "Cannot generate test output while process is running";
+    return;
+  }
+
+  qDebug() << "Generating" << lineCount << "test lines...";
+
+  // Sample log messages with various patterns that the highlighter will catch
+  QStringList sampleLines = {
+      "these 10 derivations will be built:",
+      "  /nix/store/abc123-package-1.0.drv",
+      "  /nix/store/def456-library-2.5.drv",
+      "building '/nix/store/abc123-package-1.0.drv'...",
+      "unpacking sources",
+      "patching sources",
+      "configuring",
+      "building",
+      "checking",
+      "installing",
+      "post-installation fixup",
+      "shrinking RPATHs of ELF executables and libraries in /nix/store/xyz789",
+      "gzipping man pages under /nix/store/xyz789/share/man/",
+      "stripping (with command strip and flags -S -p) in /nix/store/xyz789/bin",
+      "error: builder for '/nix/store/abc123-package-1.0.drv' failed with exit "
+      "code 1",
+      "warning: ignoring untrusted substituter 'https://example.com'",
+      "trace: evaluating file '/path/to/file.nix'",
+      "copying path '/nix/store/xyz789-result' from "
+      "'https://cache.nixos.org'...",
+      "fetching git repository 'https://github.com/user/repo.git'",
+      "Created a new generation '42' at /nix/var/nix/profiles/system",
+      "activating the configuration...",
+      "setting up /etc...",
+      "reloading user units for user...",
+      "restarting the following units: display-manager.service",
+      "the following new units were started: some-service.service",
+      "info: Loaded 1234 packages from cache",
+      "note: This is a test message with a note prefix",
+      "failure: Something went wrong in the test",
+      "success: Test operation completed successfully"};
+
+  // Build all output as a single string to avoid triggering UI updates for each
+  // line
+  QString testOutput;
+  testOutput.reserve(lineCount * 100); // Pre-allocate approximate memory
+
+  testOutput += "=== Memory Test - Generating " + QString::number(lineCount) +
+                " lines of output ===\n\n";
+
+  // Generate the requested number of lines
+  for (int i = 0; i < lineCount; ++i) {
+    testOutput += QString("[%1] %2\n")
+                      .arg(i + 1, 6, 10, QChar('0'))
+                      .arg(sampleLines[i % sampleLines.size()]);
+
+    // Add some build progress indicators every 100 lines
+    if ((i + 1) % 100 == 0) {
+      testOutput += QString("--- Progress: %1/%2 lines generated (%3%) ---\n")
+                        .arg(i + 1)
+                        .arg(lineCount)
+                        .arg((i + 1) * 100 / lineCount);
+    }
+  }
+
+  testOutput += "\n=== Test output generation complete ===\n";
+  testOutput += QString("Total lines generated: %1\n").arg(lineCount);
+  testOutput += QString("Approximate memory usage: %1 KB\n")
+                    .arg(testOutput.length() / 1024);
+
+  qDebug() << "Test output generated, length:" << testOutput.length()
+           << "bytes";
+
+  // Append all at once - this triggers only ONE UI update instead of thousands
+  appendOutput(testOutput);
+
+  m_hasFinished = true;
+  emit hasFinishedChanged();
+}

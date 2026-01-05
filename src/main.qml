@@ -1147,6 +1147,33 @@ ApplicationWindow {
                                 logsDialog.open();
                             }
                         }
+
+                        // Debug Mode Controls
+                        SpinBox {
+                            id: testLineCountSpinBox
+                            visible: settingsManager && settingsManager.debugMode
+                            from: 100
+                            to: 50000
+                            stepSize: 1000
+                            value: 5000
+                            editable: true
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Number of test lines to generate"
+                        }
+
+                        Button {
+                            icon.name: "tools-report-bug"
+                            text: "Generate Test Output"
+                            visible: settingsManager && settingsManager.debugMode
+                            enabled: processManager ? !processManager.isRunning : false
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Generate test log output to check memory usage (Debug Mode)"
+                            onClicked: {
+                                if (processManager) {
+                                    processManager.generateTestOutput(testLineCountSpinBox.value);
+                                }
+                            }
+                        }
                     }
                 }
             }

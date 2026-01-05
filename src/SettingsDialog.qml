@@ -52,6 +52,11 @@ Dialog {
                         icon: "network-server"
                         page: "buildhosts"
                     }
+                    ListElement {
+                        name: "Debug"
+                        icon: "tools-report-bug"
+                        page: "debug"
+                    }
                 }
 
                 delegate: ItemDelegate {
@@ -441,6 +446,57 @@ Dialog {
                                 explanation: "Add build hosts to build on remote machines"
                                 icon.name: "network-server"
                             }
+                        }
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                    }
+                }
+            }
+
+            // Debug Settings Page
+            Item {
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.largeSpacing * 2
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Label {
+                        text: "Debug"
+                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.5
+                        font.bold: true
+                    }
+
+                    Label {
+                        text: "Advanced debugging and diagnostics tools"
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Kirigami.FormLayout {
+                        Layout.fillWidth: true
+
+                        CheckBox {
+                            Kirigami.FormData.label: "Memory Test Mode:"
+                            checked: settingsManager ? settingsManager.debugMode : false
+                            text: "Enable memory debugging controls"
+                            onToggled: {
+                                if (settingsManager)
+                                    settingsManager.debugMode = checked;
+                            }
+                        }
+
+                        Label {
+                            text: "Shows a test button in the terminal area to generate large amounts of log output.\nUseful for testing memory usage and identifying potential OOM issues."
+                            font.italic: true
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: Kirigami.Theme.disabledTextColor
+                            Layout.columnSpan: 2
+                            Layout.leftMargin: Kirigami.Units.largeSpacing
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
                         }
                     }
 

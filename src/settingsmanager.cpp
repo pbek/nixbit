@@ -10,7 +10,7 @@ SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent), m_startHidden(false), m_windowWidth(1000),
       m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost(""),
       m_selectedBuildHost(""), m_selectedSwitchHost(""), m_maxStoredLogs(10),
-      m_settingsVersion(0) {
+      m_debugMode(false), m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -186,6 +186,15 @@ void SettingsManager::setMaxStoredLogs(int count) {
     saveSettings();
     emit maxStoredLogsChanged();
     qDebug() << "Max stored logs changed to:" << count;
+  }
+}
+
+void SettingsManager::setDebugMode(bool enabled) {
+  if (m_debugMode != enabled) {
+    m_debugMode = enabled;
+    saveSettings();
+    emit debugModeChanged();
+    qDebug() << "Debug mode changed to:" << enabled;
   }
 }
 
@@ -366,6 +375,9 @@ void SettingsManager::loadSettings() {
   // Load max stored logs
   m_maxStoredLogs = settings.value("General/MaxStoredLogs", 10).toInt();
 
+  // Load debug mode
+  m_debugMode = settings.value("General/DebugMode", false).toBool();
+
   qDebug() << "Loaded settings version:" << oldVersion;
   qDebug() << "Current settings version:" << m_settingsVersion;
   qDebug() << "Loaded start hidden setting:" << m_startHidden;
@@ -411,6 +423,9 @@ void SettingsManager::saveSettings() {
 
   // Save max stored logs
   settings.setValue("General/MaxStoredLogs", m_maxStoredLogs);
+
+  // Save debug mode
+  settings.setValue("General/DebugMode", m_debugMode);
 
   settings.sync();
 }

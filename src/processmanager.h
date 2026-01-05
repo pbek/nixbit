@@ -46,6 +46,7 @@ public:
   Q_INVOKABLE void runNixosRebuildSwitch(const QString &repoPath,
                                          const QString &hostname,
                                          const QString &buildHost = QString());
+  Q_INVOKABLE void generateTestOutput(int lineCount);
 
 signals:
   void outputChanged();
