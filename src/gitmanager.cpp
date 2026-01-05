@@ -559,6 +559,12 @@ bool GitManager::cloneRepository() {
   int error = git_clone(&repo, m_repositoryUrl.toUtf8().constData(),
                         m_localPath.toUtf8().constData(), &clone_opts);
 
+  // Securely clear any stored passphrase
+  if (!cred_data.passphrase.isEmpty()) {
+    cred_data.passphrase.fill('\0');
+    cred_data.passphrase.clear();
+  }
+
   if (error != 0) {
     const git_error *e = git_error_last();
     QString errorMsg =
@@ -608,6 +614,13 @@ bool GitManager::pullRepository_internal() {
   fetch_opts.callbacks.payload = &cred_data;
 
   error = git_remote_fetch(remote, nullptr, &fetch_opts, nullptr);
+
+  // Securely clear any stored passphrase
+  if (!cred_data.passphrase.isEmpty()) {
+    cred_data.passphrase.fill('\0');
+    cred_data.passphrase.clear();
+  }
+
   if (error != 0) {
     const git_error *e = git_error_last();
     QString errorMsg =
@@ -803,6 +816,13 @@ bool GitManager::fetchRepository() {
   fetch_opts.callbacks.payload = &cred_data;
 
   error = git_remote_fetch(remote, nullptr, &fetch_opts, nullptr);
+
+  // Securely clear any stored passphrase
+  if (!cred_data.passphrase.isEmpty()) {
+    cred_data.passphrase.fill('\0');
+    cred_data.passphrase.clear();
+  }
+
   if (error != 0) {
     const git_error *e = git_error_last();
     QString errorMsg =

@@ -123,6 +123,11 @@ bool ProcessManager::startDetached(const QString &program,
 void ProcessManager::clearOutput() {
   m_output.clear();
   m_outputLines.clear();
+
+  // Force the QString and QStringList to release their allocated memory
+  m_output.squeeze();
+  m_outputLines.squeeze();
+
   emit outputChanged();
 }
 

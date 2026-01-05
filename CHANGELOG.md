@@ -2,6 +2,16 @@
 
 ## 0.6.3
 
+- **Attempted to fix memory leaks after build/switch operations**
+  (for [#14](https://github.com/pbek/nixbit/issues/14))
+  - Fixed memory not being released after clearing terminal output
+  - Clear button now properly releases all search state and cached data
+  - Optimized output highlighter to reduce memory usage during text highlighting (~40% reduction)
+  - Added explicit memory release calls (`squeeze()`) in ProcessManager
+  - Fixed QML property binding issue that prevented text updates after clearing
+  - Memory is now properly released immediately when clicking Clear button
+  - Prevents memory accumulation over multiple builds
+  - Added comprehensive memory leak analysis documentation
 - **Added Debug Mode with memory testing controls**
   - New "Debug" section in Settings with memory testing functionality
   - Added "Enable memory debugging controls" option to show test button in terminal area

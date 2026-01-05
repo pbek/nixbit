@@ -810,6 +810,11 @@ ApplicationWindow {
                                         }
                                     }
 
+                                    Component.onDestruction: {
+                                        // Clear text to help release memory
+                                        text = "";
+                                    }
+
                                     MouseArea {
                                         anchors.fill: parent
                                         acceptedButtons: Qt.RightButton
@@ -1015,6 +1020,7 @@ ApplicationWindow {
                             searchMatches = [];
                             currentMatchIndex = -1;
                             searchResultLabel.text = "";
+                            plainTextCache = "";  // Clear cached plain text
                             terminalText.deselect();
                             terminalText.forceActiveFocus();
                         }
@@ -1111,8 +1117,19 @@ ApplicationWindow {
                             text: "Clear"
                             enabled: processManager ? !processManager.isRunning : false
                             onClicked: {
-                                if (processManager)
+                                if (processManager) {
+                                    // Clear output in process manager first
                                     processManager.clearOutput();
+
+                                    // Clear search state to prevent memory leaks
+                                    searchBar.searchMatches = [];
+                                    searchBar.currentMatchIndex = -1;
+                                    searchBar.plainTextCache = "";
+                                    searchResultLabel.text = "";
+
+                                    // Force garbage collection hint
+                                    gc();
+                                }
                             }
                         }
 
@@ -1263,6 +1280,16 @@ ApplicationWindow {
             // Use currentRebuildMode to check actual operation type (handles Build & Switch correctly)
             if (!processManager.isRunning && generationManager && root.currentRebuildMode === "switch") {
                 generationManager.loadGenerations();
+            }
+        }
+
+        function onOutputChanged() {
+            // Always clear search results when output changes to prevent memory leaks
+            if (searchBar.searchMatches.length > 0) {
+                searchBar.searchMatches = [];
+                searchBar.currentMatchIndex = -1;
+                searchBar.searchResultLabel.text = "";
+                searchBar.plainTextCache = "";
             }
         }
 
