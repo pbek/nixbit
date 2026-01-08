@@ -293,11 +293,11 @@ ApplicationWindow {
                 ComboBox {
                     id: rebuildModeComboBox
                     Kirigami.FormData.label: "Rebuild Mode:"
-                    model: ["build", "switch"]
+                    model: ["build", "switch", "boot"]
                     currentIndex: (typeof isDebugMode !== 'undefined' && isDebugMode) ? 0 : 1
                     enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
                     ToolTip.visible: hovered
-                    ToolTip.text: currentIndex === 0 ? "Build the system without activating (no sudo required)" : "Build and activate the new system (requires sudo)"
+                    ToolTip.text: currentIndex === 0 ? "Build the system without activating (no sudo required)" : currentIndex === 1 ? "Build and activate the new system (requires sudo)" : "Build and set as boot default without activating current system (requires sudo)"
                     onCurrentTextChanged: {
                         // Restore build host selector when mode text changes
                         console.log("Mode changed to:", currentText);
@@ -306,7 +306,7 @@ ApplicationWindow {
                 }
 
                 Label {
-                    text: rebuildModeComboBox.currentText === "build" ? "• Build: Tests the configuration without applying changes (no sudo required)" : "• Switch: Builds and activates the new configuration (requires sudo)"
+                    text: rebuildModeComboBox.currentText === "build" ? "• Build: Tests the configuration without applying changes (no sudo required)" : rebuildModeComboBox.currentText === "switch" ? "• Switch: Builds and activates the new configuration (requires sudo)" : "• Boot: Builds and sets as boot default without activating now (requires sudo)"
                     font.italic: true
                     font.pixelSize: 12
                     color: Kirigami.Theme.disabledTextColor
@@ -347,6 +347,8 @@ ApplicationWindow {
 
                         if (currentMode === "build") {
                             settingsManager.selectedBuildHost = selectedHost;
+                        } else if (currentMode === "boot") {
+                            settingsManager.selectedBootHost = selectedHost;
                         } else {
                             settingsManager.selectedSwitchHost = selectedHost;
                         }
@@ -361,7 +363,7 @@ ApplicationWindow {
                         ignoreChanges = true;
                         currentMode = mode;
 
-                        var selectedHost = mode === "build" ? settingsManager.selectedBuildHost : settingsManager.selectedSwitchHost;
+                        var selectedHost = mode === "build" ? settingsManager.selectedBuildHost : mode === "boot" ? settingsManager.selectedBootHost : settingsManager.selectedSwitchHost;
                         console.log("Restoring selection for mode:", mode, "saved host:", selectedHost);
 
                         if (selectedHost === "" || selectedHost === "(local)") {
@@ -437,7 +439,7 @@ ApplicationWindow {
                 spacing: Kirigami.Units.smallSpacing
 
                 Button {
-                    text: rebuildModeComboBox.currentText === "build" ? "Build System" : "Update System"
+                    text: rebuildModeComboBox.currentText === "build" ? "Build System" : rebuildModeComboBox.currentText === "switch" ? "Update System" : "Set Boot Default"
                     icon.name: "system-software-update"
                     enabled: (processManager ? !processManager.isRunning : false) && (gitManager ? !gitManager.isBusy : false)
                     onClicked: {
@@ -1145,7 +1147,7 @@ ApplicationWindow {
                         Button {
                             text: processManager ? (processManager.isPaused ? "Resume" : "Pause") : "Pause"
                             enabled: processManager ? processManager.isRunning : false
-                            visible: rebuildModeComboBox.currentText !== "switch"
+                            visible: rebuildModeComboBox.currentText !== "switch" && rebuildModeComboBox.currentText !== "boot"
                             onClicked: {
                                 if (processManager) {
                                     if (processManager.isPaused) {
@@ -1249,7 +1251,8 @@ ApplicationWindow {
                 var rebuildMode = rebuildModeComboBox.currentText;
 
                 // Get the selected build host based on the current mode
-                var selectedHost = rebuildMode === "build" ? settingsManager.selectedBuildHost : settingsManager.selectedSwitchHost;
+                // Boot mode uses its own host selection (like switch mode)
+                var selectedHost = rebuildMode === "build" ? settingsManager.selectedBuildHost : rebuildMode === "boot" ? settingsManager.selectedBootHost : settingsManager.selectedSwitchHost;
 
                 // If a host is selected, get its address
                 if (selectedHost && selectedHost !== "" && selectedHost !== "(local)") {
@@ -1260,6 +1263,9 @@ ApplicationWindow {
                 if (rebuildMode === "switch") {
                     root.currentRebuildMode = "switch";
                     processManager.runNixosRebuildSwitch(repoPath, hostname, buildHost);
+                } else if (rebuildMode === "boot") {
+                    root.currentRebuildMode = "boot";
+                    processManager.runNixosRebuildBoot(repoPath, hostname, buildHost);
                 } else {
                     root.currentRebuildMode = "build";
                     processManager.runNixosRebuildBuild(repoPath, hostname, buildHost);
@@ -1276,9 +1282,9 @@ ApplicationWindow {
                 systemMonitor.active = processManager.isRunning;
             }
             // Refresh generations when process completes (in case a new generation was created)
-            // Only refresh after switch mode since build mode doesn't create a new generation
+            // Only refresh after switch or boot mode since build mode doesn't create a new generation
             // Use currentRebuildMode to check actual operation type (handles Build & Switch correctly)
-            if (!processManager.isRunning && generationManager && root.currentRebuildMode === "switch") {
+            if (!processManager.isRunning && generationManager && (root.currentRebuildMode === "switch" || root.currentRebuildMode === "boot")) {
                 generationManager.loadGenerations();
             }
         }

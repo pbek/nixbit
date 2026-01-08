@@ -9,8 +9,8 @@
 SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent), m_startHidden(false), m_windowWidth(1000),
       m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost(""),
-      m_selectedBuildHost(""), m_selectedSwitchHost(""), m_maxStoredLogs(10),
-      m_debugMode(false), m_settingsVersion(0) {
+      m_selectedBuildHost(""), m_selectedSwitchHost(""), m_selectedBootHost(""),
+      m_maxStoredLogs(10), m_debugMode(false), m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -108,6 +108,10 @@ void SettingsManager::removeBuildHost(const QString &name) {
       m_selectedSwitchHost = "";
       emit selectedSwitchHostChanged();
     }
+    if (m_selectedBootHost == name) {
+      m_selectedBootHost = "";
+      emit selectedBootHostChanged();
+    }
 
     saveSettings();
     emit buildHostsChanged();
@@ -143,6 +147,10 @@ void SettingsManager::updateBuildHost(const QString &oldName,
         m_selectedSwitchHost = newName;
         emit selectedSwitchHostChanged();
       }
+      if (m_selectedBootHost == oldName) {
+        m_selectedBootHost = newName;
+        emit selectedBootHostChanged();
+      }
     }
 
     // Update or add address
@@ -177,6 +185,15 @@ void SettingsManager::setSelectedSwitchHost(const QString &host) {
     saveSettings();
     emit selectedSwitchHostChanged();
     qDebug() << "Selected switch host changed to:" << host;
+  }
+}
+
+void SettingsManager::setSelectedBootHost(const QString &host) {
+  if (m_selectedBootHost != host) {
+    m_selectedBootHost = host;
+    saveSettings();
+    emit selectedBootHostChanged();
+    qDebug() << "Selected boot host changed to:" << host;
   }
 }
 
@@ -371,6 +388,8 @@ void SettingsManager::loadSettings() {
       settings.value("General/SelectedBuildHost", "").toString();
   m_selectedSwitchHost =
       settings.value("General/SelectedSwitchHost", "").toString();
+  m_selectedBootHost =
+      settings.value("General/SelectedBootHost", "").toString();
 
   // Load max stored logs
   m_maxStoredLogs = settings.value("General/MaxStoredLogs", 10).toInt();
@@ -388,6 +407,7 @@ void SettingsManager::loadSettings() {
   qDebug() << "Loaded build hosts:" << m_buildHosts;
   qDebug() << "Loaded selected build host:" << m_selectedBuildHost;
   qDebug() << "Loaded selected switch host:" << m_selectedSwitchHost;
+  qDebug() << "Loaded selected boot host:" << m_selectedBootHost;
   qDebug() << "Autostart file exists:" << autostartFileExists();
 
   // Perform migration if needed
@@ -420,6 +440,7 @@ void SettingsManager::saveSettings() {
   // Save selected hosts
   settings.setValue("General/SelectedBuildHost", m_selectedBuildHost);
   settings.setValue("General/SelectedSwitchHost", m_selectedSwitchHost);
+  settings.setValue("General/SelectedBootHost", m_selectedBootHost);
 
   // Save max stored logs
   settings.setValue("General/MaxStoredLogs", m_maxStoredLogs);

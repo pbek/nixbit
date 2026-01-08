@@ -1,5 +1,14 @@
 # Nixbit Changelog
 
+## 0.7.0
+
+- **Added "boot" rebuild mode** (for [#15](https://github.com/pbek/nixbit/issues/15))
+  - New rebuild mode option alongside "build" and "switch"
+  - Boot mode builds the configuration and sets it as the boot default without activating it immediately
+  - Configuration will be applied on next system reboot
+  - Requires sudo privileges (uses pkexec like switch mode)
+  - Pause/resume not supported for boot mode (same as switch mode)
+
 ## 0.6.3
 
 - **Attempted to fix memory leaks after build/switch operations**

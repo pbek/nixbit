@@ -351,6 +351,63 @@ void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
   runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
 }
 
+void ProcessManager::runNixosRebuildBoot(const QString &repoPath,
+                                         const QString &hostname,
+                                         const QString &buildHost) {
+  // Clear output before starting boot
+  clearOutput();
+
+  // Sanitize hostname to prevent command injection
+  QString sanitizedHostname = hostname;
+  sanitizedHostname.replace(QRegularExpression("[^a-zA-Z0-9._-]"), "");
+
+  if (sanitizedHostname.isEmpty() || sanitizedHostname != hostname) {
+    appendOutput("Error: Invalid hostname. Only alphanumeric characters, "
+                 "hyphens, underscores, and dots are allowed.\n");
+    return;
+  }
+
+  // Sanitize build host if provided
+  QString sanitizedBuildHost = buildHost.trimmed();
+  if (!sanitizedBuildHost.isEmpty()) {
+    sanitizedBuildHost.replace(QRegularExpression("[^a-zA-Z0-9._@-]"), "");
+    if (sanitizedBuildHost.isEmpty() ||
+        sanitizedBuildHost != buildHost.trimmed()) {
+      appendOutput("Error: Invalid build host. Only alphanumeric characters, "
+                   "hyphens, underscores, dots, and @ are allowed.\n");
+      return;
+    }
+  }
+
+  // Build the nixos-rebuild boot command with pkexec for sudo
+  QString buildHostParam =
+      sanitizedBuildHost.isEmpty() ? "" : " --build-host " + sanitizedBuildHost;
+  QString timestamp = QString::number(QDateTime::currentMSecsSinceEpoch());
+  QString tempScript = "/tmp/nixbit-rebuild-" + timestamp + ".sh";
+
+  QString scriptContent =
+      "#!/usr/bin/env bash\n"
+      "set -e\n"
+      "TEMP_REPO=/tmp/nixbit-repo-$$\n"
+      "echo \"Copying repository to temporary location...\"\n"
+      "cp -r " +
+      repoPath +
+      " $TEMP_REPO\n"
+      "cd $TEMP_REPO\n"
+      "env TERM=dumb nixos-rebuild boot --flake .#" +
+      sanitizedHostname + buildHostParam +
+      " -L\n"
+      "echo \"Cleaning up temporary repository...\"\n"
+      "rm -rf $TEMP_REPO\n";
+
+  // Use a subshell to ensure cleanup happens but exit code is preserved
+  QString cmd = "printf '%1' > " + tempScript + " && chmod +x " + tempScript +
+                " && (pkexec " + tempScript + "; EXIT_CODE=$?; rm -f " +
+                tempScript + "; exit $EXIT_CODE)";
+
+  runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
+}
+
 void ProcessManager::generateTestOutput(int lineCount) {
   if (m_isRunning) {
     qDebug() << "Cannot generate test output while process is running";
