@@ -72,7 +72,8 @@ private:
   void trimOutputToLimit();
 
   QProcess *m_process;
-  QString m_output;
+  QString m_output;     // Truncated output for UI display
+  QString m_fullOutput; // Full untruncated output for logging
   QStringList m_outputLines;
   bool m_isRunning;
   bool m_isPaused;

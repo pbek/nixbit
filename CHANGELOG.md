@@ -1,5 +1,13 @@
 # Nixbit Changelog
 
+## 0.7.1
+
+- **Fixed log files being truncated**
+  - Saved log files now contain the complete build output
+  - Previously, log files were limited to the last 5000 lines (same as UI display limit)
+  - The UI terminal still shows only the last 5000 lines for performance
+  - Full untruncated output is now properly saved to log files
+
 ## 0.7.0
 
 - **Added "boot" rebuild mode** (for [#15](https://github.com/pbek/nixbit/issues/15))

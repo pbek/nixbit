@@ -122,10 +122,12 @@ bool ProcessManager::startDetached(const QString &program,
 
 void ProcessManager::clearOutput() {
   m_output.clear();
+  m_fullOutput.clear();
   m_outputLines.clear();
 
   // Force the QString and QStringList to release their allocated memory
   m_output.squeeze();
+  m_fullOutput.squeeze();
   m_outputLines.squeeze();
 
   emit outputChanged();
@@ -162,11 +164,16 @@ void ProcessManager::onProcessFinished(int exitCode,
   }
 
   appendOutput(statusText);
-  emit commandFinished(exitCode, m_output);
+
+  // Emit full untruncated output for logging
+  emit commandFinished(exitCode, m_fullOutput);
 }
 
 void ProcessManager::appendOutput(const QString &text) {
-  // Split new text into lines and append to buffer
+  // Always append to full output (no truncation)
+  m_fullOutput += text;
+
+  // Split new text into lines and append to buffer for UI display
   QStringList newLines = text.split('\n');
 
   // If we already have lines and the first new item doesn't start a new line,
@@ -179,10 +186,10 @@ void ProcessManager::appendOutput(const QString &text) {
   // Add remaining lines
   m_outputLines.append(newLines);
 
-  // Trim to max lines if needed
+  // Trim to max lines if needed (only for UI display)
   trimOutputToLimit();
 
-  // Rebuild the output string from lines
+  // Rebuild the output string from lines (truncated for UI)
   m_output = m_outputLines.join('\n');
   emit outputChanged();
 }
