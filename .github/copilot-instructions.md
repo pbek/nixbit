@@ -19,7 +19,6 @@ src/                    # Source code (C++ and QML)
   *.cpp, *.h           # C++ implementation files
   *.qml                # QML UI files
   main.cpp             # Application entry point
-  version.h.in         # Version template
 build/                 # CMake build directory (generated)
 flake.nix              # Nix flake definition
 package.nix            # Nix package definition
