@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QString>
+#include <QTimer>
 
 class ProcessManager : public QObject {
   Q_OBJECT
@@ -64,6 +65,7 @@ private slots:
   void onReadyReadStandardOutput();
   void onReadyReadStandardError();
   void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
+  void flushPendingOutput();
 
 private:
   void appendOutput(const QString &text);
@@ -80,6 +82,11 @@ private:
   int m_lastExitCode;
   bool m_hasFinished;
   int m_maxOutputLines;
+
+  // Output batching for reduced UI updates
+  QTimer *m_outputFlushTimer;
+  QString m_pendingOutput;
+  bool m_hasPendingOutput;
 };
 
 #endif // PROCESSMANAGER_H

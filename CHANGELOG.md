@@ -1,5 +1,9 @@
 # Nixbit Changelog
 
+## 0.7.2
+
+- **Memory optimizations**: Improved memory management in ProcessManager and main interface, reduced log buffer from 5000 to 2000 lines
+
 ## 0.7.1
 
 - **Fixed log files being truncated**

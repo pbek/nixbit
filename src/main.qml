@@ -1308,6 +1308,9 @@ ApplicationWindow {
                 logManager.saveLog(output, exitCode, logDir, maxLogs, buildType);
             }
 
+            // Trigger garbage collection after build completes
+            gc();
+
             // Handle chained build-switch operation
             if (root.isChainedBuildSwitch) {
                 if (exitCode === 0) {

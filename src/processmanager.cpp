@@ -3,14 +3,22 @@
 #include <QDebug>
 #include <QRegularExpression>
 #include <QSysInfo>
+#include <QTimer>
 #include <csignal>
 #include <unistd.h>
 
 ProcessManager::ProcessManager(QObject *parent)
     : QObject(parent), m_process(nullptr), m_isRunning(false),
       m_isPaused(false), m_lastExitCode(0), m_hasFinished(false),
-      m_maxOutputLines(5000) {
+      m_maxOutputLines(2000), m_hasPendingOutput(false) {
   m_process = new QProcess(this);
+
+  // Set up output batching timer (2 second intervals)
+  m_outputFlushTimer = new QTimer(this);
+  m_outputFlushTimer->setInterval(2000);
+  m_outputFlushTimer->setSingleShot(false);
+  connect(m_outputFlushTimer, &QTimer::timeout, this,
+          &ProcessManager::flushPendingOutput);
 
   // Set up the process to create a new process group
   // This allows us to send signals to the entire process tree
@@ -43,6 +51,10 @@ void ProcessManager::runCommand(const QString &program,
   }
 
   m_output.clear();
+  m_fullOutput.clear(); // Clear full output for new command
+  m_outputLines.clear();
+  m_pendingOutput.clear();
+  m_hasPendingOutput = false;
   emit outputChanged();
 
   m_hasFinished = false;
@@ -56,11 +68,13 @@ void ProcessManager::runCommand(const QString &program,
   appendOutput(QString("Running: %1\n\n").arg(commandLine));
 
   setIsRunning(true);
+  m_outputFlushTimer->start(); // Start batching timer
   m_process->start(program, arguments);
 
   if (!m_process->waitForStarted(3000)) {
     appendOutput(QString("\nError: Failed to start process\n"));
     setIsRunning(false);
+    m_outputFlushTimer->stop();
   }
 }
 
@@ -73,15 +87,12 @@ void ProcessManager::runCommandInDirectory(const QString &program,
   }
 
   m_output.clear();
+  m_fullOutput.clear(); // Clear full output for new command
+  m_outputLines.clear();
   emit outputChanged();
 
-  QString commandLine = program;
-  if (!arguments.isEmpty()) {
-    commandLine += " " + arguments.join(" ");
-  }
-
-  appendOutput(QString("Working directory: %1\n").arg(workingDirectory));
-  appendOutput(QString("Running: %1\n\n").arg(commandLine));
+  m_hasFinished = false;
+  emit hasFinishedChanged();
 
   m_process->setWorkingDirectory(workingDirectory);
   setIsRunning(true);
@@ -93,60 +104,16 @@ void ProcessManager::runCommandInDirectory(const QString &program,
   }
 }
 
-void ProcessManager::killProcess() {
-  if (m_process && m_process->state() != QProcess::NotRunning) {
-    m_process->kill();
-    m_process->waitForFinished(1000);
-    appendOutput("\n\n=== Process killed ===\n");
-  }
-}
-
-bool ProcessManager::startDetached(const QString &program,
-                                   const QStringList &arguments,
-                                   const QString &workingDirectory) {
-  qDebug() << "Starting detached process:" << program << arguments;
-
-  bool success;
-  if (workingDirectory.isEmpty()) {
-    success = QProcess::startDetached(program, arguments);
-  } else {
-    success = QProcess::startDetached(program, arguments, workingDirectory);
-  }
-
-  if (!success) {
-    qDebug() << "Failed to start detached process:" << program;
-  }
-
-  return success;
-}
-
-void ProcessManager::clearOutput() {
-  m_output.clear();
-  m_fullOutput.clear();
-  m_outputLines.clear();
-
-  // Force the QString and QStringList to release their allocated memory
-  m_output.squeeze();
-  m_fullOutput.squeeze();
-  m_outputLines.squeeze();
-
-  emit outputChanged();
-}
-
-QString ProcessManager::getHostname() { return QSysInfo::machineHostName(); }
-
-void ProcessManager::onReadyReadStandardOutput() {
-  QString output = QString::fromUtf8(m_process->readAllStandardOutput());
-  appendOutput(output);
-}
-
-void ProcessManager::onReadyReadStandardError() {
-  QString error = QString::fromUtf8(m_process->readAllStandardError());
-  appendOutput(error);
-}
-
 void ProcessManager::onProcessFinished(int exitCode,
                                        QProcess::ExitStatus exitStatus) {
+  // Stop output batching timer
+  m_outputFlushTimer->stop();
+
+  // Flush any remaining pending output
+  if (m_hasPendingOutput) {
+    flushPendingOutput();
+  }
+
   setIsRunning(false);
 
   m_lastExitCode = exitCode;
@@ -167,12 +134,24 @@ void ProcessManager::onProcessFinished(int exitCode,
 
   // Emit full untruncated output for logging
   emit commandFinished(exitCode, m_fullOutput);
+
+  // Clear full output after logging to save memory (#2)
+  m_fullOutput.clear();
 }
 
 void ProcessManager::appendOutput(const QString &text) {
   // Always append to full output (no truncation)
   m_fullOutput += text;
 
+  // If batching is active, accumulate in pending buffer
+  if (m_outputFlushTimer->isActive()) {
+    m_pendingOutput += text;
+    m_hasPendingOutput = true;
+    // Don't emit outputChanged yet - wait for timer
+    return;
+  }
+
+  // If not batching, process immediately (for startup messages)
   // Split new text into lines and append to buffer for UI display
   QStringList newLines = text.split('\n');
 
@@ -191,6 +170,73 @@ void ProcessManager::appendOutput(const QString &text) {
 
   // Rebuild the output string from lines (truncated for UI)
   m_output = m_outputLines.join('\n');
+  emit outputChanged();
+}
+
+void ProcessManager::flushPendingOutput() {
+  if (!m_hasPendingOutput) {
+    return;
+  }
+
+  // Process all pending output
+  QString textToProcess = m_pendingOutput;
+  m_pendingOutput.clear();
+  m_hasPendingOutput = false;
+
+  // Split new text into lines and append to buffer for UI display
+  QStringList newLines = textToProcess.split('\n');
+
+  // If we already have lines and the first new item doesn't start a new line,
+  // append it to the last existing line
+  if (!m_outputLines.isEmpty() && !textToProcess.startsWith('\n')) {
+    m_outputLines.last() += newLines.first();
+    newLines.removeFirst();
+  }
+
+  // Add remaining lines
+  m_outputLines.append(newLines);
+
+  // Trim to max lines if needed (only for UI display)
+  trimOutputToLimit();
+
+  // Rebuild the output string from lines (truncated for UI)
+  m_output = m_outputLines.join('\n');
+  emit outputChanged();
+}
+
+void ProcessManager::onReadyReadStandardOutput() {
+  appendOutput(QString::fromUtf8(m_process->readAllStandardOutput()));
+}
+
+void ProcessManager::onReadyReadStandardError() {
+  appendOutput(QString::fromUtf8(m_process->readAllStandardError()));
+}
+
+void ProcessManager::killProcess() {
+  if (m_process && m_process->state() != QProcess::NotRunning) {
+    qint64 pid = m_process->processId();
+    if (pid > 0) {
+      // Send SIGKILL to the entire process group
+      kill(-static_cast<pid_t>(pid), SIGKILL);
+    }
+    m_process->kill();
+    m_process->waitForFinished(3000);
+  }
+  setIsRunning(false);
+}
+
+QString ProcessManager::getHostname() { return QSysInfo::machineHostName(); }
+
+bool ProcessManager::startDetached(const QString &program,
+                                   const QStringList &arguments,
+                                   const QString &workingDirectory) {
+  return QProcess::startDetached(program, arguments, workingDirectory);
+}
+
+void ProcessManager::clearOutput() {
+  m_output.clear();
+  m_fullOutput.clear();
+  m_outputLines.clear();
   emit outputChanged();
 }
 
