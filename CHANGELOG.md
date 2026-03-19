@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 0.8.0
+
+- **Improved small-window usability** (for [#16](https://github.com/pbek/nixbit/issues/16))
+  - The main configuration area now collapses automatically when the window height is limited
+  - A compact header keeps status and rebuild mode visible while giving the terminal output more room
+  - Configuration details can still be expanded on demand from the main window
+
 ## 0.7.2
 
 - **Memory optimizations**: Improved memory management in ProcessManager and main interface, reduced log buffer from 5000 to 2000 lines
