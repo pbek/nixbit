@@ -1,8 +1,10 @@
 #include "processmanager.h"
 #include <QDateTime>
 #include <QDebug>
+#include <QFile>
 #include <QRegularExpression>
 #include <QSysInfo>
+#include <QTextStream>
 #include <QTimer>
 #include <csignal>
 #include <unistd.h>
@@ -10,7 +12,8 @@
 ProcessManager::ProcessManager(QObject *parent)
     : QObject(parent), m_process(nullptr), m_isRunning(false),
       m_isPaused(false), m_lastExitCode(0), m_hasFinished(false),
-      m_maxOutputLines(2000), m_hasPendingOutput(false) {
+      m_maxOutputLines(2000), m_outputLogFile(nullptr),
+      m_hasPendingOutput(false) {
   m_process = new QProcess(this);
 
   // Set up output batching timer (2 second intervals)
@@ -41,6 +44,27 @@ ProcessManager::~ProcessManager() {
     m_process->kill();
     m_process->waitForFinished(3000);
   }
+  closeOutputLogFile();
+}
+
+void ProcessManager::openOutputLogFile() {
+  closeOutputLogFile();
+  m_outputLogFile = new QTemporaryFile(this);
+  m_outputLogFile->setAutoRemove(true);
+  if (!m_outputLogFile->open()) {
+    qDebug() << "Failed to create temporary log file:"
+             << m_outputLogFile->errorString();
+    delete m_outputLogFile;
+    m_outputLogFile = nullptr;
+  }
+}
+
+void ProcessManager::closeOutputLogFile() {
+  if (m_outputLogFile) {
+    m_outputLogFile->close();
+    delete m_outputLogFile;
+    m_outputLogFile = nullptr;
+  }
 }
 
 void ProcessManager::runCommand(const QString &program,
@@ -51,11 +75,13 @@ void ProcessManager::runCommand(const QString &program,
   }
 
   m_output.clear();
-  m_fullOutput.clear(); // Clear full output for new command
   m_outputLines.clear();
   m_pendingOutput.clear();
   m_hasPendingOutput = false;
   emit outputChanged();
+
+  // Open a new temp file for streaming the full output
+  openOutputLogFile();
 
   m_hasFinished = false;
   emit hasFinishedChanged();
@@ -87,9 +113,11 @@ void ProcessManager::runCommandInDirectory(const QString &program,
   }
 
   m_output.clear();
-  m_fullOutput.clear(); // Clear full output for new command
   m_outputLines.clear();
   emit outputChanged();
+
+  // Open a new temp file for streaming the full output
+  openOutputLogFile();
 
   m_hasFinished = false;
   emit hasFinishedChanged();
@@ -132,16 +160,24 @@ void ProcessManager::onProcessFinished(int exitCode,
 
   appendOutput(statusText);
 
-  // Emit full untruncated output for logging
-  emit commandFinished(exitCode, m_fullOutput);
+  // Emit the temp file path so the log manager can copy it directly to the
+  // log directory, avoiding loading the entire output into memory
+  QString outputFilePath;
+  if (m_outputLogFile) {
+    m_outputLogFile->flush();
+    outputFilePath = m_outputLogFile->fileName();
+  }
+  emit commandFinished(exitCode, outputFilePath);
 
-  // Clear full output after logging to save memory (#2)
-  m_fullOutput.clear();
+  // Close and delete the temp file after logging is done
+  closeOutputLogFile();
 }
 
 void ProcessManager::appendOutput(const QString &text) {
-  // Always append to full output (no truncation)
-  m_fullOutput += text;
+  // Stream full output to the temporary file (no memory accumulation)
+  if (m_outputLogFile && m_outputLogFile->isOpen()) {
+    m_outputLogFile->write(text.toUtf8());
+  }
 
   // If batching is active, accumulate in pending buffer
   if (m_outputFlushTimer->isActive()) {
@@ -235,8 +271,8 @@ bool ProcessManager::startDetached(const QString &program,
 
 void ProcessManager::clearOutput() {
   m_output.clear();
-  m_fullOutput.clear();
   m_outputLines.clear();
+  closeOutputLogFile();
   emit outputChanged();
 }
 

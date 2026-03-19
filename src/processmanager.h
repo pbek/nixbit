@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QString>
+#include <QTemporaryFile>
 #include <QTimer>
 
 class ProcessManager : public QObject {
@@ -59,7 +60,7 @@ signals:
   void lastExitCodeChanged();
   void hasFinishedChanged();
   void maxOutputLinesChanged();
-  void commandFinished(int exitCode, const QString &output);
+  void commandFinished(int exitCode, const QString &outputFilePath);
 
 private slots:
   void onReadyReadStandardOutput();
@@ -72,16 +73,20 @@ private:
   void setIsRunning(bool running);
   void setIsPaused(bool paused);
   void trimOutputToLimit();
+  void openOutputLogFile();
+  void closeOutputLogFile();
 
   QProcess *m_process;
-  QString m_output;     // Truncated output for UI display
-  QString m_fullOutput; // Full untruncated output for logging
+  QString m_output; // Truncated output for UI display
   QStringList m_outputLines;
   bool m_isRunning;
   bool m_isPaused;
   int m_lastExitCode;
   bool m_hasFinished;
   int m_maxOutputLines;
+
+  // Stream full output to a temporary file instead of holding in memory
+  QTemporaryFile *m_outputLogFile;
 
   // Output batching for reduced UI updates
   QTimer *m_outputFlushTimer;

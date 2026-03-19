@@ -25,11 +25,19 @@ QVariantList LogManager::logFiles() const {
   return result;
 }
 
-void LogManager::saveLog(const QString &output, int exitCode,
+void LogManager::saveLog(const QString &outputFilePath, int exitCode,
                          const QString &logDir, int maxLogs,
                          const QString &buildType) {
-  if (output.isEmpty()) {
-    qDebug() << "Not saving empty log";
+  if (outputFilePath.isEmpty()) {
+    qDebug() << "Not saving log: no output file path provided";
+    return;
+  }
+
+  // Verify the source temp file exists
+  QFile sourceFile(outputFilePath);
+  if (!sourceFile.exists() || sourceFile.size() == 0) {
+    qDebug() << "Not saving log: source file missing or empty:"
+             << outputFilePath;
     return;
   }
 
@@ -49,16 +57,12 @@ void LogManager::saveLog(const QString &output, int exitCode,
       QString("%1_%2_exit%3.log").arg(buildType).arg(timestamp).arg(exitCode);
   QString filePath = logDir + "/" + fileName;
 
-  // Write log file
-  QFile file(filePath);
-  if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    qDebug() << "Failed to open log file for writing:" << filePath;
+  // Copy the temp file to the log directory
+  if (!sourceFile.copy(filePath)) {
+    qDebug() << "Failed to copy log file from" << outputFilePath << "to"
+             << filePath << ":" << sourceFile.errorString();
     return;
   }
-
-  QTextStream out(&file);
-  out << output;
-  file.close();
 
   qDebug() << "Saved build log to:" << filePath;
 

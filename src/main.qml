@@ -1342,13 +1342,13 @@ ApplicationWindow {
             }
         }
 
-        function onCommandFinished(exitCode, output) {
+        function onCommandFinished(exitCode, outputFilePath) {
             // Save build log when command finishes
-            if (logManager && settingsManager && output.length > 0) {
+            if (logManager && settingsManager && outputFilePath.length > 0) {
                 var logDir = settingsManager.getLogDirectory();
                 var maxLogs = settingsManager.maxStoredLogs;
                 var buildType = root.currentRebuildMode;
-                logManager.saveLog(output, exitCode, logDir, maxLogs, buildType);
+                logManager.saveLog(outputFilePath, exitCode, logDir, maxLogs, buildType);
             }
 
             // Trigger garbage collection after build completes

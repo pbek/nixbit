@@ -25,7 +25,7 @@ public:
 
   QVariantList logFiles() const;
 
-  Q_INVOKABLE void saveLog(const QString &output, int exitCode,
+  Q_INVOKABLE void saveLog(const QString &outputFilePath, int exitCode,
                            const QString &logDir, int maxLogs,
                            const QString &buildType);
   Q_INVOKABLE void openLogInEditor(const QString &filePath);

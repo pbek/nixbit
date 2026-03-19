@@ -2,6 +2,10 @@
 
 ## 0.8.0
 
+- **Fixed excessive RAM usage after rebuilds** (for [#14](https://github.com/pbek/nixbit/issues/14))
+  - Full `nixos-rebuild` output is now streamed to a temporary file instead of being kept in memory
+  - The terminal still keeps only a limited number of lines for display, while saved logs keep the complete output
+  - Prevents large rebuild logs from causing multi-gigabyte memory usage after updates
 - **Improved small-window usability** (for [#16](https://github.com/pbek/nixbit/issues/16))
   - The main configuration area now collapses automatically when the window height is limited
   - A compact header keeps status and rebuild mode visible while giving the terminal output more room
@@ -9,7 +13,8 @@
 
 ## 0.7.2
 
-- **Memory optimizations**: Improved memory management in ProcessManager and main interface, reduced log buffer from 5000 to 2000 lines
+- **Memory optimizations**: Improved memory management in ProcessManager and main interface,
+  reduced log buffer from 5000 to 2000 lines (for [#14](https://github.com/pbek/nixbit/issues/14))
 
 ## 0.7.1
 
