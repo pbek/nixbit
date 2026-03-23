@@ -31,7 +31,7 @@ find_package(
              DBus
              Network)
 
-find_package(KF6 REQUIRED COMPONENTS CoreAddons I18n)
+find_package(KF6 REQUIRED COMPONENTS CoreAddons I18n Kirigami)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBGIT2 REQUIRED libgit2)
@@ -96,6 +96,7 @@ target_link_libraries(
           Qt6::Network
           KF6::CoreAddons
           KF6::I18n
+          KF6::Kirigami
           ${LIBGIT2_LIBRARIES})
 
 install(TARGETS nixbit ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})

@@ -1,5 +1,13 @@
 # Nixbit Changelog
 
+## 0.8.1
+
+- **Fixed app startup crash** (`Kirigami.InlineMessage is not a type`)
+  (for [#17](https://github.com/pbek/nixbit/issues/17))
+  - Added `KF6::Kirigami` to `find_package` and `target_link_libraries` in `CMakeLists.txt`
+  - Kirigami was used in QML but not declared as a CMake dependency, causing the QML engine
+    to fail resolving `Kirigami.InlineMessage` at runtime
+
 ## 0.8.0
 
 - **Fixed excessive RAM usage after rebuilds** (for [#14](https://github.com/pbek/nixbit/issues/14))
