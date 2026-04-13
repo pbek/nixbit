@@ -36,7 +36,7 @@ jobs:
           awk "/^## $VERSION$/{flag=1; next} /^## [0-9]+\.[0-9]+\.[0-9]+$/{if(flag) exit} flag" CHANGELOG.md > changelog.txt
 
       - name: 🚀 Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ env.VERSION }}
           name: Release v${{ env.VERSION }}
