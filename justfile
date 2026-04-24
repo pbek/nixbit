@@ -44,6 +44,9 @@ test: build
 nix-build:
     nix-build -E '(import <nixpkgs> {}).callPackage ./package.nix {}'
 
+# Build and run the Nix package
+nix-build-run: nix-build nix-run
+
 # Build the Nix package using flakes (if available)
 flake-build:
     nix build .#nixbit
