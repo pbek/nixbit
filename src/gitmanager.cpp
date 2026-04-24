@@ -197,6 +197,23 @@ static int transfer_progress_cb(const git_indexer_progress *stats,
   return 0;
 }
 
+static bool resolveRemoteTrackingOid(git_repository *repo,
+                                     git_oid *remote_oid) {
+  const char *remoteBranchNames[] = {"refs/remotes/origin/main",
+                                     "refs/remotes/origin/master",
+                                     "refs/remotes/origin/HEAD"};
+
+  for (const char *branchName : remoteBranchNames) {
+    if (git_reference_name_to_id(remote_oid, repo, branchName) == 0) {
+      qDebug() << "Found remote branch:" << branchName;
+      return true;
+    }
+  }
+
+  qDebug() << "Failed to find remote tracking branch";
+  return false;
+}
+
 GitManager::GitManager(QObject *parent)
     : QObject(parent), m_repositoryUrl(""), m_isBusy(false), m_commitsBehind(0),
       m_fetchIntervalMinutes(60), m_progress(0),
@@ -522,6 +539,8 @@ void GitManager::pullRepository() {
   emit operationCompleted(success, message);
 }
 
+void GitManager::ignoreUpdate() { pullRepository(); }
+
 bool GitManager::cloneRepository() {
   // Reset progress for cloning operation
   setProgress(0);
@@ -631,24 +650,8 @@ bool GitManager::pullRepository_internal() {
     return false;
   }
 
-  // Try to find the default branch - check multiple possibilities
   git_oid target_oid;
-  bool found_branch = false;
-
-  const char *branch_names[] = {"refs/remotes/origin/main",
-                                "refs/remotes/origin/master",
-                                "refs/remotes/origin/HEAD"};
-
-  for (const char *branch_name : branch_names) {
-    error = git_reference_name_to_id(&target_oid, repo, branch_name);
-    if (error == 0) {
-      qDebug() << "Found branch:" << branch_name;
-      found_branch = true;
-      break;
-    }
-  }
-
-  if (!found_branch) {
+  if (!resolveRemoteTrackingOid(repo, &target_oid)) {
     const git_error *e = git_error_last();
     QString errorMsg = QString("Failed to find default branch: %1")
                            .arg(e ? e->message : "Unknown error");
@@ -725,23 +728,7 @@ int GitManager::calculateCommitsBehind() {
   git_oid_cpy(&local_oid, head_target);
   git_reference_free(head_ref);
 
-  // Try to find the remote tracking branch
-  const char *remote_branch_names[] = {"refs/remotes/origin/main",
-                                       "refs/remotes/origin/master",
-                                       "refs/remotes/origin/HEAD"};
-
-  bool found_remote = false;
-  for (const char *branch_name : remote_branch_names) {
-    error = git_reference_name_to_id(&remote_oid, repo, branch_name);
-    if (error == 0) {
-      qDebug() << "Found remote branch:" << branch_name;
-      found_remote = true;
-      break;
-    }
-  }
-
-  if (!found_remote) {
-    qDebug() << "Failed to find remote tracking branch";
+  if (!resolveRemoteTrackingOid(repo, &remote_oid)) {
     git_repository_free(repo);
     return -1;
   }
@@ -902,23 +889,7 @@ QVariantList GitManager::getCommitsBehindDetails() {
   git_oid_cpy(&local_oid, head_target);
   git_reference_free(head_ref);
 
-  // Try to find the remote tracking branch
-  const char *remote_branch_names[] = {"refs/remotes/origin/main",
-                                       "refs/remotes/origin/master",
-                                       "refs/remotes/origin/HEAD"};
-
-  bool found_remote = false;
-  for (const char *branch_name : remote_branch_names) {
-    error = git_reference_name_to_id(&remote_oid, repo, branch_name);
-    if (error == 0) {
-      qDebug() << "Found remote branch:" << branch_name;
-      found_remote = true;
-      break;
-    }
-  }
-
-  if (!found_remote) {
-    qDebug() << "Failed to find remote tracking branch";
+  if (!resolveRemoteTrackingOid(repo, &remote_oid)) {
     git_repository_free(repo);
     return commitList;
   }

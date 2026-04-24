@@ -22,6 +22,7 @@ signals:
   void showWindowRequested();
   void toggleWindowRequested();
   void checkForUpdatesRequested();
+  void ignoreUpdateRequested();
   void quitRequested();
 
 private slots:
@@ -38,7 +39,7 @@ private:
   QMenu *m_trayMenu;
   QAction *m_showAction;
   QAction *m_checkUpdatesAction;
-  QAction *m_pullAction;
+  QAction *m_ignoreUpdateAction;
   QAction *m_quitAction;
   int m_currentCommitsBehind;
   bool m_debugMode;

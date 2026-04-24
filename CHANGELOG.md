@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## 0.9.0
+
+- **Added "Ignore update" to the tray menu**
+  - The tray context menu now includes an `Ignore update` action that mirrors the existing `Ignore commits` behavior from the updates dialog
+  - The dialog button and tray action now share the same `GitManager` code path, so both trigger the same pull-only update flow
+
 ## 0.8.1
 
 - **Fixed app startup crash** (`Kirigami.InlineMessage is not a type`)

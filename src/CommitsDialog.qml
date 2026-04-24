@@ -42,7 +42,7 @@ Dialog {
                 enabled: gitManager ? !gitManager.isBusy && gitManager.commitsBehind > 0 : false
                 onClicked: {
                     if (gitManager)
-                        gitManager.pullRepository();
+                        gitManager.ignoreUpdate();
                 }
                 ToolTip.visible: hovered
                 ToolTip.text: "Pulls changes from git to remove them from this list.\nNote: This doesn't actually ignore commits, it downloads them. Changes will be applied in the next build."

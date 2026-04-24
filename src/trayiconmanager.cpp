@@ -39,6 +39,12 @@ void TrayIconManager::createTrayIcon() {
   connect(m_checkUpdatesAction, &QAction::triggered, this,
           &TrayIconManager::checkForUpdatesRequested);
 
+  m_ignoreUpdateAction =
+      m_trayMenu->addAction(QIcon::fromTheme("download"), "Ignore Updates");
+  m_ignoreUpdateAction->setEnabled(false);
+  connect(m_ignoreUpdateAction, &QAction::triggered, this,
+          &TrayIconManager::ignoreUpdateRequested);
+
   m_trayMenu->addSeparator();
 
   m_quitAction =
@@ -93,6 +99,10 @@ void TrayIconManager::updateIcon(int commitsBehind) {
     pixmap = createDefaultIcon();
     m_trayIcon->setToolTip(
         QString("Nixbit - Repository status unknown%1").arg(debugSuffix));
+  }
+
+  if (m_ignoreUpdateAction) {
+    m_ignoreUpdateAction->setEnabled(commitsBehind > 0);
   }
 
   qDebug() << "Setting tray icon, pixmap size:" << pixmap.size()

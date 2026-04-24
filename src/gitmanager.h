@@ -50,6 +50,7 @@ public:
   Q_INVOKABLE void pullRepository();
   Q_INVOKABLE void cloneOrPullRepository();
   Q_INVOKABLE void checkForUpdates();
+  Q_INVOKABLE void ignoreUpdate();
 
   // Make setStatus public so callbacks can use it
   void setStatus(const QString &status);

@@ -218,6 +218,9 @@ int main(int argc, char *argv[]) {
   QObject::connect(&trayIconManager, &TrayIconManager::checkForUpdatesRequested,
                    &gitManager, &GitManager::checkForUpdates);
 
+  QObject::connect(&trayIconManager, &TrayIconManager::ignoreUpdateRequested,
+                   &gitManager, &GitManager::ignoreUpdate);
+
   QObject::connect(&trayIconManager, &TrayIconManager::quitRequested, &app,
                    &QApplication::quit);
 
