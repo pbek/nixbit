@@ -76,6 +76,8 @@ private:
   void openOutputLogFile();
   void closeOutputLogFile();
   QString privilegeEscalationPrefix() const;
+  void runPrivilegedRebuild(const QString &mode, const QString &repoPath,
+                            const QString &hostname, const QString &buildHost);
 
   QProcess *m_process;
   QString m_output; // Truncated output for UI display

@@ -427,10 +427,11 @@ void ProcessManager::runNixosRebuildBuild(const QString &repoPath,
 
   runCommand("bash", QStringList() << "-c" << cmd);
 }
-void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
-                                           const QString &hostname,
-                                           const QString &buildHost) {
-  // Clear output before starting switch
+void ProcessManager::runPrivilegedRebuild(const QString &mode,
+                                          const QString &repoPath,
+                                          const QString &hostname,
+                                          const QString &buildHost) {
+  // Clear output before starting the rebuild
   clearOutput();
 
   // Sanitize hostname to prevent command injection
@@ -455,12 +456,19 @@ void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
     }
   }
 
-  // Build the nixos-rebuild switch command with pkexec for sudo
+  // The rebuild mode is fully controlled by the application, but guard against
+  // unexpected values reaching the elevated shell.
+  if (mode != "switch" && mode != "boot") {
+    appendOutput("Error: Invalid rebuild mode.\n");
+    return;
+  }
+
   QString buildHostParam =
       sanitizedBuildHost.isEmpty() ? "" : " --build-host " + sanitizedBuildHost;
-  QString timestamp = QString::number(QDateTime::currentMSecsSinceEpoch());
-  QString tempScript = "/tmp/nixbit-rebuild-" + timestamp + ".sh";
 
+  // Build the script that will run as root. The repository is copied to a
+  // private temporary directory (named with the elevated shell's PID) before
+  // rebuilding, then cleaned up afterwards.
   QString scriptContent =
       "#!/usr/bin/env bash\n"
       "set -e\n"
@@ -470,75 +478,40 @@ void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
       repoPath +
       " $TEMP_REPO\n"
       "cd $TEMP_REPO\n"
-      "env TERM=dumb nixos-rebuild switch --flake .#" +
-      sanitizedHostname + buildHostParam +
+      "env TERM=dumb nixos-rebuild " +
+      mode + " --flake .#" + sanitizedHostname + buildHostParam +
       " -L\n"
       "echo \"Cleaning up temporary repository...\"\n"
       "rm -rf $TEMP_REPO\n";
 
-  // Use a subshell to ensure cleanup happens but exit code is preserved
-  QString cmd = "printf '%1' > " + tempScript + " && chmod +x " + tempScript +
-                " && (" + privilegeEscalationPrefix() + " " + tempScript +
-                "; EXIT_CODE=$?; rm -f " + tempScript + "; exit $EXIT_CODE)";
+  // Deliver the script to the elevated shell over stdin instead of writing it
+  // to a predictable path in a world-writable directory. The script is
+  // base64-encoded so its contents cannot break the surrounding command
+  // regardless of any special characters in the repository path, and there is
+  // no on-disk artifact that could be raced or replaced before running as root.
+  QString encodedScript =
+      QString::fromLatin1(scriptContent.toUtf8().toBase64());
 
-  runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
+  // The encoded payload is decoded inside the outer shell and piped into the
+  // privileged shell (`<escalation> bash -s`). stdin carries the script source;
+  // the rebuild itself is non-interactive, and sudo authentication uses an
+  // askpass helper (see privilegeEscalationPrefix), so stdin is free for this.
+  QString cmd =
+      "printf '%1' | base64 -d | (" + privilegeEscalationPrefix() + " bash -s)";
+
+  runCommand("bash", QStringList() << "-c" << cmd.arg(encodedScript));
+}
+
+void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
+                                           const QString &hostname,
+                                           const QString &buildHost) {
+  runPrivilegedRebuild("switch", repoPath, hostname, buildHost);
 }
 
 void ProcessManager::runNixosRebuildBoot(const QString &repoPath,
                                          const QString &hostname,
                                          const QString &buildHost) {
-  // Clear output before starting boot
-  clearOutput();
-
-  // Sanitize hostname to prevent command injection
-  QString sanitizedHostname = hostname;
-  sanitizedHostname.replace(QRegularExpression("[^a-zA-Z0-9._-]"), "");
-
-  if (sanitizedHostname.isEmpty() || sanitizedHostname != hostname) {
-    appendOutput("Error: Invalid hostname. Only alphanumeric characters, "
-                 "hyphens, underscores, and dots are allowed.\n");
-    return;
-  }
-
-  // Sanitize build host if provided
-  QString sanitizedBuildHost = buildHost.trimmed();
-  if (!sanitizedBuildHost.isEmpty()) {
-    sanitizedBuildHost.replace(QRegularExpression("[^a-zA-Z0-9._@-]"), "");
-    if (sanitizedBuildHost.isEmpty() ||
-        sanitizedBuildHost != buildHost.trimmed()) {
-      appendOutput("Error: Invalid build host. Only alphanumeric characters, "
-                   "hyphens, underscores, dots, and @ are allowed.\n");
-      return;
-    }
-  }
-
-  // Build the nixos-rebuild boot command with pkexec for sudo
-  QString buildHostParam =
-      sanitizedBuildHost.isEmpty() ? "" : " --build-host " + sanitizedBuildHost;
-  QString timestamp = QString::number(QDateTime::currentMSecsSinceEpoch());
-  QString tempScript = "/tmp/nixbit-rebuild-" + timestamp + ".sh";
-
-  QString scriptContent =
-      "#!/usr/bin/env bash\n"
-      "set -e\n"
-      "TEMP_REPO=/tmp/nixbit-repo-$$\n"
-      "echo \"Copying repository to temporary location...\"\n"
-      "cp -r " +
-      repoPath +
-      " $TEMP_REPO\n"
-      "cd $TEMP_REPO\n"
-      "env TERM=dumb nixos-rebuild boot --flake .#" +
-      sanitizedHostname + buildHostParam +
-      " -L\n"
-      "echo \"Cleaning up temporary repository...\"\n"
-      "rm -rf $TEMP_REPO\n";
-
-  // Use a subshell to ensure cleanup happens but exit code is preserved
-  QString cmd = "printf '%1' > " + tempScript + " && chmod +x " + tempScript +
-                " && (" + privilegeEscalationPrefix() + " " + tempScript +
-                "; EXIT_CODE=$?; rm -f " + tempScript + "; exit $EXIT_CODE)";
-
-  runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
+  runPrivilegedRebuild("boot", repoPath, hostname, buildHost);
 }
 
 void ProcessManager::generateTestOutput(int lineCount) {
