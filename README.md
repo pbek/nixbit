@@ -90,6 +90,51 @@ When the module is enabled, it:
    - The autostart force setting (in the `[Autostart]` section with `Force` key)
 3. **Locks settings**: Any settings written to `/etc/nixbit.conf` cannot be modified through the Nixbit UI, ensuring your fleet configuration remains consistent
 
+## Privilege Escalation (pkexec / sudo)
+
+The `switch` and `boot` rebuild modes need root privileges. Nixbit resolves a
+privilege escalation tool at run time:
+
+1. It prefers a **setuid `pkexec`** (for example the NixOS wrapper at
+   `/run/wrappers/bin/pkexec`), which shows a graphical authentication dialog.
+2. If no setuid `pkexec` is available, it falls back to a **setuid `sudo`**,
+   using a graphical askpass helper (such as `ksshaskpass`) when one is found.
+
+### Enabling pkexec on NixOS
+
+On NixOS, binaries in the Nix store cannot be setuid; a setuid **wrapper** must
+be created instead. Enabling polkit alone is **not** enough — NixOS does not
+create a setuid `pkexec` wrapper by default, so `pkexec` will fail with
+`pkexec must be setuid root` and Nixbit will use the `sudo` fallback.
+
+To use `pkexec`, declare the wrapper explicitly in your NixOS configuration:
+
+```nix
+{ pkgs, ... }:
+{
+  # Enable polkit and a polkit authentication agent for your desktop.
+  # (KDE Plasma already runs polkit-kde-agent.)
+  security.polkit.enable = true;
+
+  # Create a setuid wrapper for pkexec, since NixOS does not ship one.
+  security.wrappers.pkexec = {
+    owner = "root";
+    group = "root";
+    setuid = true;
+    source = "${pkgs.polkit.bin}/bin/pkexec";
+  };
+}
+```
+
+After `nixos-rebuild switch` (and re-login, or reboot), `/run/wrappers/bin/pkexec`
+will exist as a setuid root binary, and Nixbit will automatically prefer it over
+`sudo` — no Nixbit configuration change is required.
+
+> [!NOTE]
+> `pkexec` does not cache credentials the way `sudo` does, so it authenticates
+> separately for each privileged action. The `sudo` fallback may reuse a cached
+> credential within its timeout.
+
 ## Features
 
 ### 🔄 NixOS Generations
