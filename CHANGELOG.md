@@ -8,6 +8,7 @@
   - Prefers a setuid `pkexec` (for example the NixOS wrapper at `/run/wrappers/bin/pkexec`) so the graphical authentication dialog is used when available
   - Falls back to a setuid `sudo`, using a graphical askpass helper when present, on systems where polkit's setuid `pkexec` wrapper is not enabled
   - Prevents `pkexec must be setuid root` aborting the rebuild and prints which escalation tool is being used
+  - The escalation tool is now detected up front (checking the setuid bit) so a non-setuid `pkexec` is never invoked, avoiding the red `pkexec must be setuid root` error in the log; the chosen tool is shown as a neutral status line instead
 - **Hardened privileged rebuilds** (for [#22](https://github.com/pbek/nixbit/issues/22))
   - The rebuild script is no longer written to a predictable path in a world-writable directory before running as root
   - The script is now piped to the elevated shell over stdin (`<escalation> bash -s`), leaving no on-disk artifact to be raced or replaced

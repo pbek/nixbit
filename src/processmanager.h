@@ -53,6 +53,12 @@ public:
                                        const QString &buildHost = QString());
   Q_INVOKABLE void generateTestOutput(int lineCount);
 
+  // Pre-flight check for privileged rebuilds. Returns a short, human-readable
+  // description of which privilege escalation tool would be used for a switch
+  // or boot rebuild (for example "pkexec", "sudo (with askpass)"), or an empty
+  // string if no usable setuid tool is found.
+  Q_INVOKABLE QString detectPrivilegeEscalationTool() const;
+
 signals:
   void outputChanged();
   void isRunningChanged();
@@ -75,9 +81,20 @@ private:
   void trimOutputToLimit();
   void openOutputLogFile();
   void closeOutputLogFile();
-  QString privilegeEscalationPrefix() const;
   void runPrivilegedRebuild(const QString &mode, const QString &repoPath,
                             const QString &hostname, const QString &buildHost);
+
+  // Result of resolving a privilege escalation tool in C++ (used both for the
+  // pre-flight check and to build the rebuild command deterministically).
+  struct EscalationTool {
+    QString command;     // e.g. "/run/wrappers/bin/pkexec" or
+                         // "/run/wrappers/bin/sudo -A"; empty if none found
+    QString description; // human-readable, e.g. "pkexec", "sudo (with askpass)"
+    QString askpass; // path to a graphical askpass helper for sudo -A, if any
+    bool usesPkexec = false;
+    bool found() const { return !command.isEmpty(); }
+  };
+  EscalationTool resolveEscalationTool() const;
 
   QProcess *m_process;
   QString m_output; // Truncated output for UI display

@@ -2,11 +2,14 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QFile>
+#include <QFileInfo>
 #include <QRegularExpression>
+#include <QStandardPaths>
 #include <QSysInfo>
 #include <QTextStream>
 #include <QTimer>
 #include <csignal>
+#include <sys/stat.h>
 #include <unistd.h>
 
 ProcessManager::ProcessManager(QObject *parent)
@@ -67,49 +70,83 @@ void ProcessManager::closeOutputLogFile() {
   }
 }
 
-QString ProcessManager::privilegeEscalationPrefix() const {
-  // Resolve a privilege escalation tool at run time.
-  //
-  // pkexec is preferred because it shows a graphical authentication dialog and
-  // streams output back to the application. On NixOS the usable setuid binary
-  // is exposed through /run/wrappers/bin/pkexec; an unwrapped pkexec is not
-  // setuid and fails with "pkexec must be setuid root".
-  //
-  // When no usable setuid pkexec exists (for example when polkit's setuid
-  // wrapper is not enabled), fall back to the setuid sudo wrapper. A graphical
-  // askpass helper is used when available so a password dialog can still be
-  // shown; otherwise sudo will read the password from the controlling terminal.
-  return "ESC=; "
-         "for c in /run/wrappers/bin/pkexec \"$(command -v pkexec "
-         "2>/dev/null)\"; do "
-         "if [ -n \"$c\" ] && [ -u \"$c\" ]; then ESC=\"$c\"; break; fi; "
-         "done; "
-         "if [ -z \"$ESC\" ]; then "
-         "for c in /run/wrappers/bin/sudo \"$(command -v sudo 2>/dev/null)\"; "
-         "do "
-         "if [ -n \"$c\" ] && [ -u \"$c\" ]; then "
-         "for a in /run/wrappers/bin/ksshaskpass \"$(command -v ksshaskpass "
-         "2>/dev/null)\" "
-         "\"$(command -v ssh-askpass 2>/dev/null)\" \"$(command -v "
-         "lxqt-openssh-askpass 2>/dev/null)\"; do "
-         "if [ -x \"$a\" ]; then SUDO_ASKPASS=\"$a\"; export SUDO_ASKPASS; "
-         "break; fi; "
-         "done; "
-         "if [ -n \"$SUDO_ASKPASS\" ]; then ESC=\"$c -A\"; else ESC=\"$c\"; "
-         "fi; "
-         "break; "
-         "fi; "
-         "done; "
-         "fi; "
-         "if [ -z \"$ESC\" ]; then "
-         "echo 'Error: no setuid pkexec or sudo found for privilege "
-         "escalation.' >&2; "
-         "echo 'On NixOS, enable security.polkit.enable for pkexec, or "
-         "security.sudo.enable for sudo.' >&2; "
-         "exit 127; "
-         "fi; "
-         "echo \"Using privilege escalation: $ESC\"; "
-         "$ESC";
+namespace {
+
+// Returns true if the path exists, is a regular file, and has the setuid bit.
+bool isSetuidExecutable(const QString &path) {
+  if (path.isEmpty()) {
+    return false;
+  }
+  struct stat st;
+  if (stat(path.toLocal8Bit().constData(), &st) != 0) {
+    return false;
+  }
+  return S_ISREG(st.st_mode) && (st.st_mode & S_ISUID) != 0;
+}
+
+// Resolve a binary either from an absolute path or by searching PATH.
+QString resolveBinary(const QString &candidate) {
+  if (candidate.startsWith('/')) {
+    return candidate;
+  }
+  return QStandardPaths::findExecutable(candidate);
+}
+
+} // namespace
+
+ProcessManager::EscalationTool ProcessManager::resolveEscalationTool() const {
+  EscalationTool tool;
+
+  // 1. Prefer a setuid pkexec (graphical authentication dialog).
+  const QStringList pkexecCandidates = {"/run/wrappers/bin/pkexec", "pkexec"};
+  for (const QString &candidate : pkexecCandidates) {
+    const QString resolved = resolveBinary(candidate);
+    if (isSetuidExecutable(resolved)) {
+      tool.command = resolved;
+      tool.description = "pkexec";
+      tool.usesPkexec = true;
+      return tool;
+    }
+  }
+
+  // 2. Fall back to a setuid sudo, using a graphical askpass helper if present.
+  const QStringList sudoCandidates = {"/run/wrappers/bin/sudo", "sudo"};
+  for (const QString &candidate : sudoCandidates) {
+    const QString resolved = resolveBinary(candidate);
+    if (!isSetuidExecutable(resolved)) {
+      continue;
+    }
+
+    const QStringList askpassCandidates = {"/run/wrappers/bin/ksshaskpass",
+                                           "ksshaskpass", "ssh-askpass",
+                                           "lxqt-openssh-askpass"};
+    QString askpass;
+    for (const QString &a : askpassCandidates) {
+      const QString resolvedAskpass = resolveBinary(a);
+      if (!resolvedAskpass.isEmpty() &&
+          QFileInfo(resolvedAskpass).isExecutable()) {
+        askpass = resolvedAskpass;
+        break;
+      }
+    }
+
+    if (!askpass.isEmpty()) {
+      tool.command = resolved + " -A";
+      tool.description = "sudo (with graphical password prompt)";
+      tool.askpass = askpass;
+    } else {
+      tool.command = resolved;
+      tool.description = "sudo (terminal password prompt)";
+    }
+    return tool;
+  }
+
+  // 3. Nothing usable found.
+  return tool;
+}
+
+QString ProcessManager::detectPrivilegeEscalationTool() const {
+  return resolveEscalationTool().description;
 }
 
 void ProcessManager::runCommand(const QString &program,
@@ -466,6 +503,27 @@ void ProcessManager::runPrivilegedRebuild(const QString &mode,
   QString buildHostParam =
       sanitizedBuildHost.isEmpty() ? "" : " --build-host " + sanitizedBuildHost;
 
+  // Pre-flight: resolve the privilege escalation tool in C++ before running.
+  // This avoids ever invoking a non-setuid pkexec (which would print a red
+  // "pkexec must be setuid root" error into the log) and lets us report the
+  // chosen tool with a neutral status line instead.
+  EscalationTool tool = resolveEscalationTool();
+  QString escalation;
+  if (tool.found()) {
+    appendOutput("\n=== Using privilege escalation: " + tool.description +
+                 " ===\n\n");
+    escalation = tool.command;
+  } else {
+    // No usable setuid tool found. Warn neutrally but still attempt with a
+    // plain pkexec/sudo so the tool itself can report the precise problem.
+    appendOutput(
+        "\n=== No setuid pkexec or sudo wrapper was found; attempting anyway "
+        "===\n"
+        "=== If this fails, enable a setuid pkexec wrapper "
+        "(security.wrappers.pkexec) or sudo on NixOS ===\n\n");
+    escalation = "sudo";
+  }
+
   // Build the script that will run as root. The repository is copied to a
   // private temporary directory (named with the elevated shell's PID) before
   // rebuilding, then cleaned up afterwards.
@@ -493,11 +551,18 @@ void ProcessManager::runPrivilegedRebuild(const QString &mode,
       QString::fromLatin1(scriptContent.toUtf8().toBase64());
 
   // The encoded payload is decoded inside the outer shell and piped into the
-  // privileged shell (`<escalation> bash -s`). stdin carries the script source;
-  // the rebuild itself is non-interactive, and sudo authentication uses an
-  // askpass helper (see privilegeEscalationPrefix), so stdin is free for this.
+  // privileged shell (`<escalation> bash -s`). The escalation tool was resolved
+  // above in C++, so the command is deterministic. stdin carries the script
+  // source; the rebuild itself is non-interactive, and sudo authentication uses
+  // an askpass helper (SUDO_ASKPASS), so stdin is free for this.
+  QString askpassPrefix;
+  if (!tool.askpass.isEmpty()) {
+    // sudo -A needs SUDO_ASKPASS pointing at a graphical helper.
+    askpassPrefix = "SUDO_ASKPASS=" + tool.askpass + " ";
+  }
+
   QString cmd =
-      "printf '%1' | base64 -d | (" + privilegeEscalationPrefix() + " bash -s)";
+      "printf '%1' | base64 -d | (" + askpassPrefix + escalation + " bash -s)";
 
   runCommand("bash", QStringList() << "-c" << cmd.arg(encodedScript));
 }
