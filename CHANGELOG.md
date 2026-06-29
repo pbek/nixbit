@@ -1,5 +1,14 @@
 # Nixbit Changelog
 
+## 0.10.0
+
+- **Fixed privilege escalation failing for switch and boot rebuilds**
+  (for [#21](https://github.com/pbek/nixbit/issues/21))
+  - Nixbit now resolves a privilege escalation tool at run time instead of always calling `pkexec`
+  - Prefers a setuid `pkexec` (for example the NixOS wrapper at `/run/wrappers/bin/pkexec`) so the graphical authentication dialog is used when available
+  - Falls back to a setuid `sudo`, using a graphical askpass helper when present, on systems where polkit's setuid `pkexec` wrapper is not enabled
+  - Prevents `pkexec must be setuid root` aborting the rebuild and prints which escalation tool is being used
+
 ## 0.9.0
 
 - **Added "Ignore update" to the tray menu**

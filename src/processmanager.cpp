@@ -67,6 +67,51 @@ void ProcessManager::closeOutputLogFile() {
   }
 }
 
+QString ProcessManager::privilegeEscalationPrefix() const {
+  // Resolve a privilege escalation tool at run time.
+  //
+  // pkexec is preferred because it shows a graphical authentication dialog and
+  // streams output back to the application. On NixOS the usable setuid binary
+  // is exposed through /run/wrappers/bin/pkexec; an unwrapped pkexec is not
+  // setuid and fails with "pkexec must be setuid root".
+  //
+  // When no usable setuid pkexec exists (for example when polkit's setuid
+  // wrapper is not enabled), fall back to the setuid sudo wrapper. A graphical
+  // askpass helper is used when available so a password dialog can still be
+  // shown; otherwise sudo will read the password from the controlling terminal.
+  return "ESC=; "
+         "for c in /run/wrappers/bin/pkexec \"$(command -v pkexec "
+         "2>/dev/null)\"; do "
+         "if [ -n \"$c\" ] && [ -u \"$c\" ]; then ESC=\"$c\"; break; fi; "
+         "done; "
+         "if [ -z \"$ESC\" ]; then "
+         "for c in /run/wrappers/bin/sudo \"$(command -v sudo 2>/dev/null)\"; "
+         "do "
+         "if [ -n \"$c\" ] && [ -u \"$c\" ]; then "
+         "for a in /run/wrappers/bin/ksshaskpass \"$(command -v ksshaskpass "
+         "2>/dev/null)\" "
+         "\"$(command -v ssh-askpass 2>/dev/null)\" \"$(command -v "
+         "lxqt-openssh-askpass 2>/dev/null)\"; do "
+         "if [ -x \"$a\" ]; then SUDO_ASKPASS=\"$a\"; export SUDO_ASKPASS; "
+         "break; fi; "
+         "done; "
+         "if [ -n \"$SUDO_ASKPASS\" ]; then ESC=\"$c -A\"; else ESC=\"$c\"; "
+         "fi; "
+         "break; "
+         "fi; "
+         "done; "
+         "fi; "
+         "if [ -z \"$ESC\" ]; then "
+         "echo 'Error: no setuid pkexec or sudo found for privilege "
+         "escalation.' >&2; "
+         "echo 'On NixOS, enable security.polkit.enable for pkexec, or "
+         "security.sudo.enable for sudo.' >&2; "
+         "exit 127; "
+         "fi; "
+         "echo \"Using privilege escalation: $ESC\"; "
+         "$ESC";
+}
+
 void ProcessManager::runCommand(const QString &program,
                                 const QStringList &arguments) {
   if (m_isRunning) {
@@ -382,7 +427,6 @@ void ProcessManager::runNixosRebuildBuild(const QString &repoPath,
 
   runCommand("bash", QStringList() << "-c" << cmd);
 }
-
 void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
                                            const QString &hostname,
                                            const QString &buildHost) {
@@ -434,8 +478,8 @@ void ProcessManager::runNixosRebuildSwitch(const QString &repoPath,
 
   // Use a subshell to ensure cleanup happens but exit code is preserved
   QString cmd = "printf '%1' > " + tempScript + " && chmod +x " + tempScript +
-                " && (pkexec " + tempScript + "; EXIT_CODE=$?; rm -f " +
-                tempScript + "; exit $EXIT_CODE)";
+                " && (" + privilegeEscalationPrefix() + " " + tempScript +
+                "; EXIT_CODE=$?; rm -f " + tempScript + "; exit $EXIT_CODE)";
 
   runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
 }
@@ -491,8 +535,8 @@ void ProcessManager::runNixosRebuildBoot(const QString &repoPath,
 
   // Use a subshell to ensure cleanup happens but exit code is preserved
   QString cmd = "printf '%1' > " + tempScript + " && chmod +x " + tempScript +
-                " && (pkexec " + tempScript + "; EXIT_CODE=$?; rm -f " +
-                tempScript + "; exit $EXIT_CODE)";
+                " && (" + privilegeEscalationPrefix() + " " + tempScript +
+                "; EXIT_CODE=$?; rm -f " + tempScript + "; exit $EXIT_CODE)";
 
   runCommand("bash", QStringList() << "-c" << cmd.arg(scriptContent));
 }

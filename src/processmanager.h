@@ -75,6 +75,7 @@ private:
   void trimOutputToLimit();
   void openOutputLogFile();
   void closeOutputLogFile();
+  QString privilegeEscalationPrefix() const;
 
   QProcess *m_process;
   QString m_output; // Truncated output for UI display
