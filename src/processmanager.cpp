@@ -92,6 +92,25 @@ QString resolveBinary(const QString &candidate) {
   return QStandardPaths::findExecutable(candidate);
 }
 
+QString formatDuration(qint64 milliseconds) {
+  const qint64 totalSeconds = milliseconds / 1000;
+  const qint64 hours = totalSeconds / 3600;
+  const qint64 minutes = (totalSeconds % 3600) / 60;
+  const qint64 seconds = totalSeconds % 60;
+
+  QStringList parts;
+  if (hours > 0) {
+    parts.append(QString("%1h").arg(hours));
+  }
+  if (minutes > 0) {
+    parts.append(QString("%1m").arg(minutes));
+  }
+  if (seconds > 0 || parts.isEmpty()) {
+    parts.append(QString("%1s").arg(seconds));
+  }
+  return parts.join(' ');
+}
+
 } // namespace
 
 ProcessManager::EscalationTool ProcessManager::resolveEscalationTool() const {
@@ -183,6 +202,17 @@ void ProcessManager::runCommand(const QString &program,
     appendOutput(QString("\nError: Failed to start process\n"));
     setIsRunning(false);
     m_outputFlushTimer->stop();
+
+    const QString rebuildMode = m_rebuildMode;
+    const QString rebuildHostname = m_rebuildHostname;
+    const qint64 rebuildElapsed =
+        m_rebuildTimer.isValid() ? m_rebuildTimer.elapsed() : 0;
+    m_rebuildMode.clear();
+    m_rebuildHostname.clear();
+    m_rebuildTimer.invalidate();
+    if (!rebuildMode.isEmpty()) {
+      sendRebuildNotification(rebuildMode, rebuildHostname, -1, rebuildElapsed);
+    }
   }
 }
 
@@ -216,6 +246,14 @@ void ProcessManager::runCommandInDirectory(const QString &program,
 
 void ProcessManager::onProcessFinished(int exitCode,
                                        QProcess::ExitStatus exitStatus) {
+  const QString rebuildMode = m_rebuildMode;
+  const QString rebuildHostname = m_rebuildHostname;
+  const qint64 rebuildElapsed =
+      m_rebuildTimer.isValid() ? m_rebuildTimer.elapsed() : 0;
+  m_rebuildMode.clear();
+  m_rebuildHostname.clear();
+  m_rebuildTimer.invalidate();
+
   // Stop output batching timer
   m_outputFlushTimer->stop();
 
@@ -241,6 +279,12 @@ void ProcessManager::onProcessFinished(int exitCode,
   }
 
   appendOutput(statusText);
+
+  if (!rebuildMode.isEmpty()) {
+    sendRebuildNotification(rebuildMode, rebuildHostname,
+                            exitStatus == QProcess::CrashExit ? -1 : exitCode,
+                            rebuildElapsed);
+  }
 
   // Emit the temp file path so the log manager can copy it directly to the
   // log directory, avoiding loading the entire output into memory
@@ -384,6 +428,49 @@ void ProcessManager::setMaxOutputLines(int lines) {
   }
 }
 
+void ProcessManager::setNotificationCommand(const QString &command) {
+  m_notificationCommand = command;
+}
+
+void ProcessManager::sendRebuildNotification(const QString &mode,
+                                             const QString &hostname,
+                                             int exitCode,
+                                             qint64 elapsedMilliseconds) {
+  if (m_notificationCommand.trimmed().isEmpty()) {
+    return;
+  }
+
+  const QString result =
+      exitCode == 0
+          ? QString("Nixbit: %1 for %2 completed successfully in %3.")
+                .arg(mode)
+                .arg(hostname)
+                .arg(formatDuration(elapsedMilliseconds))
+          : QString("Nixbit: %1 for %2 failed with exit code %3 after %4.")
+                .arg(mode)
+                .arg(hostname)
+                .arg(exitCode)
+                .arg(formatDuration(elapsedMilliseconds));
+
+  auto *notificationProcess = new QProcess(this);
+  connect(notificationProcess,
+          QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+          notificationProcess, &QObject::deleteLater);
+  connect(notificationProcess, &QProcess::errorOccurred, notificationProcess,
+          [notificationProcess](QProcess::ProcessError error) {
+            if (error == QProcess::FailedToStart) {
+              qWarning() << "Failed to start notification command:"
+                         << notificationProcess->errorString();
+              notificationProcess->deleteLater();
+            }
+          });
+  notificationProcess->start("sh", {"-c", m_notificationCommand});
+  if (notificationProcess->waitForStarted(3000)) {
+    notificationProcess->write((result + '\n').toUtf8());
+    notificationProcess->closeWriteChannel();
+  }
+}
+
 void ProcessManager::setIsRunning(bool running) {
   if (m_isRunning != running) {
     m_isRunning = running;
@@ -462,6 +549,12 @@ void ProcessManager::runNixosRebuildBuild(const QString &repoPath,
                 " && env TERM=dumb nixos-rebuild build --flake .#" +
                 sanitizedHostname + buildHostParam + " -L";
 
+  if (m_isRunning) {
+    killProcess();
+  }
+  m_rebuildMode = "build";
+  m_rebuildHostname = sanitizedHostname;
+  m_rebuildTimer.start();
   runCommand("bash", QStringList() << "-c" << cmd);
 }
 void ProcessManager::runPrivilegedRebuild(const QString &mode,
@@ -564,6 +657,12 @@ void ProcessManager::runPrivilegedRebuild(const QString &mode,
   QString cmd =
       "printf '%1' | base64 -d | (" + askpassPrefix + escalation + " bash -s)";
 
+  if (m_isRunning) {
+    killProcess();
+  }
+  m_rebuildMode = mode;
+  m_rebuildHostname = sanitizedHostname;
+  m_rebuildTimer.start();
   runCommand("bash", QStringList() << "-c" << cmd.arg(encodedScript));
 }
 

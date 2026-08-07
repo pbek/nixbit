@@ -1,5 +1,13 @@
 # Nixbit Changelog
 
+## 1.0.0
+
+- **Added configurable build notifications** (for [#25](https://github.com/pbek/nixbit/issues/25))
+  - A new Notifications settings page configures a shell command to run after build, switch, and boot operations
+  - The command receives a success or failure message, including the target hostname and process duration, through standard input
+  - Notifications can be disabled by leaving the command empty
+  - The NixOS module now provides `nixbit.notificationCommand` to manage and lock the command through `/etc/nixbit.conf`
+
 ## 0.10.0
 
 - **Fixed privilege escalation failing for switch and boot rebuilds**

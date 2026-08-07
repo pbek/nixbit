@@ -10,7 +10,8 @@ SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent), m_startHidden(false), m_windowWidth(1000),
       m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost(""),
       m_selectedBuildHost(""), m_selectedSwitchHost(""), m_selectedBootHost(""),
-      m_maxStoredLogs(10), m_debugMode(false), m_settingsVersion(0) {
+      m_maxStoredLogs(10), m_notificationCommandOverridden(false),
+      m_debugMode(false), m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -206,6 +207,15 @@ void SettingsManager::setMaxStoredLogs(int count) {
   }
 }
 
+void SettingsManager::setNotificationCommand(const QString &command) {
+  if (!m_notificationCommandOverridden && m_notificationCommand != command) {
+    m_notificationCommand = command;
+    saveSettings();
+    emit notificationCommandChanged();
+    qDebug() << "Notification command changed to:" << command;
+  }
+}
+
 void SettingsManager::setDebugMode(bool enabled) {
   if (m_debugMode != enabled) {
     m_debugMode = enabled;
@@ -394,6 +404,16 @@ void SettingsManager::loadSettings() {
   // Load max stored logs
   m_maxStoredLogs = settings.value("General/MaxStoredLogs", 10).toInt();
 
+  m_notificationCommand =
+      settings.value("Notifications/Command", QString()).toString();
+  QSettings systemSettings("/etc/nixbit.conf", QSettings::IniFormat);
+  m_notificationCommandOverridden =
+      systemSettings.contains("Notifications/Command");
+  if (m_notificationCommandOverridden) {
+    m_notificationCommand =
+        systemSettings.value("Notifications/Command").toString();
+  }
+
   // Load debug mode
   m_debugMode = settings.value("General/DebugMode", false).toBool();
 
@@ -408,6 +428,9 @@ void SettingsManager::loadSettings() {
   qDebug() << "Loaded selected build host:" << m_selectedBuildHost;
   qDebug() << "Loaded selected switch host:" << m_selectedSwitchHost;
   qDebug() << "Loaded selected boot host:" << m_selectedBootHost;
+  qDebug() << "Loaded notification command:" << m_notificationCommand;
+  qDebug() << "Notification command overridden:"
+           << m_notificationCommandOverridden;
   qDebug() << "Autostart file exists:" << autostartFileExists();
 
   // Perform migration if needed
@@ -444,6 +467,10 @@ void SettingsManager::saveSettings() {
 
   // Save max stored logs
   settings.setValue("General/MaxStoredLogs", m_maxStoredLogs);
+
+  if (!m_notificationCommandOverridden) {
+    settings.setValue("Notifications/Command", m_notificationCommand);
+  }
 
   // Save debug mode
   settings.setValue("General/DebugMode", m_debugMode);

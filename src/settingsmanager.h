@@ -30,6 +30,10 @@ class SettingsManager : public QObject {
                  setSelectedBootHost NOTIFY selectedBootHostChanged)
   Q_PROPERTY(int maxStoredLogs READ maxStoredLogs WRITE setMaxStoredLogs NOTIFY
                  maxStoredLogsChanged)
+  Q_PROPERTY(QString notificationCommand READ notificationCommand WRITE
+                 setNotificationCommand NOTIFY notificationCommandChanged)
+  Q_PROPERTY(bool notificationCommandOverridden READ
+                 notificationCommandOverridden CONSTANT)
   Q_PROPERTY(
       bool debugMode READ debugMode WRITE setDebugMode NOTIFY debugModeChanged)
 
@@ -82,6 +86,12 @@ public:
   int maxStoredLogs() const { return m_maxStoredLogs; }
   void setMaxStoredLogs(int count);
 
+  QString notificationCommand() const { return m_notificationCommand; }
+  void setNotificationCommand(const QString &command);
+  bool notificationCommandOverridden() const {
+    return m_notificationCommandOverridden;
+  }
+
   bool debugMode() const { return m_debugMode; }
   void setDebugMode(bool enabled);
 
@@ -101,6 +111,7 @@ signals:
   void selectedSwitchHostChanged();
   void selectedBootHostChanged();
   void maxStoredLogsChanged();
+  void notificationCommandChanged();
   void debugModeChanged();
 
 private:
@@ -127,6 +138,8 @@ private:
   QString m_selectedSwitchHost;
   QString m_selectedBootHost;
   int m_maxStoredLogs;
+  QString m_notificationCommand;
+  bool m_notificationCommandOverridden;
   bool m_debugMode;
   int m_settingsVersion;
 };

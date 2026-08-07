@@ -49,6 +49,12 @@
               forceAutostart = mkEnableOption "" // {
                 description = "Force creation of autostart desktop entry when application starts";
               };
+
+              notificationCommand = mkOption {
+                type = types.nullOr types.str;
+                default = null;
+                description = "Command that receives build, switch, and boot notification text on standard input";
+              };
             };
 
             config = mkIf cfg.enable {
@@ -63,6 +69,10 @@
                   + ''
                     [Autostart]
                     Force = ${if cfg.forceAutostart then "true" else "false"}
+                  ''
+                  + lib.optionalString (cfg.notificationCommand != null) ''
+                    [Notifications]
+                    Command = ${cfg.notificationCommand}
                   '';
               };
             };

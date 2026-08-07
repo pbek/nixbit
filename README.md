@@ -48,6 +48,7 @@ inputs.nixbit.inputs.nixpkgs.follows = "nixpkgs";
   nixbit = {
     enable = true;
     repository = "https://github.com/youruser/nixcfg.git";
+    notificationCommand = ''notify-send Nixbit "$(cat)"'';
   };
 }
 ```
@@ -80,6 +81,12 @@ The module provides the following configuration options:
 - **Default**: `false`
 - **Description**: When enabled, forces the creation of an autostart desktop entry every time the application starts. This is useful for ensuring Nixbit starts automatically on all systems in your fleet, regardless of user preferences. The setting is written to `/etc/nixbit.conf`.
 
+#### `nixbit.notificationCommand`
+
+- **Type**: `null` or `string`
+- **Default**: `null`
+- **Description**: Overrides the command used for build, switch, and boot notifications. Nixbit pipes the notification text to the command's standard input. When set, the command cannot be changed through the UI. For example: `''notify-send Nixbit "$(cat)"''`
+
 ### What the Module Does
 
 When the module is enabled, it:
@@ -88,6 +95,7 @@ When the module is enabled, it:
 2. **Creates configuration file**: Generates `/etc/nixbit.conf` with:
    - The specified repository URL (in the `[Repository]` section with `Url` key)
    - The autostart force setting (in the `[Autostart]` section with `Force` key)
+   - The optional notification command (in the `[Notifications]` section with `Command` key)
 3. **Locks settings**: Any settings written to `/etc/nixbit.conf` cannot be modified through the Nixbit UI, ensuring your fleet configuration remains consistent
 
 ## Privilege Escalation (pkexec / sudo)

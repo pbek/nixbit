@@ -1,6 +1,7 @@
 #ifndef PROCESSMANAGER_H
 #define PROCESSMANAGER_H
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QProcess>
 #include <QString>
@@ -28,6 +29,7 @@ public:
   bool hasFinished() const { return m_hasFinished; }
   int maxOutputLines() const { return m_maxOutputLines; }
   void setMaxOutputLines(int lines);
+  void setNotificationCommand(const QString &command);
 
   Q_INVOKABLE void runCommand(const QString &program,
                               const QStringList &arguments = QStringList());
@@ -83,6 +85,8 @@ private:
   void closeOutputLogFile();
   void runPrivilegedRebuild(const QString &mode, const QString &repoPath,
                             const QString &hostname, const QString &buildHost);
+  void sendRebuildNotification(const QString &mode, const QString &hostname,
+                               int exitCode, qint64 elapsedMilliseconds);
 
   // Result of resolving a privilege escalation tool in C++ (used both for the
   // pre-flight check and to build the rebuild command deterministically).
@@ -104,6 +108,10 @@ private:
   int m_lastExitCode;
   bool m_hasFinished;
   int m_maxOutputLines;
+  QString m_notificationCommand;
+  QString m_rebuildMode;
+  QString m_rebuildHostname;
+  QElapsedTimer m_rebuildTimer;
 
   // Stream full output to a temporary file instead of holding in memory
   QTemporaryFile *m_outputLogFile;

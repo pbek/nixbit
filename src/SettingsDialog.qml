@@ -53,6 +53,11 @@ Dialog {
                         page: "buildhosts"
                     }
                     ListElement {
+                        name: "Notifications"
+                        icon: "preferences-desktop-notification"
+                        page: "notifications"
+                    }
+                    ListElement {
                         name: "Debug"
                         icon: "tools-report-bug"
                         page: "debug"
@@ -446,6 +451,60 @@ Dialog {
                                 explanation: "Add build hosts to build on remote machines"
                                 icon.name: "network-server"
                             }
+                        }
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                    }
+                }
+            }
+
+            // Notification Settings Page
+            Item {
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.largeSpacing * 2
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Label {
+                        text: "Notifications"
+                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.5
+                        font.bold: true
+                    }
+
+                    Label {
+                        text: "Run a command when a build, switch, or boot operation finishes. The notification text is written to the command's standard input."
+                        color: Kirigami.Theme.disabledTextColor
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Kirigami.FormLayout {
+                        Layout.fillWidth: true
+
+                        TextField {
+                            id: notificationCommandField
+                            Kirigami.FormData.label: "Command:"
+                            Layout.fillWidth: true
+                            text: settingsManager ? settingsManager.notificationCommand : ""
+                            enabled: settingsManager ? !settingsManager.notificationCommandOverridden : false
+                            placeholderText: "notify-send Nixbit \"$(cat)\""
+                            onEditingFinished: {
+                                if (settingsManager)
+                                    settingsManager.notificationCommand = text;
+                            }
+                        }
+
+                        Label {
+                            text: settingsManager && settingsManager.notificationCommandOverridden ? "This command is managed by /etc/nixbit.conf." : "Leave empty to disable notifications. Shell syntax is supported."
+                            font.italic: true
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: Kirigami.Theme.disabledTextColor
+                            Layout.columnSpan: 2
+                            Layout.leftMargin: Kirigami.Units.largeSpacing
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
                         }
                     }
 

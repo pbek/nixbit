@@ -136,6 +136,14 @@ int main(int argc, char *argv[]) {
   SettingsManager settingsManager;
   engine.rootContext()->setContextProperty("settingsManager", &settingsManager);
 
+  processManager.setNotificationCommand(settingsManager.notificationCommand());
+  QObject::connect(&settingsManager,
+                   &SettingsManager::notificationCommandChanged,
+                   [&settingsManager, &processManager]() {
+                     processManager.setNotificationCommand(
+                         settingsManager.notificationCommand());
+                   });
+
   // Create and register SystemMonitor
   SystemMonitor systemMonitor;
   engine.rootContext()->setContextProperty("systemMonitor", &systemMonitor);
