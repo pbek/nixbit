@@ -181,7 +181,7 @@ Dialog {
 
                     background: Rectangle {
                         color: parent.hovered ? Kirigami.Theme.hoverColor : Kirigami.Theme.backgroundColor
-                        border.color: Kirigami.Theme.separatorColor
+                        border.color: Kirigami.Theme.disabledTextColor
                         border.width: 1
                         radius: Kirigami.Units.smallSpacing
                     }

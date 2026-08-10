@@ -47,6 +47,12 @@ void SystemResumeDetector::setupDBusConnection() {
 void SystemResumeDetector::setupNetworkMonitoring() {
   qDebug() << "Setting up network monitoring...";
 
+  if (!QNetworkInformation::loadDefaultBackend()) {
+    qWarning() << "No QNetworkInformation backend is available; network "
+                  "monitoring disabled";
+    return;
+  }
+
   m_networkInfo = QNetworkInformation::instance();
   if (m_networkInfo) {
     connect(m_networkInfo, &QNetworkInformation::reachabilityChanged, this,

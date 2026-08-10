@@ -67,6 +67,9 @@ qt_add_executable(
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
+set_source_files_properties(src/Utils.js PROPERTIES QT_QML_SKIP_QMLDIR_ENTRY
+                                                    TRUE)
+
 qt_add_qml_module(
   nixbit
   URI
@@ -84,7 +87,9 @@ qt_add_qml_module(
   src/GenerationsDialog.qml
   src/CommitsDialog.qml
   src/LogsDialog.qml
-  src/Utils.js)
+  src/Utils.js
+  RESOURCES
+  src/nixbit.svg)
 
 target_include_directories(nixbit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
                                           ${LIBGIT2_INCLUDE_DIRS})

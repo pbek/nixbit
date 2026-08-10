@@ -5,7 +5,9 @@
 - **Improved compatibility with current KDE Frameworks and Qt releases**
   - Replaced the deprecated `KLocalizedContext` with the supported KI18n QML context setup
   - Declared the KI18n QML and libssh2 build dependencies explicitly
-  - Marked the shared QML utility script as a library to prevent repeated evaluation
+  - Classified the shared QML utility script as an internal resource
+  - Enabled Qt's default network-information backend for resume detection
+  - Embedded the application icon in the QML resources and corrected invalid theme colors
   - Removed unused-variable warnings emitted by CMake during Nix builds
 
 ## 1.0.0
