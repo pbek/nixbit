@@ -3,7 +3,11 @@ cmake_minimum_required(VERSION 3.20)
 project(
   nixbit
   VERSION 1.0.1
-  LANGUAGES CXX)
+  LANGUAGES C CXX)
+
+if(CMAKE_EXPORT_NO_PACKAGE_REGISTRY)
+  set(CMAKE_EXPORT_PACKAGE_REGISTRY OFF)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -96,6 +100,7 @@ target_link_libraries(
           Qt6::Network
           KF6::CoreAddons
           KF6::I18n
+          KF6::I18nQml
           KF6::Kirigami
           ${LIBGIT2_LIBRARIES})
 

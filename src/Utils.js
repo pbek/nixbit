@@ -1,3 +1,5 @@
+.pragma library
+
 // Utility functions for Nixbit
 
 /**

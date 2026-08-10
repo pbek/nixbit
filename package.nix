@@ -4,6 +4,7 @@
   kdePackages,
   lib,
   libgit2,
+  libssh2,
   ninja,
   pkg-config,
   qt6,
@@ -56,6 +57,7 @@ stdenv.mkDerivation (
       kdePackages.ki18n
       kdePackages.kirigami
       libgit2
+      libssh2
       qt6.qtbase
       qt6.qtdeclarative
       qt6.qtwayland

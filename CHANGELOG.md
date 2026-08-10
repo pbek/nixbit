@@ -1,5 +1,13 @@
 # Nixbit Changelog
 
+## 1.0.1
+
+- **Improved compatibility with current KDE Frameworks and Qt releases**
+  - Replaced the deprecated `KLocalizedContext` with the supported KI18n QML context setup
+  - Declared the KI18n QML and libssh2 build dependencies explicitly
+  - Marked the shared QML utility script as a library to prevent repeated evaluation
+  - Removed unused-variable warnings emitted by CMake during Nix builds
+
 ## 1.0.0
 
 - **Added configurable build notifications** (for [#25](https://github.com/pbek/nixbit/issues/25))

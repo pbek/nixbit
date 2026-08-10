@@ -9,7 +9,7 @@
 #include "trayiconmanager.h"
 #include "utils/cli.h"
 #include "version.h"
-#include <KLocalizedContext>
+#include <KLocalizedQmlContext>
 #include <KLocalizedString>
 #include <QApplication>
 #include <QCommandLineParser>
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
   QObject::connect(&resumeDetector, &SystemResumeDetector::systemResumed,
                    &gitManager, &GitManager::checkForUpdates);
 
-  engine.rootContext()->setContextObject(new KLocalizedContext(&engine));
+  KLocalization::setupLocalizedContext(&engine);
 
   qDebug() << "Loading QML from qrc:/qt/qml/nixbit/src/main.qml";
 

@@ -11,6 +11,7 @@
     just
     pkg-config
     libgit2
+    libssh2
     # KDE Frameworks and Qt6
     kdePackages.extra-cmake-modules
     kdePackages.kcoreaddons
