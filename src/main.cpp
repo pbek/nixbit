@@ -244,13 +244,17 @@ int main(int argc, char *argv[]) {
   QObject::connect(
       &processManager, &ProcessManager::waitingForPasswordChanged,
       [&processManager, &trayIconManager, mainWindow]() {
-        if (!processManager.waitingForPassword() ||
-            (mainWindow && mainWindow->isVisible() && mainWindow->isActive())) {
+        // The prompt was answered or the process finished
+        if (!processManager.waitingForPassword()) {
+          trayIconManager.closeNotification();
+          return;
+        }
+        if (mainWindow && mainWindow->isVisible() && mainWindow->isActive()) {
           return;
         }
         const QString hostname = processManager.rebuildHostname();
         trayIconManager.showNotification(
-            "Nixbit - Password required",
+            "Password required",
             hostname.isEmpty()
                 ? QString("Enter your password in Nixbit's terminal to "
                           "continue.")

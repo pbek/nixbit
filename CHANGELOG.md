@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## 1.2.1
+
+- **The password notification can now show Nixbit**
+  - Clicking the notification or its "Show Nixbit" button brings the Nixbit window to the front, also on Wayland
+  - The notification stays until you answer the prompt and then closes by itself
+
 ## 1.2.0
 
 - **Made password prompts in the embedded terminal more visible**

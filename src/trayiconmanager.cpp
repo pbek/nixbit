@@ -1,5 +1,9 @@
 #include "trayiconmanager.h"
 #include <QApplication>
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
 #include <QDebug>
 #include <QFont>
 #include <QIcon>
@@ -7,10 +11,30 @@
 #include <QPainterPath>
 #include <QPixmap>
 
+namespace {
+const QString notificationsService =
+    QStringLiteral("org.freedesktop.Notifications");
+const QString notificationsPath =
+    QStringLiteral("/org/freedesktop/Notifications");
+const QString notificationsInterface =
+    QStringLiteral("org.freedesktop.Notifications");
+} // namespace
+
 TrayIconManager::TrayIconManager(bool debugMode, QObject *parent)
     : QObject(parent), m_trayIcon(nullptr), m_trayMenu(nullptr),
-      m_currentCommitsBehind(0), m_debugMode(debugMode) {
+      m_currentCommitsBehind(0), m_debugMode(debugMode), m_notificationId(0) {
   createTrayIcon();
+
+  QDBusConnection bus = QDBusConnection::sessionBus();
+  bus.connect(notificationsService, notificationsPath, notificationsInterface,
+              "ActionInvoked", this,
+              SLOT(onNotificationActionInvoked(uint, QString)));
+  bus.connect(notificationsService, notificationsPath, notificationsInterface,
+              "ActivationToken", this,
+              SLOT(onNotificationActivationToken(uint, QString)));
+  bus.connect(notificationsService, notificationsPath, notificationsInterface,
+              "NotificationClosed", this,
+              SLOT(onNotificationClosed(uint, uint)));
 }
 
 TrayIconManager::~TrayIconManager() {
@@ -261,8 +285,76 @@ void TrayIconManager::hide() {
 
 void TrayIconManager::showNotification(const QString &title,
                                        const QString &message) {
-  if (m_trayIcon) {
-    m_trayIcon->showMessage(title, message, QSystemTrayIcon::Warning, 30000);
+  // QSystemTrayIcon::showMessage() doesn't offer actions, so talk to the
+  // notification server directly
+  QDBusMessage call =
+      QDBusMessage::createMethodCall(notificationsService, notificationsPath,
+                                     notificationsInterface, "Notify");
+  QVariantMap hints;
+  hints.insert("desktop-entry", "nixbit");
+  hints.insert("urgency", QVariant::fromValue(uchar(1)));
+  // "default" is triggered by clicking the notification itself
+  const QStringList actions{"default", "Show Nixbit", "show", "Show Nixbit"};
+  // Expire timeout 0 keeps the notification until it is closed
+  call << QStringLiteral("Nixbit") << m_notificationId
+       << QStringLiteral("dialog-password") << title << message << actions
+       << hints << 0;
+
+  auto *watcher = new QDBusPendingCallWatcher(
+      QDBusConnection::sessionBus().asyncCall(call), this);
+  connect(watcher, &QDBusPendingCallWatcher::finished, this,
+          [this, watcher, title, message]() {
+            const QDBusPendingReply<uint> reply = *watcher;
+            if (reply.isError()) {
+              qWarning() << "Failed to show notification:"
+                         << reply.error().message();
+              if (m_trayIcon) {
+                m_trayIcon->showMessage(title, message,
+                                        QSystemTrayIcon::Warning, 30000);
+              }
+            } else {
+              m_notificationId = reply.value();
+            }
+            watcher->deleteLater();
+          });
+}
+
+void TrayIconManager::closeNotification() {
+  if (m_notificationId == 0) {
+    return;
+  }
+  QDBusMessage call = QDBusMessage::createMethodCall(
+      notificationsService, notificationsPath, notificationsInterface,
+      "CloseNotification");
+  call << m_notificationId;
+  QDBusConnection::sessionBus().asyncCall(call);
+  m_notificationId = 0;
+}
+
+void TrayIconManager::onNotificationActionInvoked(uint id,
+                                                  const QString &action) {
+  if (id == 0 || id != m_notificationId) {
+    return;
+  }
+  if (action == "default" || action == "show") {
+    emit showWindowRequested();
+  }
+  closeNotification();
+}
+
+void TrayIconManager::onNotificationActivationToken(uint id,
+                                                    const QString &token) {
+  // Sent right before ActionInvoked, Qt uses this token on Wayland to allow
+  // the window to be activated
+  if (id != 0 && id == m_notificationId && !token.isEmpty()) {
+    qputenv("XDG_ACTIVATION_TOKEN", token.toUtf8());
+  }
+}
+
+void TrayIconManager::onNotificationClosed(uint id, uint reason) {
+  Q_UNUSED(reason);
+  if (id != 0 && id == m_notificationId) {
+    m_notificationId = 0;
   }
 }
 
