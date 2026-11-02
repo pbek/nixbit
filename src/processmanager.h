@@ -111,6 +111,7 @@ signals:
                                 const QString &workingDirectory);
   void terminalCloseRequested(int runId);
   void terminalResetRequested();
+  void pauseRefused(const QString &reason);
 
 private slots:
   void onReadyReadStandardOutput();
@@ -135,6 +136,7 @@ private:
                             const QStringList &arguments,
                             const QString &workingDirectory);
   void signalTerminalProcessTree(int signal);
+  bool terminalProcessTreeHasForeignProcesses() const;
   void importTerminalTranscript(const QString &historyText);
   QString termEnvPrefix() const;
   void setWaitingForPassword(bool waiting);

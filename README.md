@@ -202,7 +202,7 @@ in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
 - **Build & Switch**: Chain build and switch operations - builds remotely first, then switches locally if successful
 - **Update System**: One-click button to pull repository updates and rebuild the system
 - **Check for Updates**: Button to manually check for repository updates
-- **Process Control**: Pause and resume system update processes during builds (hidden in switch mode due to sudo limitations)
+- **Process Control**: Pause and resume system update processes during builds (hidden in switch and boot mode due to sudo limitations, unless [nh](#using-nh) is used)
 
 ### 📊 System Monitoring
 

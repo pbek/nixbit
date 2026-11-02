@@ -26,6 +26,7 @@ ApplicationWindow {
     // Embedded Kwi terminal state (see KwiTerminalPane.qml)
     readonly property bool kwiTerminalAvailable: kwiTerminalLoader.status === Loader.Ready
     readonly property bool kwiTerminalShown: kwiTerminalAvailable && kwiTerminalLoader.item.hasSession
+    readonly property bool nhUsed: processManager !== null && processManager.useNh && processManager.terminalMode && processManager.nhAvailable
 
     Binding {
         target: processManager
@@ -1271,7 +1272,8 @@ ApplicationWindow {
                         Button {
                             text: processManager ? (processManager.isPaused ? "Resume" : "Pause") : "Pause"
                             enabled: processManager ? processManager.isRunning : false
-                            visible: rebuildModeComboBox.currentText !== "switch" && rebuildModeComboBox.currentText !== "boot"
+                            // Privileged rebuilds run as root, but nh only elevates for the activation
+                            visible: root.nhUsed || (processManager && processManager.isRunning ? root.currentRebuildMode === "build" : rebuildModeComboBox.currentText === "build")
                             onClicked: {
                                 if (processManager) {
                                     if (processManager.isPaused) {
@@ -1426,6 +1428,12 @@ ApplicationWindow {
             if (root.kwiTerminalAvailable) {
                 kwiTerminalLoader.item.closeSession(runId);
             }
+        }
+
+        function onPauseRefused(reason) {
+            messageBox.text = reason;
+            messageBox.type = Kirigami.MessageType.Warning;
+            messageBox.visible = true;
         }
 
         function onWaitingForPasswordChanged() {

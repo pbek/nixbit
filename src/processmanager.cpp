@@ -768,6 +768,25 @@ void ProcessManager::signalTerminalProcessTree(int signal) {
   }
 }
 
+bool ProcessManager::terminalProcessTreeHasForeignProcesses() const {
+  if (m_terminalProcessId <= 0) {
+    return false;
+  }
+
+  const pid_t root = static_cast<pid_t>(m_terminalProcessId);
+  QList<pid_t> pids = descendantProcessIds(root);
+  pids.append(root);
+  const uint uid = getuid();
+  for (pid_t pid : pids) {
+    // /proc/<pid> belongs to the effective user, e.g. root for sudo
+    const QFileInfo info(QStringLiteral("/proc/%1").arg(pid));
+    if (info.exists() && info.ownerId() != uid) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void ProcessManager::sendRebuildNotification(const QString &mode,
                                              const QString &hostname,
                                              int exitCode,
@@ -829,6 +848,14 @@ void ProcessManager::pauseProcess() {
   if (!m_isRunning || m_isPaused)
     return;
   if (m_terminalRunActive) {
+    // Processes of other users, e.g. sudo activating a configuration for nh,
+    // can't be stopped, and pausing only the rest would leave them running
+    if (terminalProcessTreeHasForeignProcesses()) {
+      emit pauseRefused(
+          "The process can't be paused right now, because part of it runs as "
+          "another user, e.g. root while activating the new configuration.");
+      return;
+    }
     signalTerminalProcessTree(SIGSTOP);
     setIsPaused(true);
     return;

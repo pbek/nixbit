@@ -6,6 +6,9 @@
   - When a command waits for a password, e.g. nh asking for the sudo password to activate
     the new configuration, a message above the terminal asks you to type it in, and the terminal gets focus
   - If the Nixbit window is hidden or not active, a desktop notification is shown as well
+- **Added pausing for nh rebuilds**
+  - With nh, the Pause button is also available for switch and boot, since nh builds as your user
+  - While part of the process runs as root, e.g. sudo activating the new configuration, pausing is refused with a message
 
 ## 1.1.0
 
