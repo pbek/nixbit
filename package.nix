@@ -2,6 +2,10 @@
   cmake,
   installShellFiles,
   kdePackages,
+  # Optional Kwi terminal (https://invent.kde.org/utilities/kwi) providing the
+  # org.kde.kwi.terminal QML module, which is used to run commands in an
+  # embedded terminal when available
+  kwi ? null,
   lib,
   libgit2,
   libssh2,
@@ -61,7 +65,13 @@ stdenv.mkDerivation (
       qt6.qtbase
       qt6.qtdeclarative
       qt6.qtwayland
-    ];
+    ]
+    ++ lib.optionals (kwi != null) [ kwi ];
+
+    # Development shells (e.g. devenv) export QML_IMPORT_PATH for their own Qt
+    # version, which takes precedence over the wrapper's QML paths and makes
+    # Nixbit load mismatched QML modules and crash
+    qtWrapperArgs = [ "--unset QML_IMPORT_PATH" ];
 
     # Install shell completion on Linux (with xvfb-run)
     postInstall = ''

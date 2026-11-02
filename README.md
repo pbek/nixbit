@@ -21,6 +21,13 @@ nix run github:pbek/nixbit
 > nix run github:pbek/nixbit --override-input nixpkgs nixpkgs
 > ```
 
+To run your commands in an embedded [Kwi](https://invent.kde.org/utilities/kwi) terminal
+(colored output, Nix progress output and entering passwords), use the `nixbit-kwi` package:
+
+```bash
+nix run github:pbek/nixbit#nixbit-kwi
+```
+
 ![Nixbit Screenshot Mainwindow](screenshots/mainwindow.webp)
 
 > [!NOTE]

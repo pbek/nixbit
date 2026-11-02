@@ -87,6 +87,9 @@
       {
         packages = {
           nixbit = pkgs.callPackage ./package.nix { };
+          # Nixbit with the embedded Kwi terminal
+          nixbit-kwi = pkgs.callPackage ./package.nix { inherit (self.packages.${system}) kwi; };
+          kwi = pkgs.callPackage ./nix/kwi.nix { };
           default = self.packages.${system}.nixbit;
         };
 
@@ -94,6 +97,10 @@
           nixbit = {
             type = "app";
             program = "${self.packages.${system}.nixbit}/bin/nixbit";
+          };
+          nixbit-kwi = {
+            type = "app";
+            program = "${self.packages.${system}.nixbit-kwi}/bin/nixbit";
           };
           default = self.apps.${system}.nixbit;
         };
