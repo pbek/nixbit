@@ -24,6 +24,11 @@ class ProcessManager : public QObject {
   // QProcess, see terminalCommandRequested()
   Q_PROPERTY(bool terminalMode READ terminalMode WRITE setTerminalMode NOTIFY
                  terminalModeChanged)
+  // Whether nh (https://github.com/nix-community/nh) was found in PATH
+  Q_PROPERTY(bool nhAvailable READ nhAvailable CONSTANT)
+  // When enabled in terminal mode, rebuilds run with nh instead of
+  // nixos-rebuild. nh asks for the password in the terminal when activating.
+  Q_PROPERTY(bool useNh READ useNh WRITE setUseNh NOTIFY useNhChanged)
 
 public:
   explicit ProcessManager(QObject *parent = nullptr);
@@ -41,6 +46,9 @@ public:
   void setTerminalAvailable(bool available);
   bool terminalMode() const { return m_terminalMode; }
   void setTerminalMode(bool enabled);
+  bool nhAvailable() const { return !m_nhPath.isEmpty(); }
+  bool useNh() const { return m_useNh; }
+  void setUseNh(bool enabled);
 
   // Callbacks from the embedded terminal for a run requested with
   // terminalCommandRequested()
@@ -89,6 +97,7 @@ signals:
   void commandFinished(int exitCode, const QString &outputFilePath);
   void terminalAvailableChanged();
   void terminalModeChanged();
+  void useNhChanged();
   void terminalCommandRequested(int runId, const QString &program,
                                 const QStringList &arguments,
                                 const QString &workingDirectory);
@@ -119,6 +128,10 @@ private:
   void signalTerminalProcessTree(int signal);
   void importTerminalTranscript(const QString &historyText);
   QString termEnvPrefix() const;
+  bool nhActive() const;
+  QString nhRebuildCommand(const QString &mode, const QString &repoPath,
+                           const QString &hostname,
+                           const QString &buildHost) const;
 
   // Result of resolving a privilege escalation tool in C++ (used both for the
   // pre-flight check and to build the rebuild command deterministically).
@@ -162,6 +175,9 @@ private:
   QString m_terminalHeader;
   // Raw transcript written by script(1) while running in the terminal
   QTemporaryFile *m_terminalTranscriptFile;
+
+  QString m_nhPath;
+  bool m_useNh;
 };
 
 #endif // PROCESSMANAGER_H

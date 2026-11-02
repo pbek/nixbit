@@ -11,7 +11,8 @@ SettingsManager::SettingsManager(QObject *parent)
       m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost(""),
       m_selectedBuildHost(""), m_selectedSwitchHost(""), m_selectedBootHost(""),
       m_maxStoredLogs(10), m_notificationCommandOverridden(false),
-      m_debugMode(false), m_useEmbeddedTerminal(true), m_settingsVersion(0) {
+      m_debugMode(false), m_useEmbeddedTerminal(true), m_useNh(false),
+      m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -234,6 +235,15 @@ void SettingsManager::setUseEmbeddedTerminal(bool enabled) {
   }
 }
 
+void SettingsManager::setUseNh(bool enabled) {
+  if (m_useNh != enabled) {
+    m_useNh = enabled;
+    saveSettings();
+    emit useNhChanged();
+    qDebug() << "Use nh changed to:" << enabled;
+  }
+}
+
 QString SettingsManager::getLogDirectory() const {
   QString dataPath =
       QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -428,6 +438,7 @@ void SettingsManager::loadSettings() {
 
   m_useEmbeddedTerminal =
       settings.value("General/UseEmbeddedTerminal", true).toBool();
+  m_useNh = settings.value("General/UseNh", false).toBool();
 
   qDebug() << "Loaded settings version:" << oldVersion;
   qDebug() << "Current settings version:" << m_settingsVersion;
@@ -487,6 +498,7 @@ void SettingsManager::saveSettings() {
   // Save debug mode
   settings.setValue("General/DebugMode", m_debugMode);
   settings.setValue("General/UseEmbeddedTerminal", m_useEmbeddedTerminal);
+  settings.setValue("General/UseNh", m_useNh);
 
   settings.sync();
 }

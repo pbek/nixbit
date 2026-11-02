@@ -150,6 +150,17 @@ will exist as a setuid root binary, and Nixbit will automatically prefer it over
 > separately for each privileged action. The `sudo` fallback may reuse a cached
 > credential within its timeout.
 
+### Using nh
+
+When commands run in the embedded Kwi terminal, Nixbit can use
+[nh](https://github.com/nix-community/nh) instead of `nixos-rebuild`. Turn on
+**Use nh for building, switching and booting** in the General settings.
+
+Nixbit then runs `nh os build|switch|boot . --hostname <host>` in your repository
+as your user. nh only elevates for the activation and asks for your password in
+the terminal, so no `pkexec` or `sudo` askpass setup is needed. `nh` has to be
+in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
+
 ## Features
 
 ### 🔄 NixOS Generations

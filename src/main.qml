@@ -41,6 +41,13 @@ ApplicationWindow {
         when: processManager !== null
     }
 
+    Binding {
+        target: processManager
+        property: "useNh"
+        value: settingsManager ? settingsManager.useNh : false
+        when: processManager !== null
+    }
+
     // Save window size when it changes
     onWidthChanged: {
         if (settingsManager && width > 0) {

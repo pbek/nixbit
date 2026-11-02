@@ -21,7 +21,8 @@ ProcessManager::ProcessManager(QObject *parent)
       m_maxOutputLines(2000), m_outputLogFile(nullptr),
       m_hasPendingOutput(false), m_terminalAvailable(false),
       m_terminalMode(false), m_terminalRunActive(false), m_terminalRunId(0),
-      m_terminalProcessId(0), m_terminalTranscriptFile(nullptr) {
+      m_terminalProcessId(0), m_terminalTranscriptFile(nullptr),
+      m_nhPath(QStandardPaths::findExecutable("nh")), m_useNh(false) {
   m_process = new QProcess(this);
 
   // Set up output batching timer (2 second intervals)
@@ -550,6 +551,31 @@ void ProcessManager::setTerminalMode(bool enabled) {
   }
 }
 
+void ProcessManager::setUseNh(bool enabled) {
+  if (m_useNh != enabled) {
+    m_useNh = enabled;
+    emit useNhChanged();
+  }
+}
+
+bool ProcessManager::nhActive() const {
+  // nh asks for the password interactively, so it needs the terminal
+  return m_useNh && m_terminalMode && !m_nhPath.isEmpty();
+}
+
+QString ProcessManager::nhRebuildCommand(const QString &mode,
+                                         const QString &repoPath,
+                                         const QString &hostname,
+                                         const QString &buildHost) const {
+  // nh builds as the current user and only elevates for the activation
+  QString cmd = "cd " + shellQuote(repoPath) + " && " + shellQuote(m_nhPath) +
+                " os " + mode + " . --hostname " + hostname;
+  if (!buildHost.isEmpty()) {
+    cmd += " --build-host " + buildHost;
+  }
+  return cmd;
+}
+
 QString ProcessManager::termEnvPrefix() const {
   // A real terminal supports colors and progress output, so only force a dumb
   // terminal when the output is captured as plain text
@@ -810,9 +836,12 @@ void ProcessManager::runNixosRebuildBuild(const QString &repoPath,
   // Build the nixos-rebuild build command
   QString buildHostParam =
       sanitizedBuildHost.isEmpty() ? "" : " --build-host " + sanitizedBuildHost;
-  QString cmd = "cd " + repoPath + " && " + termEnvPrefix() +
-                "nixos-rebuild build --flake .#" + sanitizedHostname +
-                buildHostParam + " -L";
+  QString cmd = nhActive()
+                    ? nhRebuildCommand("build", repoPath, sanitizedHostname,
+                                       sanitizedBuildHost)
+                    : "cd " + repoPath + " && " + termEnvPrefix() +
+                          "nixos-rebuild build --flake .#" + sanitizedHostname +
+                          buildHostParam + " -L";
 
   if (m_isRunning) {
     killProcess();
@@ -855,6 +884,22 @@ void ProcessManager::runPrivilegedRebuild(const QString &mode,
   // unexpected values reaching the elevated shell.
   if (mode != "switch" && mode != "boot") {
     appendOutput("Error: Invalid rebuild mode.\n");
+    return;
+  }
+
+  if (nhActive()) {
+    // nh runs as the current user and asks for the password in the terminal,
+    // so the repository doesn't need to be copied for a privileged shell
+    if (m_isRunning) {
+      killProcess();
+    }
+    m_rebuildMode = mode;
+    m_rebuildHostname = sanitizedHostname;
+    m_rebuildTimer.start();
+    runCommand("bash", QStringList() << "-c"
+                                     << nhRebuildCommand(mode, repoPath,
+                                                         sanitizedHostname,
+                                                         sanitizedBuildHost));
     return;
   }
 

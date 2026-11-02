@@ -143,6 +143,19 @@ Dialog {
                         }
 
                         CheckBox {
+                            Kirigami.FormData.label: "Rebuild Tool:"
+                            checked: settingsManager ? settingsManager.useNh : false
+                            enabled: processManager && settingsManager ? processManager.nhAvailable && processManager.terminalAvailable && settingsManager.useEmbeddedTerminal : false
+                            text: "Use nh for building, switching and booting"
+                            ToolTip.visible: hovered
+                            ToolTip.text: !processManager || !processManager.nhAvailable ? "nh was not found in PATH" : !processManager.terminalAvailable || !settingsManager.useEmbeddedTerminal ? "nh needs the embedded Kwi terminal to ask for your password" : "Run nh os instead of nixos-rebuild. nh builds as your user and asks for your password in the terminal when activating."
+                            onToggled: {
+                                if (settingsManager)
+                                    settingsManager.useNh = checked;
+                            }
+                        }
+
+                        CheckBox {
                             Kirigami.FormData.label: "Autostart:"
                             checked: settingsManager ? settingsManager.autostartEnabled : false
                             text: "Launch Nixbit automatically at login"
