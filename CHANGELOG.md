@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 1.3.0
+
+- **The configuration area now uses two columns on wide windows**
+  - Repository URL, status and updates are on the left, and hostname, rebuild mode and build host on the right,
+    so more space is left for the terminal output
+  - On narrow windows the two parts are stacked in a single column
+
 ## 1.2.1
 
 - **The password notification can now show Nixbit**

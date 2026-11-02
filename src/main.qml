@@ -396,225 +396,261 @@ ApplicationWindow {
                         }
                     }
 
-                    Kirigami.FormLayout {
+                    // Repository details on the left, rebuild options on the right;
+                    // stacked into a single column on narrow windows
+                    GridLayout {
+                        id: configurationGrid
+                        readonly property bool twoColumns: width >= Kirigami.Units.gridUnit * 50
+
                         Layout.fillWidth: true
                         visible: root.showTopSectionDetails
+                        columns: twoColumns ? 3 : 1
+                        columnSpacing: Kirigami.Units.largeSpacing
+                        rowSpacing: Kirigami.Units.smallSpacing
 
-                        RowLayout {
-                            Kirigami.FormData.label: "Repository URL:"
+                        Kirigami.FormLayout {
+                            id: repositoryForm
                             Layout.fillWidth: true
-                            spacing: Kirigami.Units.smallSpacing
+                            Layout.preferredWidth: 1
+                            Layout.alignment: Qt.AlignTop
+                            twinFormLayouts: configurationGrid.twoColumns ? [] : [rebuildForm]
 
-                            TextField {
-                                id: repoUrlField
+                            RowLayout {
+                                Kirigami.FormData.label: "Repository URL:"
                                 Layout.fillWidth: true
-                                Layout.minimumWidth: Kirigami.Units.gridUnit * 16
-                                text: gitManager ? gitManager.repositoryUrl : ""
-                                placeholderText: "https://github.com/user/repo.git"
-                                enabled: gitManager ? (!gitManager.isBusy && !gitManager.isUrlFromGlobalSettings) : false
-                                onEditingFinished: {
-                                    if (gitManager && text !== gitManager.repositoryUrl) {
-                                        // Open confirmation dialog before changing URL
-                                        changeUrlConfirmDialog.newUrl = text;
-                                        changeUrlConfirmDialog.open();
-                                    }
-                                }
-                            }
+                                Layout.preferredWidth: Kirigami.Units.gridUnit * 18
+                                spacing: Kirigami.Units.smallSpacing
 
-                            ToolButton {
-                                icon.name: "document-open-folder"
-                                display: AbstractButton.IconOnly
-                                text: "Open repository in file manager"
-                                ToolTip.visible: hovered
-                                ToolTip.text: text
-                                enabled: gitManager && gitManager.localPath !== ""
-                                onClicked: {
-                                    if (gitManager && gitManager.localPath) {
-                                        processManager.startDetached("xdg-open", [gitManager.localPath]);
-                                    }
-                                }
-                            }
-
-                            ToolButton {
-                                icon.name: "utilities-terminal"
-                                display: AbstractButton.IconOnly
-                                text: "Open terminal in repository"
-                                ToolTip.visible: hovered
-                                ToolTip.text: text
-                                enabled: gitManager && gitManager.localPath !== ""
-                                onClicked: {
-                                    if (gitManager && gitManager.localPath) {
-                                        Utils.openTerminalInDirectory(gitManager.localPath, processManager);
-                                    }
-                                }
-                            }
-                        }
-
-                        Label {
-                            Layout.fillWidth: true
-                            visible: gitManager ? gitManager.isUrlFromGlobalSettings : false
-                            text: "Managed by /etc/nixbit.conf"
-                            font: Kirigami.Theme.smallFont
-                            color: Kirigami.Theme.disabledTextColor
-                        }
-
-                        TextField {
-                            id: hostnameField
-                            Kirigami.FormData.label: "Hostname:"
-                            Layout.fillWidth: true
-                            text: settingsManager ? settingsManager.hostname : ""
-                            placeholderText: "Flake configuration to build, e.g. my-laptop"
-                            enabled: !root.gitBusy && !root.processRunning
-                            onEditingFinished: {
-                                if (settingsManager)
-                                    settingsManager.hostname = text;
-                            }
-                        }
-
-                        ComboBox {
-                            id: rebuildModeComboBox
-                            Kirigami.FormData.label: "Rebuild mode:"
-                            Layout.minimumWidth: Kirigami.Units.gridUnit * 8
-                            model: ["build", "switch", "boot"]
-                            currentIndex: (typeof isDebugMode !== 'undefined' && isDebugMode) ? 0 : 1
-                            enabled: !root.gitBusy && !root.processRunning
-                            onCurrentTextChanged: {
-                                // Restore build host selector when mode text changes
-                                console.log("Mode changed to:", currentText);
-                                buildHostComboBox.restoreSelectionForMode(currentText);
-                            }
-                        }
-
-                        Label {
-                            Layout.fillWidth: true
-                            Layout.maximumWidth: Kirigami.Units.gridUnit * 24
-                            text: rebuildModeComboBox.currentText === "build" ? "Builds the configuration without applying it. No administrator rights required." : rebuildModeComboBox.currentText === "switch" ? "Builds and activates the configuration, and makes it the boot default. Requires administrator rights." : "Builds the configuration and makes it the boot default without activating it now. Requires administrator rights."
-                            font: Kirigami.Theme.smallFont
-                            color: Kirigami.Theme.disabledTextColor
-                            wrapMode: Text.WordWrap
-                        }
-
-                        ComboBox {
-                            id: buildHostComboBox
-                            Kirigami.FormData.label: "Build host:"
-                            Layout.minimumWidth: Kirigami.Units.gridUnit * 8
-                            property var hostList: {
-                                var hosts = ["(local)"];
-                                if (settingsManager && settingsManager.buildHosts) {
-                                    hosts = hosts.concat(settingsManager.buildHosts);
-                                }
-                                return hosts;
-                            }
-                            property bool ignoreChanges: false
-                            property string currentMode: rebuildModeComboBox.currentText
-                            model: hostList
-                            enabled: !root.gitBusy && !root.processRunning
-                            ToolTip.visible: hovered
-                            ToolTip.text: "Host to build on. Each rebuild mode remembers its own selection. Build hosts can be added in the settings."
-
-                            Component.onCompleted: {
-                                restoreSelectionForMode(rebuildModeComboBox.currentText);
-                            }
-
-                            onCurrentIndexChanged: {
-                                // Save immediately when selection changes
-                                if (ignoreChanges || !settingsManager) {
-                                    console.log("Ignoring change, ignoreChanges:", ignoreChanges);
-                                    return;
-                                }
-
-                                var selectedHost = currentIndex === 0 ? "" : hostList[currentIndex];
-                                console.log("Saving selection for mode:", currentMode, "host:", selectedHost);
-
-                                if (currentMode === "build") {
-                                    settingsManager.selectedBuildHost = selectedHost;
-                                } else if (currentMode === "boot") {
-                                    settingsManager.selectedBootHost = selectedHost;
-                                } else {
-                                    settingsManager.selectedSwitchHost = selectedHost;
-                                }
-                            }
-
-                            function restoreSelectionForMode(mode) {
-                                if (!settingsManager) {
-                                    console.log("No settingsManager");
-                                    return;
-                                }
-
-                                ignoreChanges = true;
-                                currentMode = mode;
-
-                                var selectedHost = mode === "build" ? settingsManager.selectedBuildHost : mode === "boot" ? settingsManager.selectedBootHost : settingsManager.selectedSwitchHost;
-                                console.log("Restoring selection for mode:", mode, "saved host:", selectedHost);
-
-                                if (selectedHost === "" || selectedHost === "(local)") {
-                                    currentIndex = 0;
-                                } else {
-                                    var found = false;
-                                    for (var i = 0; i < hostList.length; i++) {
-                                        if (hostList[i] === selectedHost) {
-                                            currentIndex = i;
-                                            found = true;
-                                            console.log("Found host at index:", i);
-                                            break;
+                                TextField {
+                                    id: repoUrlField
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: Kirigami.Units.gridUnit * 10
+                                    text: gitManager ? gitManager.repositoryUrl : ""
+                                    placeholderText: "https://github.com/user/repo.git"
+                                    enabled: gitManager ? (!gitManager.isBusy && !gitManager.isUrlFromGlobalSettings) : false
+                                    onEditingFinished: {
+                                        if (gitManager && text !== gitManager.repositoryUrl) {
+                                            // Open confirmation dialog before changing URL
+                                            changeUrlConfirmDialog.newUrl = text;
+                                            changeUrlConfirmDialog.open();
                                         }
                                     }
-                                    // If previously selected host not found, default to local
-                                    if (!found) {
-                                        console.log("Host not found, defaulting to local");
-                                        currentIndex = 0;
+                                }
+
+                                ToolButton {
+                                    icon.name: "document-open-folder"
+                                    display: AbstractButton.IconOnly
+                                    text: "Open repository in file manager"
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: text
+                                    enabled: gitManager && gitManager.localPath !== ""
+                                    onClicked: {
+                                        if (gitManager && gitManager.localPath) {
+                                            processManager.startDetached("xdg-open", [gitManager.localPath]);
+                                        }
                                     }
                                 }
 
-                                // Small delay before re-enabling changes to ensure index is fully set
-                                Qt.callLater(function () {
-                                    ignoreChanges = false;
-                                });
+                                ToolButton {
+                                    icon.name: "utilities-terminal"
+                                    display: AbstractButton.IconOnly
+                                    text: "Open terminal in repository"
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: text
+                                    enabled: gitManager && gitManager.localPath !== ""
+                                    onClicked: {
+                                        if (gitManager && gitManager.localPath) {
+                                            Utils.openTerminalInDirectory(gitManager.localPath, processManager);
+                                        }
+                                    }
+                                }
                             }
 
-                            Connections {
-                                target: settingsManager
-                                function onBuildHostsChanged() {
-                                    console.log("Build hosts changed, updating list");
-                                    buildHostComboBox.hostList = (function () {
-                                            var hosts = ["(local)"];
-                                            if (settingsManager && settingsManager.buildHosts) {
-                                                hosts = hosts.concat(settingsManager.buildHosts);
-                                            }
-                                            return hosts;
-                                        })();
-                                    buildHostComboBox.restoreSelectionForMode(rebuildModeComboBox.currentText);
+                            Label {
+                                Layout.fillWidth: true
+                                visible: gitManager ? gitManager.isUrlFromGlobalSettings : false
+                                text: "Managed by /etc/nixbit.conf"
+                                font: Kirigami.Theme.smallFont
+                                color: Kirigami.Theme.disabledTextColor
+                            }
+
+                            RowLayout {
+                                Kirigami.FormData.label: "Status:"
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: Kirigami.Units.gridUnit * 12
+                                spacing: Kirigami.Units.smallSpacing
+
+                                GitStatusIndicator {}
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: root.gitStatus
+                                    color: root.gitStatusIsError ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            RowLayout {
+                                Kirigami.FormData.label: "Updates:"
+                                spacing: Kirigami.Units.largeSpacing
+
+                                Label {
+                                    text: root.commitsBehind > 0 ? (root.commitsBehind === 1 ? "1 new commit" : root.commitsBehind + " new commits") : root.commitsBehind === 0 ? "Up to date" : "Unknown"
+                                    font.bold: root.commitsBehind > 0
+                                    color: root.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : root.commitsBehind === 0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
+                                }
+
+                                Button {
+                                    text: "View Commits…"
+                                    icon.name: "view-list-details"
+                                    visible: root.commitsBehind > 0
+                                    onClicked: commitsDialog.open()
                                 }
                             }
                         }
 
-                        RowLayout {
-                            Kirigami.FormData.label: "Status:"
-                            spacing: Kirigami.Units.smallSpacing
-
-                            GitStatusIndicator {}
-
-                            Label {
-                                text: root.gitStatus
-                                color: root.gitStatusIsError ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
-                            }
+                        Kirigami.Separator {
+                            Layout.fillHeight: true
+                            visible: configurationGrid.twoColumns
                         }
 
-                        RowLayout {
-                            Kirigami.FormData.label: "Updates:"
-                            spacing: Kirigami.Units.largeSpacing
+                        Kirigami.FormLayout {
+                            id: rebuildForm
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.alignment: Qt.AlignTop
+                            twinFormLayouts: configurationGrid.twoColumns ? [] : [repositoryForm]
 
-                            Label {
-                                text: root.commitsBehind > 0 ? (root.commitsBehind === 1 ? "1 new commit" : root.commitsBehind + " new commits") : root.commitsBehind === 0 ? "Up to date" : "Unknown"
-                                font.bold: root.commitsBehind > 0
-                                color: root.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : root.commitsBehind === 0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
+                            TextField {
+                                id: hostnameField
+                                Kirigami.FormData.label: "Hostname:"
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: Kirigami.Units.gridUnit * 16
+                                text: settingsManager ? settingsManager.hostname : ""
+                                placeholderText: "Flake configuration to build, e.g. my-laptop"
+                                enabled: !root.gitBusy && !root.processRunning
+                                onEditingFinished: {
+                                    if (settingsManager)
+                                        settingsManager.hostname = text;
+                                }
                             }
 
-                            Button {
-                                text: "View Commits…"
-                                icon.name: "view-list-details"
-                                visible: root.commitsBehind > 0
-                                onClicked: commitsDialog.open()
+                            ComboBox {
+                                id: rebuildModeComboBox
+                                Kirigami.FormData.label: "Rebuild mode:"
+                                Layout.minimumWidth: Kirigami.Units.gridUnit * 8
+                                model: ["build", "switch", "boot"]
+                                currentIndex: (typeof isDebugMode !== 'undefined' && isDebugMode) ? 0 : 1
+                                enabled: !root.gitBusy && !root.processRunning
+                                onCurrentTextChanged: {
+                                    // Restore build host selector when mode text changes
+                                    console.log("Mode changed to:", currentText);
+                                    buildHostComboBox.restoreSelectionForMode(currentText);
+                                }
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: Kirigami.Units.gridUnit * 16
+                                Layout.maximumWidth: Kirigami.Units.gridUnit * 24
+                                text: rebuildModeComboBox.currentText === "build" ? "Builds the configuration without applying it. No administrator rights required." : rebuildModeComboBox.currentText === "switch" ? "Builds and activates the configuration, and makes it the boot default. Requires administrator rights." : "Builds the configuration and makes it the boot default without activating it now. Requires administrator rights."
+                                font: Kirigami.Theme.smallFont
+                                color: Kirigami.Theme.disabledTextColor
+                                wrapMode: Text.WordWrap
+                            }
+
+                            ComboBox {
+                                id: buildHostComboBox
+                                Kirigami.FormData.label: "Build host:"
+                                Layout.minimumWidth: Kirigami.Units.gridUnit * 8
+                                property var hostList: {
+                                    var hosts = ["(local)"];
+                                    if (settingsManager && settingsManager.buildHosts) {
+                                        hosts = hosts.concat(settingsManager.buildHosts);
+                                    }
+                                    return hosts;
+                                }
+                                property bool ignoreChanges: false
+                                property string currentMode: rebuildModeComboBox.currentText
+                                model: hostList
+                                enabled: !root.gitBusy && !root.processRunning
+                                ToolTip.visible: hovered
+                                ToolTip.text: "Host to build on. Each rebuild mode remembers its own selection. Build hosts can be added in the settings."
+
+                                Component.onCompleted: {
+                                    restoreSelectionForMode(rebuildModeComboBox.currentText);
+                                }
+
+                                onCurrentIndexChanged: {
+                                    // Save immediately when selection changes
+                                    if (ignoreChanges || !settingsManager) {
+                                        console.log("Ignoring change, ignoreChanges:", ignoreChanges);
+                                        return;
+                                    }
+
+                                    var selectedHost = currentIndex === 0 ? "" : hostList[currentIndex];
+                                    console.log("Saving selection for mode:", currentMode, "host:", selectedHost);
+
+                                    if (currentMode === "build") {
+                                        settingsManager.selectedBuildHost = selectedHost;
+                                    } else if (currentMode === "boot") {
+                                        settingsManager.selectedBootHost = selectedHost;
+                                    } else {
+                                        settingsManager.selectedSwitchHost = selectedHost;
+                                    }
+                                }
+
+                                function restoreSelectionForMode(mode) {
+                                    if (!settingsManager) {
+                                        console.log("No settingsManager");
+                                        return;
+                                    }
+
+                                    ignoreChanges = true;
+                                    currentMode = mode;
+
+                                    var selectedHost = mode === "build" ? settingsManager.selectedBuildHost : mode === "boot" ? settingsManager.selectedBootHost : settingsManager.selectedSwitchHost;
+                                    console.log("Restoring selection for mode:", mode, "saved host:", selectedHost);
+
+                                    if (selectedHost === "" || selectedHost === "(local)") {
+                                        currentIndex = 0;
+                                    } else {
+                                        var found = false;
+                                        for (var i = 0; i < hostList.length; i++) {
+                                            if (hostList[i] === selectedHost) {
+                                                currentIndex = i;
+                                                found = true;
+                                                console.log("Found host at index:", i);
+                                                break;
+                                            }
+                                        }
+                                        // If previously selected host not found, default to local
+                                        if (!found) {
+                                            console.log("Host not found, defaulting to local");
+                                            currentIndex = 0;
+                                        }
+                                    }
+
+                                    // Small delay before re-enabling changes to ensure index is fully set
+                                    Qt.callLater(function () {
+                                        ignoreChanges = false;
+                                    });
+                                }
+
+                                Connections {
+                                    target: settingsManager
+                                    function onBuildHostsChanged() {
+                                        console.log("Build hosts changed, updating list");
+                                        buildHostComboBox.hostList = (function () {
+                                                var hosts = ["(local)"];
+                                                if (settingsManager && settingsManager.buildHosts) {
+                                                    hosts = hosts.concat(settingsManager.buildHosts);
+                                                }
+                                                return hosts;
+                                            })();
+                                        buildHostComboBox.restoreSelectionForMode(rebuildModeComboBox.currentText);
+                                    }
+                                }
                             }
                         }
                     }
