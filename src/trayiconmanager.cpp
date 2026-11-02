@@ -58,6 +58,8 @@ void TrayIconManager::createTrayIcon() {
 
   connect(m_trayIcon, &QSystemTrayIcon::activated, this,
           &TrayIconManager::onActivated);
+  connect(m_trayIcon, &QSystemTrayIcon::messageClicked, this,
+          &TrayIconManager::showWindowRequested);
 
   // Set initial icon
   updateIcon(0);
@@ -254,6 +256,13 @@ void TrayIconManager::show() {
 void TrayIconManager::hide() {
   if (m_trayIcon) {
     m_trayIcon->hide();
+  }
+}
+
+void TrayIconManager::showNotification(const QString &title,
+                                       const QString &message) {
+  if (m_trayIcon) {
+    m_trayIcon->showMessage(title, message, QSystemTrayIcon::Warning, 30000);
   }
 }
 

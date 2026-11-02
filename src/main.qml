@@ -813,6 +813,16 @@ ApplicationWindow {
                         showCloseButton: true
                     }
 
+                    // Shown while e.g. nh waits for the sudo password in the terminal
+                    Kirigami.InlineMessage {
+                        id: passwordPromptMessage
+                        Layout.fillWidth: true
+                        visible: root.kwiTerminalShown && processManager !== null && processManager.waitingForPassword
+                        type: Kirigami.MessageType.Warning
+                        icon.name: "dialog-password"
+                        text: "Password required: type your password in the terminal below and press Enter to continue."
+                    }
+
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -1415,6 +1425,12 @@ ApplicationWindow {
         function onTerminalCloseRequested(runId) {
             if (root.kwiTerminalAvailable) {
                 kwiTerminalLoader.item.closeSession(runId);
+            }
+        }
+
+        function onWaitingForPasswordChanged() {
+            if (processManager.waitingForPassword && root.kwiTerminalAvailable) {
+                kwiTerminalLoader.item.focusTerminal();
             }
         }
 

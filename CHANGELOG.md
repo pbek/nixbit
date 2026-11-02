@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 1.2.0
+
+- **Made password prompts in the embedded terminal more visible**
+  - When a command waits for a password, e.g. nh asking for the sudo password to activate
+    the new configuration, a message above the terminal asks you to type it in, and the terminal gets focus
+  - If the Nixbit window is hidden or not active, a desktop notification is shown as well
+
 ## 1.1.0
 
 - **Added an optional embedded terminal using [Kwi](https://blogs.kde.org/2026/11/01/introducing-kwi/)**

@@ -22,8 +22,15 @@ ProcessManager::ProcessManager(QObject *parent)
       m_hasPendingOutput(false), m_terminalAvailable(false),
       m_terminalMode(false), m_terminalRunActive(false), m_terminalRunId(0),
       m_terminalProcessId(0), m_terminalTranscriptFile(nullptr),
+      m_passwordPromptTimer(nullptr), m_passwordPromptCheckedSize(-1),
+      m_waitingForPassword(false),
       m_nhPath(QStandardPaths::findExecutable("nh")), m_useNh(false) {
   m_process = new QProcess(this);
+
+  m_passwordPromptTimer = new QTimer(this);
+  m_passwordPromptTimer->setInterval(500);
+  connect(m_passwordPromptTimer, &QTimer::timeout, this,
+          &ProcessManager::checkPasswordPrompt);
 
   // Set up output batching timer (2 second intervals)
   m_outputFlushTimer = new QTimer(this);
@@ -340,6 +347,8 @@ void ProcessManager::onProcessFinished(int exitCode,
 void ProcessManager::handleProcessFinished(int exitCode, bool crashed) {
   m_terminalRunActive = false;
   m_terminalProcessId = 0;
+  m_passwordPromptTimer->stop();
+  setWaitingForPassword(false);
 
   const QString rebuildMode = m_rebuildMode;
   const QString rebuildHostname = m_rebuildHostname;
@@ -630,8 +639,54 @@ void ProcessManager::startTerminalCommand(const QString &program,
     terminalArguments = {"-c", shellCommand};
   }
 
+  setWaitingForPassword(false);
+  m_passwordPromptCheckedSize = -1;
+  if (m_terminalTranscriptFile) {
+    m_passwordPromptTimer->start();
+  } else {
+    m_passwordPromptTimer->stop();
+  }
+
   emit terminalCommandRequested(m_terminalRunId, terminalProgram,
                                 terminalArguments, workingDirectory);
+}
+
+void ProcessManager::setWaitingForPassword(bool waiting) {
+  if (m_waitingForPassword != waiting) {
+    m_waitingForPassword = waiting;
+    emit waitingForPasswordChanged();
+  }
+}
+
+void ProcessManager::checkPasswordPrompt() {
+  if (!m_terminalTranscriptFile) {
+    setWaitingForPassword(false);
+    return;
+  }
+
+  QFile transcript(m_terminalTranscriptFile->fileName());
+  const qint64 size = transcript.size();
+  if (size == m_passwordPromptCheckedSize ||
+      !transcript.open(QIODevice::ReadOnly)) {
+    return;
+  }
+  m_passwordPromptCheckedSize = size;
+
+  // A prompt is the last, unfinished line of the output, e.g.
+  // "[sudo] password for user: ", "[sudo: authenticate] Password: " or
+  // "doas (user@host) password: ", followed by "*" for typed characters if
+  // password feedback is enabled
+  transcript.seek(qMax<qint64>(0, size - 1024));
+  const QString tail = QString::fromUtf8(transcript.readAll());
+  const QString lastLine =
+      stripTerminalControls(tail.mid(tail.lastIndexOf('\n') + 1)).trimmed();
+
+  static const QRegularExpression prompt(
+      QStringLiteral(
+          "(^\\[sudo[^\\]]*\\].*|\\b(password|passwort|passphrase)\\b[^:]*):"
+          "\\s*\\**$"),
+      QRegularExpression::CaseInsensitiveOption);
+  setWaitingForPassword(prompt.match(lastLine).hasMatch());
 }
 
 void ProcessManager::terminalCommandStarted(int runId, qint64 processId) {

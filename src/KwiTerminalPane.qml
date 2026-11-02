@@ -51,6 +51,10 @@ Item {
         }
     }
 
+    function focusTerminal() {
+        terminal.forceActiveFocus();
+    }
+
     function closeSession(runId) {
         if (terminal.session && runId === currentRunId) {
             terminal.session.close();

@@ -29,6 +29,10 @@ class ProcessManager : public QObject {
   // When enabled in terminal mode, rebuilds run with nh instead of
   // nixos-rebuild. nh asks for the password in the terminal when activating.
   Q_PROPERTY(bool useNh READ useNh WRITE setUseNh NOTIFY useNhChanged)
+  // True while a command in the embedded terminal waits for a password, e.g.
+  // when nh runs sudo to activate the new configuration
+  Q_PROPERTY(bool waitingForPassword READ waitingForPassword NOTIFY
+                 waitingForPasswordChanged)
 
 public:
   explicit ProcessManager(QObject *parent = nullptr);
@@ -49,6 +53,9 @@ public:
   bool nhAvailable() const { return !m_nhPath.isEmpty(); }
   bool useNh() const { return m_useNh; }
   void setUseNh(bool enabled);
+  bool waitingForPassword() const { return m_waitingForPassword; }
+  // Hostname of the current rebuild, empty if no rebuild is running
+  QString rebuildHostname() const { return m_rebuildHostname; }
 
   // Callbacks from the embedded terminal for a run requested with
   // terminalCommandRequested()
@@ -98,6 +105,7 @@ signals:
   void terminalAvailableChanged();
   void terminalModeChanged();
   void useNhChanged();
+  void waitingForPasswordChanged();
   void terminalCommandRequested(int runId, const QString &program,
                                 const QStringList &arguments,
                                 const QString &workingDirectory);
@@ -109,6 +117,7 @@ private slots:
   void onReadyReadStandardError();
   void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
   void flushPendingOutput();
+  void checkPasswordPrompt();
 
 private:
   void appendOutput(const QString &text);
@@ -128,6 +137,7 @@ private:
   void signalTerminalProcessTree(int signal);
   void importTerminalTranscript(const QString &historyText);
   QString termEnvPrefix() const;
+  void setWaitingForPassword(bool waiting);
   bool nhActive() const;
   QString nhRebuildCommand(const QString &mode, const QString &repoPath,
                            const QString &hostname,
@@ -175,6 +185,10 @@ private:
   QString m_terminalHeader;
   // Raw transcript written by script(1) while running in the terminal
   QTemporaryFile *m_terminalTranscriptFile;
+  // Watches the transcript for password prompts
+  QTimer *m_passwordPromptTimer;
+  qint64 m_passwordPromptCheckedSize;
+  bool m_waitingForPassword;
 
   QString m_nhPath;
   bool m_useNh;

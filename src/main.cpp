@@ -239,6 +239,26 @@ int main(int argc, char *argv[]) {
                          gitManager.commitsBehind());
                    });
 
+  // Tell the user when a command in the embedded terminal waits for a password
+  // and they might not see it, because the window is hidden or not active
+  QObject::connect(
+      &processManager, &ProcessManager::waitingForPasswordChanged,
+      [&processManager, &trayIconManager, mainWindow]() {
+        if (!processManager.waitingForPassword() ||
+            (mainWindow && mainWindow->isVisible() && mainWindow->isActive())) {
+          return;
+        }
+        const QString hostname = processManager.rebuildHostname();
+        trayIconManager.showNotification(
+            "Nixbit - Password required",
+            hostname.isEmpty()
+                ? QString("Enter your password in Nixbit's terminal to "
+                          "continue.")
+                : QString("Enter your password in Nixbit's terminal to "
+                          "continue the rebuild for %1.")
+                      .arg(hostname));
+      });
+
   // Sync initial state
   trayIconManager.setCommitsBehind(gitManager.commitsBehind());
 

@@ -17,6 +17,7 @@ public:
   void setCommitsBehind(int count);
   void show();
   void hide();
+  void showNotification(const QString &title, const QString &message);
 
 signals:
   void showWindowRequested();
