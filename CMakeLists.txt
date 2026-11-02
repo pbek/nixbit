@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
   nixbit
-  VERSION 1.1.0
+  VERSION 1.2.0
   LANGUAGES C CXX)
 
 if(CMAKE_EXPORT_NO_PACKAGE_REGISTRY)
