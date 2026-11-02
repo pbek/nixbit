@@ -154,6 +154,7 @@ private:
   bool m_debugMode;
   bool m_useEmbeddedTerminal;
   bool m_useNh;
+  bool m_useNhDefault;
   int m_settingsVersion;
 };
 

@@ -12,7 +12,7 @@ SettingsManager::SettingsManager(QObject *parent)
       m_selectedBuildHost(""), m_selectedSwitchHost(""), m_selectedBootHost(""),
       m_maxStoredLogs(10), m_notificationCommandOverridden(false),
       m_debugMode(false), m_useEmbeddedTerminal(true), m_useNh(false),
-      m_settingsVersion(0) {
+      m_useNhDefault(false), m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -438,7 +438,10 @@ void SettingsManager::loadSettings() {
 
   m_useEmbeddedTerminal =
       settings.value("General/UseEmbeddedTerminal", true).toBool();
-  m_useNh = settings.value("General/UseNh", false).toBool();
+  // The system configuration only provides the default, so the user can still
+  // change it in the settings
+  m_useNhDefault = systemSettings.value("General/UseNh", false).toBool();
+  m_useNh = settings.value("General/UseNh", m_useNhDefault).toBool();
 
   qDebug() << "Loaded settings version:" << oldVersion;
   qDebug() << "Current settings version:" << m_settingsVersion;
@@ -498,7 +501,13 @@ void SettingsManager::saveSettings() {
   // Save debug mode
   settings.setValue("General/DebugMode", m_debugMode);
   settings.setValue("General/UseEmbeddedTerminal", m_useEmbeddedTerminal);
-  settings.setValue("General/UseNh", m_useNh);
+  // Only store a choice that differs from the system default, so changes to the
+  // default in /etc/nixbit.conf still apply otherwise
+  if (m_useNh == m_useNhDefault) {
+    settings.remove("General/UseNh");
+  } else {
+    settings.setValue("General/UseNh", m_useNh);
+  }
 
   settings.sync();
 }

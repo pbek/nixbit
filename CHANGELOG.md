@@ -12,6 +12,7 @@
 - **Added optional support for [nh](https://github.com/nix-community/nh) in the embedded terminal**
   - If enabled in the General settings, building, switching and booting use `nh os` instead of `nixos-rebuild`
   - nh builds as your user and asks for your password in the terminal only for the activation
+  - The NixOS module option `nixbit.useNh` turns nh on by default for all users
 
 ## 1.0.1
 

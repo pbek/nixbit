@@ -55,6 +55,10 @@
                 default = null;
                 description = "Command that receives build, switch, and boot notification text on standard input";
               };
+
+              useNh = mkEnableOption "" // {
+                description = "Use nh for building, switching and booting by default, when commands run in the embedded Kwi terminal. Users can still change this in the settings.";
+              };
             };
 
             config = mkIf cfg.enable {
@@ -69,6 +73,9 @@
                   + ''
                     [Autostart]
                     Force = ${if cfg.forceAutostart then "true" else "false"}
+
+                    [General]
+                    UseNh = ${if cfg.useNh then "true" else "false"}
                   ''
                   + lib.optionalString (cfg.notificationCommand != null) ''
                     [Notifications]

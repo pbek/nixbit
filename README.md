@@ -94,6 +94,12 @@ The module provides the following configuration options:
 - **Default**: `null`
 - **Description**: Overrides the command used for build, switch, and boot notifications. Nixbit pipes the notification text to the command's standard input. When set, the command cannot be changed through the UI. For example: `''notify-send Nixbit "$(cat)"''`
 
+#### `nixbit.useNh`
+
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Uses [nh](https://github.com/nix-community/nh) instead of `nixos-rebuild` by default when commands run in the embedded Kwi terminal (see [Using nh](#using-nh)). Users can still change this in the settings. The setting is written to `/etc/nixbit.conf` (in the `[General]` section with `UseNh` key).
+
 ### What the Module Does
 
 When the module is enabled, it:
