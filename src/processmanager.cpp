@@ -1,13 +1,16 @@
 #include "processmanager.h"
 #include <QDateTime>
 #include <QDebug>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QMultiHash>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QSysInfo>
 #include <QTextStream>
 #include <QTimer>
+#include <algorithm>
 #include <csignal>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -16,7 +19,9 @@ ProcessManager::ProcessManager(QObject *parent)
     : QObject(parent), m_process(nullptr), m_isRunning(false),
       m_isPaused(false), m_lastExitCode(0), m_hasFinished(false),
       m_maxOutputLines(2000), m_outputLogFile(nullptr),
-      m_hasPendingOutput(false) {
+      m_hasPendingOutput(false), m_terminalAvailable(false),
+      m_terminalMode(false), m_terminalRunActive(false), m_terminalRunId(0),
+      m_terminalProcessId(0), m_terminalTranscriptFile(nullptr) {
   m_process = new QProcess(this);
 
   // Set up output batching timer (2 second intervals)
@@ -111,6 +116,80 @@ QString formatDuration(qint64 milliseconds) {
   return parts.join(' ');
 }
 
+QString shellQuote(const QString &argument) {
+  QString quoted = argument;
+  quoted.replace('\'', "'\\''");
+  return '\'' + quoted + '\'';
+}
+
+// Turn a line of raw terminal output into plain text for the log file
+QString stripTerminalControls(QString line) {
+  static const QRegularExpression osc(
+      QStringLiteral("\\x1B\\][^\\x07\\x1B]*(?:\\x07|\\x1B\\\\)"));
+  static const QRegularExpression csi(
+      QStringLiteral("\\x1B\\[[0-?]*[ -/]*[@-~]"));
+  static const QRegularExpression otherEscapes(
+      QStringLiteral("\\x1B[()#][0-9A-Za-z]|\\x1B[=>78DEHMNOZc\\\\]|\\x07"));
+
+  line.remove(osc);
+  line.remove(csi);
+  line.remove(otherEscapes);
+
+  while (line.endsWith('\n') || line.endsWith('\r')) {
+    line.chop(1);
+  }
+
+  // Carriage returns redraw the line (e.g. status bars), keep the final text
+  const qsizetype lastCarriageReturn = line.lastIndexOf('\r');
+  if (lastCarriageReturn >= 0) {
+    line = line.mid(lastCarriageReturn + 1);
+  }
+
+  return line;
+}
+
+// Collect all descendant process ids of the given process from /proc
+QList<pid_t> descendantProcessIds(pid_t root) {
+  QMultiHash<pid_t, pid_t> children;
+  const QStringList entries = QDir(QStringLiteral("/proc"))
+                                  .entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+  for (const QString &entry : entries) {
+    bool ok = false;
+    const pid_t pid = entry.toInt(&ok);
+    if (!ok) {
+      continue;
+    }
+    QFile statFile(QStringLiteral("/proc/%1/stat").arg(pid));
+    if (!statFile.open(QIODevice::ReadOnly)) {
+      continue;
+    }
+    // Format: "pid (comm) state ppid ...", comm may contain spaces/parens
+    const QByteArray stat = statFile.readAll();
+    const qsizetype commEnd = stat.lastIndexOf(')');
+    if (commEnd < 0) {
+      continue;
+    }
+    const QList<QByteArray> fields = stat.mid(commEnd + 2).split(' ');
+    if (fields.size() > 1) {
+      children.insert(fields.at(1).toInt(), pid);
+    }
+  }
+
+  QList<pid_t> result;
+  QList<pid_t> queue{root};
+  while (!queue.isEmpty()) {
+    const pid_t parent = queue.takeFirst();
+    const QList<pid_t> direct = children.values(parent);
+    for (pid_t child : direct) {
+      if (!result.contains(child)) {
+        result.append(child);
+        queue.append(child);
+      }
+    }
+  }
+  return result;
+}
+
 } // namespace
 
 ProcessManager::EscalationTool ProcessManager::resolveEscalationTool() const {
@@ -192,6 +271,14 @@ void ProcessManager::runCommand(const QString &program,
     commandLine += " " + arguments.join(" ");
   }
 
+  if (m_terminalMode) {
+    // The terminal prints the header itself, so it also ends up in the log
+    m_terminalHeader = QString("Running: %1").arg(commandLine);
+    setIsRunning(true);
+    startTerminalCommand(program, arguments, QString());
+    return;
+  }
+
   appendOutput(QString("Running: %1\n\n").arg(commandLine));
 
   setIsRunning(true);
@@ -246,6 +333,13 @@ void ProcessManager::runCommandInDirectory(const QString &program,
 
 void ProcessManager::onProcessFinished(int exitCode,
                                        QProcess::ExitStatus exitStatus) {
+  handleProcessFinished(exitCode, exitStatus == QProcess::CrashExit);
+}
+
+void ProcessManager::handleProcessFinished(int exitCode, bool crashed) {
+  m_terminalRunActive = false;
+  m_terminalProcessId = 0;
+
   const QString rebuildMode = m_rebuildMode;
   const QString rebuildHostname = m_rebuildHostname;
   const qint64 rebuildElapsed =
@@ -271,7 +365,7 @@ void ProcessManager::onProcessFinished(int exitCode,
   emit hasFinishedChanged();
 
   QString statusText;
-  if (exitStatus == QProcess::CrashExit) {
+  if (crashed) {
     statusText = QString("\n\n=== Process crashed ===");
   } else {
     statusText = QString("\n\n=== Process finished with exit code: %1 ===")
@@ -282,8 +376,7 @@ void ProcessManager::onProcessFinished(int exitCode,
 
   if (!rebuildMode.isEmpty()) {
     sendRebuildNotification(rebuildMode, rebuildHostname,
-                            exitStatus == QProcess::CrashExit ? -1 : exitCode,
-                            rebuildElapsed);
+                            crashed ? -1 : exitCode, rebuildElapsed);
   }
 
   // Emit the temp file path so the log manager can copy it directly to the
@@ -375,6 +468,14 @@ void ProcessManager::onReadyReadStandardError() {
 }
 
 void ProcessManager::killProcess() {
+  if (m_terminalRunActive) {
+    // The terminal reports the exit via terminalCommandFinished()
+    signalTerminalProcessTree(SIGCONT);
+    signalTerminalProcessTree(SIGKILL);
+    emit terminalCloseRequested(m_terminalRunId);
+    return;
+  }
+
   if (m_process && m_process->state() != QProcess::NotRunning) {
     qint64 pid = m_process->processId();
     if (pid > 0) {
@@ -400,6 +501,9 @@ void ProcessManager::clearOutput() {
   m_outputLines.clear();
   closeOutputLogFile();
   emit outputChanged();
+  if (!m_terminalRunActive) {
+    emit terminalResetRequested();
+  }
 }
 
 void ProcessManager::trimOutputToLimit() {
@@ -430,6 +534,157 @@ void ProcessManager::setMaxOutputLines(int lines) {
 
 void ProcessManager::setNotificationCommand(const QString &command) {
   m_notificationCommand = command;
+}
+
+void ProcessManager::setTerminalAvailable(bool available) {
+  if (m_terminalAvailable != available) {
+    m_terminalAvailable = available;
+    emit terminalAvailableChanged();
+  }
+}
+
+void ProcessManager::setTerminalMode(bool enabled) {
+  if (m_terminalMode != enabled) {
+    m_terminalMode = enabled;
+    emit terminalModeChanged();
+  }
+}
+
+QString ProcessManager::termEnvPrefix() const {
+  // A real terminal supports colors and progress output, so only force a dumb
+  // terminal when the output is captured as plain text
+  return m_terminalMode ? QString() : QStringLiteral("env TERM=dumb ");
+}
+
+void ProcessManager::startTerminalCommand(const QString &program,
+                                          const QStringList &arguments,
+                                          const QString &workingDirectory) {
+  QStringList quotedCommand{shellQuote(program)};
+  for (const QString &argument : arguments) {
+    quotedCommand.append(shellQuote(argument));
+  }
+  const QString shellCommand = "printf '%s\\n\\n' " +
+                               shellQuote(m_terminalHeader) + "; exec " +
+                               quotedCommand.join(' ');
+
+  ++m_terminalRunId;
+  m_terminalRunActive = true;
+  m_terminalProcessId = 0;
+
+  delete m_terminalTranscriptFile;
+  m_terminalTranscriptFile = nullptr;
+
+  const QString bash = QStandardPaths::findExecutable("bash");
+  const QString env = QStandardPaths::findExecutable("env");
+  const QString script = QStandardPaths::findExecutable("script");
+
+  QString terminalProgram;
+  QStringList terminalArguments;
+
+  // Run the command through script(1), which keeps a full transcript for the
+  // log file, because the terminal scrollback is limited
+  if (!bash.isEmpty() && !env.isEmpty() && !script.isEmpty()) {
+    auto *transcript = new QTemporaryFile(this);
+    transcript->setAutoRemove(true);
+    if (transcript->open()) {
+      transcript->close();
+      m_terminalTranscriptFile = transcript;
+      terminalProgram = env;
+      // script(1) runs the command with $SHELL, so make sure it is bash
+      terminalArguments = {
+          "SHELL=" + bash, script,      "--quiet",    "--flush",
+          "--return",      "--command", shellCommand, transcript->fileName()};
+    } else {
+      delete transcript;
+    }
+  }
+
+  if (terminalProgram.isEmpty()) {
+    terminalProgram = bash.isEmpty() ? QStringLiteral("bash") : bash;
+    terminalArguments = {"-c", shellCommand};
+  }
+
+  emit terminalCommandRequested(m_terminalRunId, terminalProgram,
+                                terminalArguments, workingDirectory);
+}
+
+void ProcessManager::terminalCommandStarted(int runId, qint64 processId) {
+  if (runId == m_terminalRunId && m_terminalRunActive) {
+    m_terminalProcessId = processId;
+  }
+}
+
+void ProcessManager::terminalCommandFinished(int runId, int exitCode,
+                                             const QString &historyText,
+                                             const QString &errorString) {
+  if (runId != m_terminalRunId || !m_terminalRunActive) {
+    return;
+  }
+
+  importTerminalTranscript(historyText);
+
+  if (!errorString.isEmpty() && exitCode != 0) {
+    appendOutput(QString("\nError: %1\n").arg(errorString));
+  }
+
+  handleProcessFinished(exitCode, false);
+}
+
+void ProcessManager::importTerminalTranscript(const QString &historyText) {
+  if (!m_outputLogFile || !m_outputLogFile->isOpen()) {
+    return;
+  }
+
+  QFile transcript(m_terminalTranscriptFile
+                       ? m_terminalTranscriptFile->fileName()
+                       : QString());
+  if (m_terminalTranscriptFile && transcript.size() > 0 &&
+      transcript.open(QIODevice::ReadOnly)) {
+    bool firstLine = true;
+    while (!transcript.atEnd()) {
+      const QString rawLine = QString::fromUtf8(transcript.readLine());
+
+      // Skip the start and end markers that script(1) always writes
+      if ((firstLine && rawLine.startsWith("Script started on ")) ||
+          rawLine.startsWith("Script done on ")) {
+        firstLine = false;
+        continue;
+      }
+      firstLine = false;
+
+      const QString line = stripTerminalControls(rawLine);
+      // Drop lines that only contained a redrawn and then erased status line
+      QString content = rawLine;
+      while (content.endsWith('\n') || content.endsWith('\r')) {
+        content.chop(1);
+      }
+      if (line.isEmpty() && content.contains('\r')) {
+        continue;
+      }
+      m_outputLogFile->write((line + '\n').toUtf8());
+    }
+  } else {
+    m_outputLogFile->write(historyText.toUtf8());
+  }
+
+  delete m_terminalTranscriptFile;
+  m_terminalTranscriptFile = nullptr;
+}
+
+void ProcessManager::signalTerminalProcessTree(int signal) {
+  if (m_terminalProcessId <= 0) {
+    return;
+  }
+
+  const pid_t root = static_cast<pid_t>(m_terminalProcessId);
+  // Signal children first, so stopped parents cannot respawn anything
+  QList<pid_t> pids = descendantProcessIds(root);
+  std::reverse(pids.begin(), pids.end());
+  pids.append(root);
+  for (pid_t pid : pids) {
+    // Processes owned by root (e.g. via sudo) fail with EPERM, like before
+    kill(pid, signal);
+  }
 }
 
 void ProcessManager::sendRebuildNotification(const QString &mode,
@@ -492,6 +747,11 @@ void ProcessManager::setIsPaused(bool paused) {
 void ProcessManager::pauseProcess() {
   if (!m_isRunning || m_isPaused)
     return;
+  if (m_terminalRunActive) {
+    signalTerminalProcessTree(SIGSTOP);
+    setIsPaused(true);
+    return;
+  }
   qint64 pid = m_process->processId();
   if (pid > 0) {
     // Send SIGSTOP to the entire process group, not just the process
@@ -505,6 +765,11 @@ void ProcessManager::pauseProcess() {
 void ProcessManager::resumeProcess() {
   if (!m_isRunning || !m_isPaused)
     return;
+  if (m_terminalRunActive) {
+    signalTerminalProcessTree(SIGCONT);
+    setIsPaused(false);
+    return;
+  }
   qint64 pid = m_process->processId();
   if (pid > 0) {
     // Send SIGCONT to the entire process group
@@ -545,9 +810,9 @@ void ProcessManager::runNixosRebuildBuild(const QString &repoPath,
   // Build the nixos-rebuild build command
   QString buildHostParam =
       sanitizedBuildHost.isEmpty() ? "" : " --build-host " + sanitizedBuildHost;
-  QString cmd = "cd " + repoPath +
-                " && env TERM=dumb nixos-rebuild build --flake .#" +
-                sanitizedHostname + buildHostParam + " -L";
+  QString cmd = "cd " + repoPath + " && " + termEnvPrefix() +
+                "nixos-rebuild build --flake .#" + sanitizedHostname +
+                buildHostParam + " -L";
 
   if (m_isRunning) {
     killProcess();
@@ -628,9 +893,9 @@ void ProcessManager::runPrivilegedRebuild(const QString &mode,
       "cp -r " +
       repoPath +
       " $TEMP_REPO\n"
-      "cd $TEMP_REPO\n"
-      "env TERM=dumb nixos-rebuild " +
-      mode + " --flake .#" + sanitizedHostname + buildHostParam +
+      "cd $TEMP_REPO\n" +
+      termEnvPrefix() + "nixos-rebuild " + mode + " --flake .#" +
+      sanitizedHostname + buildHostParam +
       " -L\n"
       "echo \"Cleaning up temporary repository...\"\n"
       "rm -rf $TEMP_REPO\n";
@@ -685,6 +950,9 @@ void ProcessManager::generateTestOutput(int lineCount) {
   }
 
   qDebug() << "Generating" << lineCount << "test lines...";
+
+  // Show the plain text output view instead of a previous terminal session
+  emit terminalResetRequested();
 
   // Sample log messages with various patterns that the highlighter will catch
   QStringList sampleLines = {

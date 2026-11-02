@@ -87,6 +87,7 @@ qt_add_qml_module(
   src/GenerationsDialog.qml
   src/CommitsDialog.qml
   src/LogsDialog.qml
+  src/KwiTerminalPane.qml
   src/Utils.js
   RESOURCES
   src/nixbit.svg)

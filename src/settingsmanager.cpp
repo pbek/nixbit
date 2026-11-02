@@ -11,7 +11,7 @@ SettingsManager::SettingsManager(QObject *parent)
       m_windowHeight(800), m_windowX(-1), m_windowY(-1), m_buildHost(""),
       m_selectedBuildHost(""), m_selectedSwitchHost(""), m_selectedBootHost(""),
       m_maxStoredLogs(10), m_notificationCommandOverridden(false),
-      m_debugMode(false), m_settingsVersion(0) {
+      m_debugMode(false), m_useEmbeddedTerminal(true), m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -225,6 +225,15 @@ void SettingsManager::setDebugMode(bool enabled) {
   }
 }
 
+void SettingsManager::setUseEmbeddedTerminal(bool enabled) {
+  if (m_useEmbeddedTerminal != enabled) {
+    m_useEmbeddedTerminal = enabled;
+    saveSettings();
+    emit useEmbeddedTerminalChanged();
+    qDebug() << "Use embedded terminal changed to:" << enabled;
+  }
+}
+
 QString SettingsManager::getLogDirectory() const {
   QString dataPath =
       QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -417,6 +426,9 @@ void SettingsManager::loadSettings() {
   // Load debug mode
   m_debugMode = settings.value("General/DebugMode", false).toBool();
 
+  m_useEmbeddedTerminal =
+      settings.value("General/UseEmbeddedTerminal", true).toBool();
+
   qDebug() << "Loaded settings version:" << oldVersion;
   qDebug() << "Current settings version:" << m_settingsVersion;
   qDebug() << "Loaded start hidden setting:" << m_startHidden;
@@ -474,6 +486,7 @@ void SettingsManager::saveSettings() {
 
   // Save debug mode
   settings.setValue("General/DebugMode", m_debugMode);
+  settings.setValue("General/UseEmbeddedTerminal", m_useEmbeddedTerminal);
 
   settings.sync();
 }

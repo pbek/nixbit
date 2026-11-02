@@ -23,6 +23,24 @@ ApplicationWindow {
     property bool topSectionExpandedOverride: false
     property bool showTopSectionDetails: !compactHeight || topSectionExpandedOverride
 
+    // Embedded Kwi terminal state (see KwiTerminalPane.qml)
+    readonly property bool kwiTerminalAvailable: kwiTerminalLoader.status === Loader.Ready
+    readonly property bool kwiTerminalShown: kwiTerminalAvailable && kwiTerminalLoader.item.hasSession
+
+    Binding {
+        target: processManager
+        property: "terminalAvailable"
+        value: root.kwiTerminalAvailable
+        when: processManager !== null
+    }
+
+    Binding {
+        target: processManager
+        property: "terminalMode"
+        value: root.kwiTerminalAvailable && (settingsManager ? settingsManager.useEmbeddedTerminal : true)
+        when: processManager !== null
+    }
+
     // Save window size when it changes
     onWidthChanged: {
         if (settingsManager && width > 0) {
@@ -796,11 +814,25 @@ ApplicationWindow {
                         border.width: 1
                         radius: 4
 
+                        // Optional embedded Kwi terminal, falls back to the text view
+                        // below if the org.kde.kwi.terminal module isn't installed
+                        Loader {
+                            id: kwiTerminalLoader
+                            anchors.fill: parent
+                            anchors.margins: 1
+                            source: "KwiTerminalPane.qml"
+                            visible: root.kwiTerminalShown
+                            onLoaded: item.scrollbackLines = Qt.binding(function () {
+                                return processManager ? processManager.maxOutputLines : -1;
+                            })
+                        }
+
                         ScrollView {
                             id: terminalScrollView
                             anchors.fill: parent
                             anchors.margins: 5
                             clip: true
+                            visible: !root.kwiTerminalShown
                             ScrollBar.vertical.policy: ScrollBar.AlwaysOn
 
                             Flickable {
@@ -909,7 +941,7 @@ ApplicationWindow {
                             anchors.bottom: parent.bottom
                             anchors.rightMargin: 10
                             anchors.bottomMargin: 10
-                            visible: !terminalFlickable.autoScroll
+                            visible: !terminalFlickable.autoScroll && !root.kwiTerminalShown
                             icon.name: "go-down"
                             text: "Scroll to Bottom"
                             ToolTip.visible: hovered
@@ -966,6 +998,17 @@ ApplicationWindow {
 
                         function search() {
                             var searchTerm = searchInput.text;
+
+                            if (root.kwiTerminalShown) {
+                                var view = kwiTerminalLoader.item.view;
+                                if (!searchTerm || searchTerm.length === 0) {
+                                    view.clearSearch();
+                                } else {
+                                    view.find(searchTerm, true);
+                                }
+                                return;
+                            }
+
                             if (!searchTerm || searchTerm.length === 0) {
                                 searchMatches = [];
                                 currentMatchIndex = -1;
@@ -1033,6 +1076,11 @@ ApplicationWindow {
                         }
 
                         function findNext() {
+                            if (root.kwiTerminalShown) {
+                                if (searchInput.text.length > 0)
+                                    kwiTerminalLoader.item.view.find(searchInput.text, true);
+                                return;
+                            }
                             if (searchMatches.length === 0) {
                                 search();
                                 return;
@@ -1043,6 +1091,11 @@ ApplicationWindow {
                         }
 
                         function findPrevious() {
+                            if (root.kwiTerminalShown) {
+                                if (searchInput.text.length > 0)
+                                    kwiTerminalLoader.item.view.find(searchInput.text, false);
+                                return;
+                            }
                             if (searchMatches.length === 0) {
                                 search();
                                 return;
@@ -1067,7 +1120,12 @@ ApplicationWindow {
                             searchResultLabel.text = "";
                             plainTextCache = "";  // Clear cached plain text
                             terminalText.deselect();
-                            terminalText.forceActiveFocus();
+                            if (root.kwiTerminalShown) {
+                                kwiTerminalLoader.item.view.clearSearch();
+                                kwiTerminalLoader.item.forceActiveFocus();
+                            } else {
+                                terminalText.forceActiveFocus();
+                            }
                         }
 
                         RowLayout {
@@ -1116,14 +1174,20 @@ ApplicationWindow {
                             Label {
                                 id: searchResultLabel
                                 text: ""
+                                visible: !root.kwiTerminalShown
                                 Layout.preferredWidth: 50
+                            }
+
+                            Label {
+                                text: root.kwiTerminalShown ? kwiTerminalLoader.item.view.searchStatus : ""
+                                visible: root.kwiTerminalShown
                             }
 
                             Button {
                                 icon.name: "go-up"
                                 ToolTip.visible: hovered
                                 ToolTip.text: "Find Previous (Shift+F3)"
-                                enabled: searchBar.searchMatches.length > 0
+                                enabled: root.kwiTerminalShown ? searchInput.text.length > 0 : searchBar.searchMatches.length > 0
                                 onClicked: searchBar.findPrevious()
                             }
 
@@ -1131,7 +1195,7 @@ ApplicationWindow {
                                 icon.name: "go-down"
                                 ToolTip.visible: hovered
                                 ToolTip.text: "Find Next (F3)"
-                                enabled: searchBar.searchMatches.length > 0
+                                enabled: root.kwiTerminalShown ? searchInput.text.length > 0 : searchBar.searchMatches.length > 0
                                 onClicked: searchBar.findNext()
                             }
 
@@ -1329,6 +1393,27 @@ ApplicationWindow {
             // Use currentRebuildMode to check actual operation type (handles Build & Switch correctly)
             if (!processManager.isRunning && generationManager && (root.currentRebuildMode === "switch" || root.currentRebuildMode === "boot")) {
                 generationManager.loadGenerations();
+            }
+        }
+
+        function onTerminalCommandRequested(runId, program, args, workingDirectory) {
+            if (!root.kwiTerminalAvailable) {
+                processManager.terminalCommandFinished(runId, 127, "", "The embedded terminal is not available");
+                return;
+            }
+            searchBar.hide();
+            kwiTerminalLoader.item.run(runId, program, args, workingDirectory);
+        }
+
+        function onTerminalCloseRequested(runId) {
+            if (root.kwiTerminalAvailable) {
+                kwiTerminalLoader.item.closeSession(runId);
+            }
+        }
+
+        function onTerminalResetRequested() {
+            if (root.kwiTerminalAvailable) {
+                kwiTerminalLoader.item.reset();
             }
         }
 

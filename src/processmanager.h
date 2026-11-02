@@ -17,6 +17,13 @@ class ProcessManager : public QObject {
   Q_PROPERTY(bool hasFinished READ hasFinished NOTIFY hasFinishedChanged)
   Q_PROPERTY(int maxOutputLines READ maxOutputLines WRITE setMaxOutputLines
                  NOTIFY maxOutputLinesChanged)
+  // Set from QML when the optional Kwi terminal QML module could be loaded
+  Q_PROPERTY(bool terminalAvailable READ terminalAvailable WRITE
+                 setTerminalAvailable NOTIFY terminalAvailableChanged)
+  // When enabled, commands are run in the embedded Kwi terminal instead of a
+  // QProcess, see terminalCommandRequested()
+  Q_PROPERTY(bool terminalMode READ terminalMode WRITE setTerminalMode NOTIFY
+                 terminalModeChanged)
 
 public:
   explicit ProcessManager(QObject *parent = nullptr);
@@ -30,6 +37,17 @@ public:
   int maxOutputLines() const { return m_maxOutputLines; }
   void setMaxOutputLines(int lines);
   void setNotificationCommand(const QString &command);
+  bool terminalAvailable() const { return m_terminalAvailable; }
+  void setTerminalAvailable(bool available);
+  bool terminalMode() const { return m_terminalMode; }
+  void setTerminalMode(bool enabled);
+
+  // Callbacks from the embedded terminal for a run requested with
+  // terminalCommandRequested()
+  Q_INVOKABLE void terminalCommandStarted(int runId, qint64 processId);
+  Q_INVOKABLE void terminalCommandFinished(int runId, int exitCode,
+                                           const QString &historyText,
+                                           const QString &errorString);
 
   Q_INVOKABLE void runCommand(const QString &program,
                               const QStringList &arguments = QStringList());
@@ -69,6 +87,13 @@ signals:
   void hasFinishedChanged();
   void maxOutputLinesChanged();
   void commandFinished(int exitCode, const QString &outputFilePath);
+  void terminalAvailableChanged();
+  void terminalModeChanged();
+  void terminalCommandRequested(int runId, const QString &program,
+                                const QStringList &arguments,
+                                const QString &workingDirectory);
+  void terminalCloseRequested(int runId);
+  void terminalResetRequested();
 
 private slots:
   void onReadyReadStandardOutput();
@@ -87,6 +112,13 @@ private:
                             const QString &hostname, const QString &buildHost);
   void sendRebuildNotification(const QString &mode, const QString &hostname,
                                int exitCode, qint64 elapsedMilliseconds);
+  void handleProcessFinished(int exitCode, bool crashed);
+  void startTerminalCommand(const QString &program,
+                            const QStringList &arguments,
+                            const QString &workingDirectory);
+  void signalTerminalProcessTree(int signal);
+  void importTerminalTranscript(const QString &historyText);
+  QString termEnvPrefix() const;
 
   // Result of resolving a privilege escalation tool in C++ (used both for the
   // pre-flight check and to build the rebuild command deterministically).
@@ -120,6 +152,16 @@ private:
   QTimer *m_outputFlushTimer;
   QString m_pendingOutput;
   bool m_hasPendingOutput;
+
+  // Embedded terminal state
+  bool m_terminalAvailable;
+  bool m_terminalMode;
+  bool m_terminalRunActive;
+  int m_terminalRunId;
+  qint64 m_terminalProcessId;
+  QString m_terminalHeader;
+  // Raw transcript written by script(1) while running in the terminal
+  QTemporaryFile *m_terminalTranscriptFile;
 };
 
 #endif // PROCESSMANAGER_H

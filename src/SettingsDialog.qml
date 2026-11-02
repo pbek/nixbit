@@ -130,6 +130,19 @@ Dialog {
                         }
 
                         CheckBox {
+                            Kirigami.FormData.label: "Terminal:"
+                            checked: settingsManager ? settingsManager.useEmbeddedTerminal : true
+                            enabled: processManager ? processManager.terminalAvailable : false
+                            text: "Run commands in an embedded Kwi terminal"
+                            ToolTip.visible: hovered
+                            ToolTip.text: processManager && processManager.terminalAvailable ? "Show colored output and progress, and allow entering passwords in the terminal" : "The Kwi QML module (org.kde.kwi.terminal) is not installed"
+                            onToggled: {
+                                if (settingsManager)
+                                    settingsManager.useEmbeddedTerminal = checked;
+                            }
+                        }
+
+                        CheckBox {
                             Kirigami.FormData.label: "Autostart:"
                             checked: settingsManager ? settingsManager.autostartEnabled : false
                             text: "Launch Nixbit automatically at login"

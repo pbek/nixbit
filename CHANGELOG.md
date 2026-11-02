@@ -1,5 +1,14 @@
 # Nixbit Changelog
 
+## 1.0.2
+
+- **Added an optional embedded terminal using [Kwi](https://blogs.kde.org/2026/11/01/introducing-kwi/)**
+  - If the `org.kde.kwi.terminal` QML module is installed, commands run in an embedded Kwi terminal
+    with colored output, Nix progress output and the possibility to enter passwords
+  - Without Kwi, the plain text output view is used like before
+  - The embedded terminal can be turned off in the General settings
+  - Build logs are still stored as plain text, and search, pause, resume and kill keep working
+
 ## 1.0.1
 
 - **Improved compatibility with current KDE Frameworks and Qt releases**

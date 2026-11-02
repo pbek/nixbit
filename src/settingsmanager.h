@@ -36,6 +36,8 @@ class SettingsManager : public QObject {
                  notificationCommandOverridden CONSTANT)
   Q_PROPERTY(
       bool debugMode READ debugMode WRITE setDebugMode NOTIFY debugModeChanged)
+  Q_PROPERTY(bool useEmbeddedTerminal READ useEmbeddedTerminal WRITE
+                 setUseEmbeddedTerminal NOTIFY useEmbeddedTerminalChanged)
 
 public:
   explicit SettingsManager(QObject *parent = nullptr);
@@ -95,6 +97,9 @@ public:
   bool debugMode() const { return m_debugMode; }
   void setDebugMode(bool enabled);
 
+  bool useEmbeddedTerminal() const { return m_useEmbeddedTerminal; }
+  void setUseEmbeddedTerminal(bool enabled);
+
   Q_INVOKABLE QString getLogDirectory() const;
 
 signals:
@@ -113,6 +118,7 @@ signals:
   void maxStoredLogsChanged();
   void notificationCommandChanged();
   void debugModeChanged();
+  void useEmbeddedTerminalChanged();
 
 private:
   void loadSettings();
@@ -141,6 +147,7 @@ private:
   QString m_notificationCommand;
   bool m_notificationCommandOverridden;
   bool m_debugMode;
+  bool m_useEmbeddedTerminal;
   int m_settingsVersion;
 };
 
