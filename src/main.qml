@@ -11,6 +11,18 @@ ApplicationWindow {
     height: settingsManager ? settingsManager.windowHeight : 800
     x: settingsManager && settingsManager.windowX >= 0 ? settingsManager.windowX : Screen.width / 2 - width / 2
     y: settingsManager && settingsManager.windowY >= 0 ? settingsManager.windowY : Screen.height / 2 - height / 2
+    minimumWidth: Kirigami.Units.gridUnit * 36
+    minimumHeight: Kirigami.Units.gridUnit * 26
+
+    readonly property bool gitBusy: gitManager ? gitManager.isBusy : false
+    readonly property bool processRunning: processManager ? processManager.isRunning : false
+    readonly property int commitsBehind: gitManager ? gitManager.commitsBehind : -1
+    readonly property string gitStatus: gitManager ? gitManager.status : "Ready"
+    readonly property bool gitStatusIsError: /^(failed|error|no repository)/i.test(gitStatus) || /\bfailed\b/i.test(gitStatus)
+
+    function rebuildModeTitle(mode) {
+        return mode === "switch" ? "Switch" : mode === "boot" ? "Boot" : "Build";
+    }
 
     // Property to track if we're in a chained build-then-switch operation
     property bool isChainedBuildSwitch: false
@@ -130,9 +142,17 @@ ApplicationWindow {
     // Confirmation dialog for deleting local repository
     Kirigami.PromptDialog {
         id: deleteConfirmDialog
-        title: "Delete Local Repository"
-        subtitle: "Are you sure you want to delete the local repository at:\n" + (gitManager ? gitManager.localPath : "")
-        standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
+        title: "Delete Local Repository?"
+        subtitle: "The local copy of the repository will be removed from disk:\n\n" + (gitManager ? gitManager.localPath : "") + "\n\nIt will be cloned again the next time it is needed."
+        dialogType: Kirigami.PromptDialog.Warning
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: [
+            Kirigami.Action {
+                text: "Delete"
+                icon.name: "edit-delete"
+                onTriggered: deleteConfirmDialog.accept()
+            }
+        ]
 
         onAccepted: {
             if (!gitManager)
@@ -182,10 +202,23 @@ ApplicationWindow {
     // Confirmation dialog for changing repository URL
     Kirigami.PromptDialog {
         id: changeUrlConfirmDialog
-        title: "Change Repository URL"
-        subtitle: "Changing the repository URL will delete the current local repository and clone the new one.\n\nCurrent repository: " + (gitManager ? gitManager.repositoryUrl : "") + "\nNew repository: " + newUrl + "\n\nContinue?"
-        standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
+        title: "Change Repository URL?"
+        subtitle: "The current local repository will be deleted and the new one will be cloned.\n\nCurrent: " + (gitManager ? gitManager.repositoryUrl : "") + "\nNew: " + newUrl
+        dialogType: Kirigami.PromptDialog.Warning
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: [
+            Kirigami.Action {
+                text: "Change and Clone"
+                icon.name: "folder-sync"
+                onTriggered: changeUrlConfirmDialog.accept()
+            }
+        ]
         property string newUrl: ""
+
+        // Revert the text field if the change is not confirmed
+        onClosed: repoUrlField.text = Qt.binding(function () {
+            return gitManager ? gitManager.repositoryUrl : "";
+        })
 
         onAccepted: {
             if (!gitManager || !processManager)
@@ -219,6 +252,7 @@ ApplicationWindow {
             title: "&File"
             Action {
                 text: "&Quit"
+                icon.name: "application-exit"
                 shortcut: StandardKey.Quit
                 onTriggered: Qt.quit()
             }
@@ -228,26 +262,93 @@ ApplicationWindow {
             title: "&Tools"
             Action {
                 text: "&Check for Updates"
-                enabled: gitManager ? !gitManager.isBusy : false
+                icon.name: "view-refresh"
+                enabled: !root.gitBusy
                 onTriggered: {
                     if (gitManager)
                         gitManager.checkForUpdates();
                 }
             }
             Action {
-                text: "&Settings"
+                text: "&Generations…"
+                icon.name: "view-history"
+                onTriggered: generationsDialog.open()
+            }
+            Action {
+                text: "Build &Logs…"
+                icon.name: "documentation"
+                onTriggered: logsDialog.open()
+            }
+            MenuSeparator {}
+            Action {
+                text: "&Settings…"
+                icon.name: "configure"
+                shortcut: StandardKey.Preferences
                 onTriggered: {
                     settingsDialog.open();
                 }
             }
             MenuSeparator {}
             Action {
-                text: "&About"
+                text: "&About Nixbit"
                 icon.name: "help-about"
                 onTriggered: {
                     aboutDialog.open();
                 }
             }
+        }
+    }
+
+    // Status icon for the repository state, shows a spinner while git is busy
+    component GitStatusIndicator: Item {
+        implicitWidth: Kirigami.Units.iconSizes.small
+        implicitHeight: Kirigami.Units.iconSizes.small
+
+        BusyIndicator {
+            anchors.centerIn: parent
+            width: Kirigami.Units.iconSizes.smallMedium
+            height: width
+            padding: 0
+            running: root.gitBusy
+            visible: running
+        }
+
+        Kirigami.Icon {
+            anchors.fill: parent
+            visible: !root.gitBusy
+            source: root.gitStatusIsError ? "emblem-error" : root.commitsBehind > 0 ? "emblem-information" : "emblem-success"
+        }
+    }
+
+    // Caption and value pair used in the system resources section
+    component ResourceMetric: ColumnLayout {
+        property alias caption: captionLabel.text
+        property alias value: valueLabel.text
+        property real percent: -1
+
+        Layout.fillWidth: true
+        Layout.preferredWidth: 1
+        spacing: Kirigami.Units.smallSpacing
+
+        Label {
+            id: captionLabel
+            font: Kirigami.Theme.smallFont
+            color: Kirigami.Theme.disabledTextColor
+        }
+
+        ProgressBar {
+            Layout.fillWidth: true
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 8
+            visible: parent.percent >= 0
+            from: 0
+            to: 100
+            value: Math.max(0, parent.percent)
+        }
+
+        Label {
+            id: valueLabel
+            Layout.fillWidth: true
+            elide: Text.ElideRight
         }
     }
 
@@ -258,35 +359,37 @@ ApplicationWindow {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Kirigami.Units.largeSpacing
-            spacing: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.largeSpacing
 
             // Repository Configuration Section
             GroupBox {
                 Layout.fillWidth: true
-                title: root.compactHeight && !root.showTopSectionDetails ? "Configuration (collapsed)" : "Configuration"
+                title: "Configuration"
 
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: Kirigami.Units.smallSpacing
 
+                    // Summary shown instead of the full form on small windows
                     RowLayout {
                         Layout.fillWidth: true
                         visible: root.compactHeight
                         spacing: Kirigami.Units.smallSpacing
 
+                        GitStatusIndicator {}
+
                         Label {
                             Layout.fillWidth: true
-                            text: gitManager ? gitManager.status : "Ready"
-                            font.bold: true
+                            text: root.gitStatus
                             elide: Text.ElideRight
                         }
 
                         Label {
-                            text: rebuildModeComboBox.currentText
+                            text: root.rebuildModeTitle(rebuildModeComboBox.currentText)
                             color: Kirigami.Theme.disabledTextColor
                         }
 
-                        Button {
+                        ToolButton {
                             text: root.showTopSectionDetails ? "Hide Details" : "Show Details"
                             icon.name: root.showTopSectionDetails ? "go-up" : "go-down"
                             onClicked: root.topSectionExpandedOverride = !root.showTopSectionDetails
@@ -299,16 +402,16 @@ ApplicationWindow {
 
                         RowLayout {
                             Kirigami.FormData.label: "Repository URL:"
+                            Layout.fillWidth: true
                             spacing: Kirigami.Units.smallSpacing
 
                             TextField {
                                 id: repoUrlField
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: Kirigami.Units.gridUnit * 16
                                 text: gitManager ? gitManager.repositoryUrl : ""
                                 placeholderText: "https://github.com/user/repo.git"
                                 enabled: gitManager ? (!gitManager.isBusy && !gitManager.isUrlFromGlobalSettings) : false
-                                ToolTip.visible: hovered && gitManager && gitManager.isUrlFromGlobalSettings
-                                ToolTip.text: "Repository URL is set by global settings and cannot be changed"
                                 onEditingFinished: {
                                     if (gitManager && text !== gitManager.repositoryUrl) {
                                         // Open confirmation dialog before changing URL
@@ -318,11 +421,12 @@ ApplicationWindow {
                                 }
                             }
 
-                            Button {
-                                icon.name: "folder-open"
+                            ToolButton {
+                                icon.name: "document-open-folder"
                                 display: AbstractButton.IconOnly
+                                text: "Open repository in file manager"
                                 ToolTip.visible: hovered
-                                ToolTip.text: "Open repository in file manager"
+                                ToolTip.text: text
                                 enabled: gitManager && gitManager.localPath !== ""
                                 onClicked: {
                                     if (gitManager && gitManager.localPath) {
@@ -331,11 +435,12 @@ ApplicationWindow {
                                 }
                             }
 
-                            Button {
+                            ToolButton {
                                 icon.name: "utilities-terminal"
                                 display: AbstractButton.IconOnly
+                                text: "Open terminal in repository"
                                 ToolTip.visible: hovered
-                                ToolTip.text: "Open terminal here"
+                                ToolTip.text: text
                                 enabled: gitManager && gitManager.localPath !== ""
                                 onClicked: {
                                     if (gitManager && gitManager.localPath) {
@@ -345,12 +450,21 @@ ApplicationWindow {
                             }
                         }
 
+                        Label {
+                            Layout.fillWidth: true
+                            visible: gitManager ? gitManager.isUrlFromGlobalSettings : false
+                            text: "Managed by /etc/nixbit.conf"
+                            font: Kirigami.Theme.smallFont
+                            color: Kirigami.Theme.disabledTextColor
+                        }
+
                         TextField {
                             id: hostnameField
                             Kirigami.FormData.label: "Hostname:"
+                            Layout.fillWidth: true
                             text: settingsManager ? settingsManager.hostname : ""
-                            placeholderText: "System hostname for NixOS rebuild"
-                            enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
+                            placeholderText: "Flake configuration to build, e.g. my-laptop"
+                            enabled: !root.gitBusy && !root.processRunning
                             onEditingFinished: {
                                 if (settingsManager)
                                     settingsManager.hostname = text;
@@ -359,12 +473,11 @@ ApplicationWindow {
 
                         ComboBox {
                             id: rebuildModeComboBox
-                            Kirigami.FormData.label: "Rebuild Mode:"
+                            Kirigami.FormData.label: "Rebuild mode:"
+                            Layout.minimumWidth: Kirigami.Units.gridUnit * 8
                             model: ["build", "switch", "boot"]
                             currentIndex: (typeof isDebugMode !== 'undefined' && isDebugMode) ? 0 : 1
-                            enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
-                            ToolTip.visible: hovered
-                            ToolTip.text: currentIndex === 0 ? "Build the system without activating (no sudo required)" : currentIndex === 1 ? "Build and activate the new system (requires sudo)" : "Build and set as boot default without activating current system (requires sudo)"
+                            enabled: !root.gitBusy && !root.processRunning
                             onCurrentTextChanged: {
                                 // Restore build host selector when mode text changes
                                 console.log("Mode changed to:", currentText);
@@ -373,17 +486,18 @@ ApplicationWindow {
                         }
 
                         Label {
-                            text: rebuildModeComboBox.currentText === "build" ? "• Build: Tests the configuration without applying changes (no sudo required)" : rebuildModeComboBox.currentText === "switch" ? "• Switch: Builds and activates the new configuration (requires sudo)" : "• Boot: Builds and sets as boot default without activating now (requires sudo)"
-                            font.italic: true
-                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: Kirigami.Units.gridUnit * 24
+                            text: rebuildModeComboBox.currentText === "build" ? "Builds the configuration without applying it. No administrator rights required." : rebuildModeComboBox.currentText === "switch" ? "Builds and activates the configuration, and makes it the boot default. Requires administrator rights." : "Builds the configuration and makes it the boot default without activating it now. Requires administrator rights."
+                            font: Kirigami.Theme.smallFont
                             color: Kirigami.Theme.disabledTextColor
                             wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
                         }
 
                         ComboBox {
                             id: buildHostComboBox
-                            Kirigami.FormData.label: "Build Host:"
+                            Kirigami.FormData.label: "Build host:"
+                            Layout.minimumWidth: Kirigami.Units.gridUnit * 8
                             property var hostList: {
                                 var hosts = ["(local)"];
                                 if (settingsManager && settingsManager.buildHosts) {
@@ -394,9 +508,9 @@ ApplicationWindow {
                             property bool ignoreChanges: false
                             property string currentMode: rebuildModeComboBox.currentText
                             model: hostList
-                            enabled: (gitManager ? !gitManager.isBusy : false) && (processManager ? !processManager.isRunning : false)
+                            enabled: !root.gitBusy && !root.processRunning
                             ToolTip.visible: hovered
-                            ToolTip.text: "Select which host to use for building. Each mode remembers its own selection."
+                            ToolTip.text: "Host to build on. Each rebuild mode remembers its own selection. Build hosts can be added in the settings."
 
                             Component.onCompleted: {
                                 restoreSelectionForMode(rebuildModeComboBox.currentText);
@@ -474,27 +588,32 @@ ApplicationWindow {
                             }
                         }
 
-                        Label {
+                        RowLayout {
                             Kirigami.FormData.label: "Status:"
-                            text: gitManager ? gitManager.status : ""
-                            font.bold: true
-                            color: gitManager ? (gitManager.isBusy ? Kirigami.Theme.activeTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
+                            spacing: Kirigami.Units.smallSpacing
+
+                            GitStatusIndicator {}
+
+                            Label {
+                                text: root.gitStatus
+                                color: root.gitStatusIsError ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
+                            }
                         }
 
                         RowLayout {
-                            Kirigami.FormData.label: "Commits Behind:"
-                            spacing: Kirigami.Units.smallSpacing
+                            Kirigami.FormData.label: "Updates:"
+                            spacing: Kirigami.Units.largeSpacing
 
                             Label {
-                                text: gitManager ? (gitManager.commitsBehind >= 0 ? gitManager.commitsBehind.toString() : "N/A") : "N/A"
-                                font.bold: gitManager ? gitManager.commitsBehind > 0 : false
-                                color: gitManager ? (gitManager.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
+                                text: root.commitsBehind > 0 ? (root.commitsBehind === 1 ? "1 new commit" : root.commitsBehind + " new commits") : root.commitsBehind === 0 ? "Up to date" : "Unknown"
+                                font.bold: root.commitsBehind > 0
+                                color: root.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : root.commitsBehind === 0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
                             }
 
                             Button {
-                                text: "View Commits"
+                                text: "View Commits…"
                                 icon.name: "view-list-details"
-                                visible: gitManager && gitManager.commitsBehind > 0
+                                visible: root.commitsBehind > 0
                                 onClicked: commitsDialog.open()
                             }
                         }
@@ -508,9 +627,15 @@ ApplicationWindow {
                 spacing: Kirigami.Units.smallSpacing
 
                 Button {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
                     text: rebuildModeComboBox.currentText === "build" ? "Build System" : rebuildModeComboBox.currentText === "switch" ? "Update System" : "Set Boot Default"
                     icon.name: "system-software-update"
-                    enabled: (processManager ? !processManager.isRunning : false) && (gitManager ? !gitManager.isBusy : false)
+                    highlighted: true
+                    enabled: !root.processRunning && !root.gitBusy
+                    ToolTip.visible: hovered
+                    ToolTip.delay: Kirigami.Units.toolTipDelay
+                    ToolTip.text: "Pull the latest changes, then run " + rebuildModeComboBox.currentText
                     onClicked: {
                         // First pull the repository, then update system
                         if (gitManager) {
@@ -518,15 +643,17 @@ ApplicationWindow {
                             gitManager.pullRepository();
                         }
                     }
-                    Layout.fillWidth: true
                 }
 
                 Button {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
                     text: "Build & Switch"
                     icon.name: "run-build"
-                    enabled: (processManager ? !processManager.isRunning : false) && (gitManager ? !gitManager.isBusy : false)
+                    enabled: !root.processRunning && !root.gitBusy
                     ToolTip.visible: hovered
-                    ToolTip.text: "Run build first (with build host), then switch (with switch host) if successful"
+                    ToolTip.delay: Kirigami.Units.toolTipDelay
+                    ToolTip.text: "Pull the latest changes, build on the build host, then switch if the build succeeds"
                     onClicked: {
                         if (!gitManager)
                             return;
@@ -538,18 +665,18 @@ ApplicationWindow {
                         // First pull the repository, then build and switch
                         gitManager.pullRepository();
                     }
-                    Layout.fillWidth: true
                 }
 
                 Button {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
                     text: "Check for Updates"
                     icon.name: "view-refresh"
-                    enabled: gitManager ? !gitManager.isBusy : false
+                    enabled: !root.gitBusy
                     onClicked: {
                         if (gitManager)
                             gitManager.checkForUpdates();
                     }
-                    Layout.fillWidth: true
                 }
             }
 
@@ -573,76 +700,60 @@ ApplicationWindow {
                 }
             }
 
-            BusyIndicator {
-                Layout.alignment: Qt.AlignHCenter
-                running: gitManager ? gitManager.isBusy : false
-                visible: gitManager ? gitManager.isBusy : false
-            }
-
             ProgressBar {
                 Layout.fillWidth: true
-                Layout.leftMargin: Kirigami.Units.largeSpacing
-                Layout.rightMargin: Kirigami.Units.largeSpacing
-                visible: (gitManager ? gitManager.isBusy : false) && (gitManager ? gitManager.status.indexOf("Cloning") !== -1 : false)
+                visible: root.gitBusy && root.gitStatus.indexOf("Cloning") !== -1
                 from: 0
                 to: 100
                 value: gitManager ? gitManager.progress : 0
-
-                Component.onCompleted: {
-                    console.log("ProgressBar created");
-                }
-
-                onVisibleChanged: {
-                    console.log("ProgressBar visibility changed to:", visible);
-                    console.log("  - isBusy:", gitManager ? gitManager.isBusy : false);
-                    console.log("  - status:", gitManager ? gitManager.status : "");
-                    console.log("  - progress:", gitManager ? gitManager.progress : 0);
-                }
-
-                onValueChanged: {
-                    console.log("ProgressBar value changed to:", value);
-                }
             }
 
             // NixOS Generations Section
             GroupBox {
                 title: "NixOS Generations"
                 Layout.fillWidth: true
-                visible: processManager ? !processManager.isRunning : true
+                visible: !root.processRunning
 
                 RowLayout {
                     anchors.fill: parent
-                    spacing: Kirigami.Units.largeSpacing
+                    spacing: Kirigami.Units.smallSpacing
 
                     Label {
-                        text: "Current Generation:"
-                        font.bold: true
+                        text: "Current generation:"
                     }
 
                     Label {
-                        text: generationManager ? "#" + generationManager.currentGenerationNumber : "N/A"
-                        font.pixelSize: 16
+                        text: generationManager && generationManager.currentGenerationNumber > 0 ? "#" + generationManager.currentGenerationNumber : "Unknown"
                         font.bold: true
                         color: Kirigami.Theme.positiveTextColor
                     }
 
                     Label {
-                        text: "•"
+                        text: "·"
                         color: Kirigami.Theme.disabledTextColor
+                        visible: dateLabel.visible
                     }
 
                     Label {
-                        text: generationManager && generationManager.currentGenerationDate ? generationManager.currentGenerationDate : "Unknown"
-                        font.pixelSize: 14
+                        id: dateLabel
+                        Layout.fillWidth: true
+                        text: generationManager && generationManager.currentGenerationDate ? generationManager.currentGenerationDate : ""
+                        visible: text !== ""
+                        color: Kirigami.Theme.disabledTextColor
+                        elide: Text.ElideRight
                     }
 
                     Item {
                         Layout.fillWidth: true
+                        visible: !dateLabel.visible
                     }
 
-                    Button {
+                    ToolButton {
                         icon.name: "view-refresh"
-                        text: "Refresh"
+                        display: AbstractButton.IconOnly
+                        text: "Reload generations"
+                        ToolTip.visible: hovered
+                        ToolTip.text: text
                         enabled: generationManager ? !generationManager.isLoading : false
                         onClicked: {
                             if (generationManager)
@@ -651,11 +762,9 @@ ApplicationWindow {
                     }
 
                     Button {
-                        icon.name: "view-list-details"
-                        text: "View All Generations"
-                        onClicked: {
-                            generationsDialog.open();
-                        }
+                        icon.name: "view-history"
+                        text: "All Generations…"
+                        onClicked: generationsDialog.open()
                     }
                 }
 
@@ -665,25 +774,16 @@ ApplicationWindow {
                 }
             }
 
-            // Generations Dialog
             GenerationsDialog {
                 id: generationsDialog
-                x: (parent.width - width) / 2
-                y: (parent.height - height) / 2
             }
 
-            // Commits Dialog
             CommitsDialog {
                 id: commitsDialog
-                x: (parent.width - width) / 2
-                y: (parent.height - height) / 2
             }
 
-            // Logs Dialog
             LogsDialog {
                 id: logsDialog
-                x: (parent.width - width) / 2
-                y: (parent.height - height) / 2
             }
 
             // System Resources Section
@@ -694,93 +794,33 @@ ApplicationWindow {
 
                 RowLayout {
                     anchors.fill: parent
-                    spacing: Kirigami.Units.smallSpacing
+                    spacing: Kirigami.Units.largeSpacing
 
-                    // CPU
-                    ColumnLayout {
-                        spacing: 2
-                        Label {
-                            text: "CPU"
-                            font.bold: true
-                            // font.pointSize: 14
-                        }
-                        ProgressBar {
-                            Layout.preferredWidth: 80
-                            from: 0
-                            to: 100
-                            value: systemMonitor ? systemMonitor.cpuUsage : 0
-                        }
-                        Label {
-                            text: systemMonitor ? systemMonitor.cpuUsage.toFixed(1) + "%" : "0.0%"
-                            // font.pointSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                        }
+                    ResourceMetric {
+                        caption: "CPU"
+                        percent: systemMonitor ? systemMonitor.cpuUsage : 0
+                        value: systemMonitor ? systemMonitor.cpuUsage.toFixed(1) + " %" : "0.0 %"
                     }
 
-                    // RAM
-                    ColumnLayout {
-                        spacing: 2
-                        Label {
-                            text: "RAM"
-                            font.bold: true
-                            // font.pointSize: 14
-                        }
-                        ProgressBar {
-                            Layout.preferredWidth: 80
-                            from: 0
-                            to: 100
-                            value: systemMonitor ? systemMonitor.memoryUsage : 0
-                        }
-                        Label {
-                            text: systemMonitor ? systemMonitor.usedMemory + " / " + systemMonitor.totalMemory : ""
-                            // font.pointSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                        }
+                    ResourceMetric {
+                        caption: "Memory"
+                        percent: systemMonitor ? systemMonitor.memoryUsage : 0
+                        value: systemMonitor ? systemMonitor.usedMemory + " / " + systemMonitor.totalMemory : ""
                     }
 
-                    // Network
-                    ColumnLayout {
-                        spacing: 2
-                        Label {
-                            text: "Network"
-                            font.bold: true
-                            // font.pointSize: 14
-                        }
-                        Label {
-                            text: systemMonitor ? systemMonitor.networkStats : "↓ 0 B/s ↑ 0 B/s"
-                            // font.pointSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                        }
+                    ResourceMetric {
+                        caption: "Network"
+                        value: systemMonitor ? systemMonitor.networkStats : "↓ 0 B/s ↑ 0 B/s"
                     }
 
-                    // Disk I/O
-                    ColumnLayout {
-                        spacing: 2
-                        Label {
-                            text: "Disk I/O"
-                            font.bold: true
-                            // font.pointSize: 14
-                        }
-                        Label {
-                            text: systemMonitor ? systemMonitor.diskStats : "↓ 0 B/s ↑ 0 B/s"
-                            // font.pointSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                        }
+                    ResourceMetric {
+                        caption: "Disk I/O"
+                        value: systemMonitor ? systemMonitor.diskStats : "↓ 0 B/s ↑ 0 B/s"
                     }
 
-                    // Load
-                    ColumnLayout {
-                        spacing: 2
-                        Label {
-                            text: "Load"
-                            font.bold: true
-                            // font.pointSize: 14
-                        }
-                        Label {
-                            text: systemMonitor ? systemMonitor.systemLoad.toFixed(2) : "0.00"
-                            // font.pointSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                        }
+                    ResourceMetric {
+                        caption: "Load"
+                        value: systemMonitor ? systemMonitor.systemLoad.toFixed(2) : "0.00"
                     }
                 }
             }
@@ -793,7 +833,7 @@ ApplicationWindow {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    spacing: 5
+                    spacing: Kirigami.Units.smallSpacing
 
                     // Build Result Status Message
                     Kirigami.InlineMessage {
@@ -805,10 +845,11 @@ ApplicationWindow {
                             if (!processManager || !processManager.hasFinished) {
                                 return "";
                             }
+                            var mode = root.rebuildModeTitle(root.currentRebuildMode);
                             if (processManager.lastExitCode === 0) {
-                                return "✓ Build completed successfully!";
+                                return mode + " completed successfully.";
                             } else {
-                                return "✗ Build failed with exit code " + processManager.lastExitCode;
+                                return mode + " failed with exit code " + processManager.lastExitCode + ".";
                             }
                         }
                         showCloseButton: true
@@ -827,10 +868,11 @@ ApplicationWindow {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        Layout.minimumHeight: Kirigami.Units.gridUnit * 6
                         color: "#0d1117"
                         border.color: "#30363d"
                         border.width: 1
-                        radius: 4
+                        radius: Kirigami.Units.cornerRadius
 
                         // Optional embedded Kwi terminal, falls back to the text view
                         // below if the org.kde.kwi.terminal module isn't installed
@@ -848,7 +890,7 @@ ApplicationWindow {
                         ScrollView {
                             id: terminalScrollView
                             anchors.fill: parent
-                            anchors.margins: 5
+                            anchors.margins: Kirigami.Units.smallSpacing
                             clip: true
                             visible: !root.kwiTerminalShown
                             ScrollBar.vertical.policy: ScrollBar.AlwaysOn
@@ -882,9 +924,11 @@ ApplicationWindow {
                                     width: terminalScrollView.availableWidth
                                     textFormat: TextEdit.RichText
                                     wrapMode: TextEdit.Wrap
-                                    font.family: "Monospace"
-                                    font.pixelSize: 14
+                                    font.family: Kirigami.Theme.fixedWidthFont.family
+                                    font.pointSize: Kirigami.Theme.fixedWidthFont.pointSize
                                     color: "#c9d1d9"
+                                    selectionColor: "#264f78"
+                                    selectedTextColor: "#ffffff"
                                     readOnly: true
                                     selectByMouse: true
                                     selectByKeyboard: true
@@ -947,9 +991,26 @@ ApplicationWindow {
                                             enabled: terminalText.selectedText.length > 0
                                             onTriggered: terminalText.deselect()
                                         }
+
+                                        MenuItem {
+                                            text: "Find…"
+                                            icon.name: "edit-find"
+                                            onTriggered: searchBar.show()
+                                        }
                                     }
                                 }
                             }
+                        }
+
+                        // Placeholder while there is no output yet
+                        Label {
+                            anchors.centerIn: parent
+                            width: parent.width - Kirigami.Units.gridUnit * 4
+                            visible: !root.kwiTerminalShown && !root.processRunning && terminalText.length === 0
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            text: "Command output will appear here."
+                            color: "#6e7681"
                         }
 
                         // Scroll to bottom button (appears when scrolled up)
@@ -957,13 +1018,13 @@ ApplicationWindow {
                             id: scrollToBottomButton
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
-                            anchors.rightMargin: 10
-                            anchors.bottomMargin: 10
+                            anchors.rightMargin: Kirigami.Units.gridUnit
+                            anchors.bottomMargin: Kirigami.Units.largeSpacing
                             visible: !terminalFlickable.autoScroll && !root.kwiTerminalShown
-                            icon.name: "go-down"
+                            icon.name: "go-down-skip"
                             text: "Scroll to Bottom"
                             ToolTip.visible: hovered
-                            ToolTip.text: "Jump to the bottom of the log output"
+                            ToolTip.text: "Jump to the end of the output and follow new lines"
                             onClicked: {
                                 terminalFlickable.scrollToBottom();
                                 terminalFlickable.autoScroll = true;
@@ -976,12 +1037,12 @@ ApplicationWindow {
                     Rectangle {
                         id: searchBar
                         Layout.fillWidth: true
-                        height: 40
+                        implicitHeight: searchRow.implicitHeight + Kirigami.Units.smallSpacing * 2
                         visible: false
                         color: Kirigami.Theme.backgroundColor
-                        border.color: Kirigami.Theme.disabledTextColor
+                        border.color: Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor, Kirigami.Theme.frameContrast)
                         border.width: 1
-                        radius: 4
+                        radius: Kirigami.Units.cornerRadius
 
                         property var searchMatches: []
                         property int currentMatchIndex: -1
@@ -1147,19 +1208,28 @@ ApplicationWindow {
                         }
 
                         RowLayout {
+                            id: searchRow
                             anchors.fill: parent
-                            anchors.margins: 5
-                            spacing: 5
-
-                            Label {
-                                text: "Find:"
-                            }
+                            anchors.margins: Kirigami.Units.smallSpacing
+                            spacing: Kirigami.Units.smallSpacing
 
                             TextField {
                                 id: searchInput
                                 Layout.fillWidth: true
-                                placeholderText: "Search..."
+                                placeholderText: "Find in output…"
+                                leftPadding: searchIcon.width + Kirigami.Units.smallSpacing * 3
                                 onTextChanged: searchBar.search()
+
+                                Kirigami.Icon {
+                                    id: searchIcon
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: Kirigami.Units.smallSpacing * 2
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Kirigami.Units.iconSizes.small
+                                    height: width
+                                    source: "edit-find"
+                                    color: Kirigami.Theme.disabledTextColor
+                                }
 
                                 Keys.onPressed: function (event) {
                                     if (event.key === Qt.Key_Escape) {
@@ -1193,34 +1263,43 @@ ApplicationWindow {
                                 id: searchResultLabel
                                 text: ""
                                 visible: !root.kwiTerminalShown
-                                Layout.preferredWidth: 50
+                                color: text === "0/0" ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.disabledTextColor
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.minimumWidth: Kirigami.Units.gridUnit * 3
                             }
 
                             Label {
                                 text: root.kwiTerminalShown ? kwiTerminalLoader.item.view.searchStatus : ""
                                 visible: root.kwiTerminalShown
+                                color: Kirigami.Theme.disabledTextColor
                             }
 
-                            Button {
+                            ToolButton {
                                 icon.name: "go-up"
+                                display: AbstractButton.IconOnly
+                                text: "Find Previous (Shift+F3)"
                                 ToolTip.visible: hovered
-                                ToolTip.text: "Find Previous (Shift+F3)"
+                                ToolTip.text: text
                                 enabled: root.kwiTerminalShown ? searchInput.text.length > 0 : searchBar.searchMatches.length > 0
                                 onClicked: searchBar.findPrevious()
                             }
 
-                            Button {
+                            ToolButton {
                                 icon.name: "go-down"
+                                display: AbstractButton.IconOnly
+                                text: "Find Next (F3)"
                                 ToolTip.visible: hovered
-                                ToolTip.text: "Find Next (F3)"
+                                ToolTip.text: text
                                 enabled: root.kwiTerminalShown ? searchInput.text.length > 0 : searchBar.searchMatches.length > 0
                                 onClicked: searchBar.findNext()
                             }
 
-                            Button {
-                                icon.name: "window-close"
+                            ToolButton {
+                                icon.name: "dialog-close"
+                                display: AbstractButton.IconOnly
+                                text: "Close (Escape)"
                                 ToolTip.visible: hovered
-                                ToolTip.text: "Close (Escape)"
+                                ToolTip.text: text
                                 onClicked: searchBar.hide()
                             }
                         }
@@ -1228,69 +1307,33 @@ ApplicationWindow {
 
                     RowLayout {
                         Layout.fillWidth: true
-
-                        Label {
-                            text: processManager ? (processManager.isRunning ? "Process running..." : "Ready") : "Ready"
-                            color: processManager ? (processManager.isRunning ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.positiveTextColor) : Kirigami.Theme.positiveTextColor
-                            font.family: "Monospace"
-                            font.pixelSize: 14
-                        }
+                        spacing: Kirigami.Units.smallSpacing
 
                         Item {
+                            implicitWidth: Kirigami.Units.iconSizes.small
+                            implicitHeight: Kirigami.Units.iconSizes.small
+
+                            BusyIndicator {
+                                anchors.centerIn: parent
+                                width: Kirigami.Units.iconSizes.smallMedium
+                                height: width
+                                padding: 0
+                                running: root.processRunning && !(processManager && processManager.isPaused)
+                                visible: running
+                            }
+
+                            Kirigami.Icon {
+                                anchors.fill: parent
+                                visible: !root.processRunning || (processManager && processManager.isPaused)
+                                source: processManager && processManager.isPaused ? "media-playback-pause" : "emblem-success"
+                            }
+                        }
+
+                        Label {
                             Layout.fillWidth: true
-                        }
-
-                        Button {
-                            text: "Clear"
-                            enabled: processManager ? !processManager.isRunning : false
-                            onClicked: {
-                                if (processManager) {
-                                    // Clear output in process manager first
-                                    processManager.clearOutput();
-
-                                    // Clear search state to prevent memory leaks
-                                    searchBar.searchMatches = [];
-                                    searchBar.currentMatchIndex = -1;
-                                    searchBar.plainTextCache = "";
-                                    searchResultLabel.text = "";
-
-                                    // Force garbage collection hint
-                                    gc();
-                                }
-                            }
-                        }
-
-                        Button {
-                            text: "Kill Process"
-                            enabled: processManager ? processManager.isRunning : false
-                            onClicked: {
-                                if (processManager)
-                                    processManager.killProcess();
-                            }
-                        }
-
-                        Button {
-                            text: processManager ? (processManager.isPaused ? "Resume" : "Pause") : "Pause"
-                            enabled: processManager ? processManager.isRunning : false
-                            // Privileged rebuilds run as root, but nh only elevates for the activation
-                            visible: root.nhUsed || (processManager && processManager.isRunning ? root.currentRebuildMode === "build" : rebuildModeComboBox.currentText === "build")
-                            onClicked: {
-                                if (processManager) {
-                                    if (processManager.isPaused) {
-                                        processManager.resumeProcess();
-                                    } else {
-                                        processManager.pauseProcess();
-                                    }
-                                }
-                            }
-                        }
-
-                        Button {
-                            icon.name: "documentation"
-                            text: "View Logs"
-                            onClicked: {
-                                logsDialog.open();
-                            }
+                            elide: Text.ElideRight
+                            text: !root.processRunning ? "Ready" : processManager.isPaused ? "Paused" : processManager.waitingForPassword ? "Waiting for password…" : "Running…"
+                            color: processManager && processManager.isPaused ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.textColor
                         }
 
                         // Debug Mode Controls
@@ -1310,13 +1353,71 @@ ApplicationWindow {
                             icon.name: "tools-report-bug"
                             text: "Generate Test Output"
                             visible: settingsManager && settingsManager.debugMode
-                            enabled: processManager ? !processManager.isRunning : false
+                            enabled: !root.processRunning
                             ToolTip.visible: hovered
                             ToolTip.text: "Generate test log output to check memory usage (Debug Mode)"
                             onClicked: {
                                 if (processManager) {
                                     processManager.generateTestOutput(testLineCountSpinBox.value);
                                 }
+                            }
+                        }
+
+                        Button {
+                            text: processManager && processManager.isPaused ? "Resume" : "Pause"
+                            icon.name: processManager && processManager.isPaused ? "media-playback-start" : "media-playback-pause"
+                            // Privileged rebuilds run as root, but nh only elevates for the activation
+                            visible: root.processRunning && (root.nhUsed || root.currentRebuildMode === "build")
+                            onClicked: {
+                                if (processManager) {
+                                    if (processManager.isPaused) {
+                                        processManager.resumeProcess();
+                                    } else {
+                                        processManager.pauseProcess();
+                                    }
+                                }
+                            }
+                        }
+
+                        Button {
+                            text: "Stop"
+                            icon.name: "process-stop"
+                            visible: root.processRunning
+                            ToolTip.visible: hovered
+                            ToolTip.delay: Kirigami.Units.toolTipDelay
+                            ToolTip.text: "Kill the running process"
+                            onClicked: {
+                                if (processManager)
+                                    processManager.killProcess();
+                            }
+                        }
+
+                        Button {
+                            text: "Clear"
+                            icon.name: "edit-clear-history"
+                            enabled: !root.processRunning
+                            onClicked: {
+                                if (processManager) {
+                                    // Clear output in process manager first
+                                    processManager.clearOutput();
+
+                                    // Clear search state to prevent memory leaks
+                                    searchBar.searchMatches = [];
+                                    searchBar.currentMatchIndex = -1;
+                                    searchBar.plainTextCache = "";
+                                    searchResultLabel.text = "";
+
+                                    // Force garbage collection hint
+                                    gc();
+                                }
+                            }
+                        }
+
+                        Button {
+                            icon.name: "documentation"
+                            text: "Build Logs…"
+                            onClicked: {
+                                logsDialog.open();
                             }
                         }
                     }
@@ -1453,7 +1554,7 @@ ApplicationWindow {
             if (searchBar.searchMatches.length > 0) {
                 searchBar.searchMatches = [];
                 searchBar.currentMatchIndex = -1;
-                searchBar.searchResultLabel.text = "";
+                searchResultLabel.text = "";
                 searchBar.plainTextCache = "";
             }
         }

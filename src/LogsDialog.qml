@@ -6,8 +6,10 @@ import org.kde.kirigami as Kirigami
 Dialog {
     id: logsDialog
     title: "Build Logs"
-    width: 800
-    height: 500
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    width: Math.min(Kirigami.Units.gridUnit * 40, parent.width - Kirigami.Units.gridUnit * 2)
+    height: Math.min(Kirigami.Units.gridUnit * 30, parent.height - Kirigami.Units.gridUnit * 2)
     modal: true
     standardButtons: Dialog.Close
 
@@ -23,36 +25,46 @@ Dialog {
             return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
     }
 
-    onAboutToShow: {
+    function refresh() {
         if (logManager && settingsManager) {
             logManager.refreshLogs(settingsManager.getLogDirectory());
         }
     }
 
+    onAboutToShow: refresh()
+
     ColumnLayout {
         anchors.fill: parent
-        spacing: Kirigami.Units.smallSpacing
+        spacing: Kirigami.Units.largeSpacing
 
         RowLayout {
             Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
 
             Label {
-                text: logManager && logManager.logFiles.length > 0 ? "Build logs (" + logManager.logFiles.length + "):" : "Build logs:"
-                font.bold: true
-            }
-
-            Item {
                 Layout.fillWidth: true
+                text: logsListView.count === 1 ? "1 stored log" : logsListView.count + " stored logs"
+                font.bold: true
+                elide: Text.ElideRight
             }
 
-            Button {
+            ToolButton {
+                icon.name: "document-open-folder"
+                display: AbstractButton.IconOnly
+                text: "Open log folder"
+                ToolTip.visible: hovered
+                ToolTip.text: text
+                enabled: settingsManager !== null && processManager !== null
+                onClicked: processManager.startDetached("xdg-open", [settingsManager.getLogDirectory()])
+            }
+
+            ToolButton {
                 icon.name: "view-refresh"
-                text: "Refresh"
-                onClicked: {
-                    if (logManager && settingsManager) {
-                        logManager.refreshLogs(settingsManager.getLogDirectory());
-                    }
-                }
+                display: AbstractButton.IconOnly
+                text: "Reload logs"
+                ToolTip.visible: hovered
+                ToolTip.text: text
+                onClicked: logsDialog.refresh()
             }
         }
 
@@ -61,124 +73,125 @@ Dialog {
             Layout.fillHeight: true
             clip: true
 
+            Component.onCompleted: {
+                if (background) {
+                    background.visible = true;
+                }
+            }
+
             ListView {
                 id: logsListView
                 model: logManager ? logManager.logFiles : []
-                spacing: 2
 
                 delegate: ItemDelegate {
                     id: delegateItem
+                    required property var modelData
+                    readonly property bool succeeded: modelData.exitCode === 0
+                    readonly property string buildType: modelData.buildType || "build"
+
                     width: ListView.view.width
+                    onClicked: {
+                        if (logManager)
+                            logManager.openLogInEditor(modelData.filePath);
+                    }
+
+                    ToolTip.visible: hovered && !deleteButton.hovered
+                    ToolTip.delay: Kirigami.Units.toolTipDelay
+                    ToolTip.text: "Open log in text editor"
 
                     contentItem: RowLayout {
-                        spacing: Kirigami.Units.smallSpacing
+                        spacing: Kirigami.Units.largeSpacing
 
-                        // Status indicator
-                        Label {
-                            text: modelData.exitCode === 0 ? "✓" : "✗"
-                            font.bold: true
-                            font.pixelSize: 16
-                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : (modelData.exitCode === 0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor)
-                            Layout.preferredWidth: 30
+                        Kirigami.Icon {
+                            source: delegateItem.succeeded ? "emblem-success" : "emblem-error"
+                            implicitWidth: Kirigami.Units.iconSizes.smallMedium
+                            implicitHeight: Kirigami.Units.iconSizes.smallMedium
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: delegateItem.modelData.displayName
+                                elide: Text.ElideRight
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: (delegateItem.succeeded ? "Succeeded" : "Failed with exit code " + delegateItem.modelData.exitCode) + " · " + logsDialog.formatFileSize(delegateItem.modelData.fileSize || 0)
+                                font: Kirigami.Theme.smallFont
+                                color: delegateItem.succeeded ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.negativeTextColor
+                                elide: Text.ElideRight
+                            }
                         }
 
                         // Build type badge
                         Label {
-                            text: modelData.buildType ? modelData.buildType.toUpperCase() : "BUILD"
-                            font.pixelSize: 10
-                            font.bold: true
-                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.backgroundColor
-                            padding: 4
+                            text: delegateItem.buildType.charAt(0).toUpperCase() + delegateItem.buildType.slice(1)
+                            font: Kirigami.Theme.smallFont
+                            horizontalAlignment: Text.AlignHCenter
+                            Layout.minimumWidth: Kirigami.Units.gridUnit * 3.5
+                            leftPadding: Kirigami.Units.smallSpacing
+                            rightPadding: Kirigami.Units.smallSpacing
+                            topPadding: Kirigami.Units.smallSpacing / 2
+                            bottomPadding: Kirigami.Units.smallSpacing / 2
+                            color: Kirigami.Theme.textColor
                             background: Rectangle {
-                                color: delegateItem.hovered ? Kirigami.Theme.highlightColor : (modelData.buildType === "switch" ? Kirigami.Theme.focusColor : Kirigami.Theme.neutralTextColor)
-                                radius: 3
-                            }
-                            Layout.preferredWidth: 55
-                        }
-
-                        // Timestamp
-                        Label {
-                            text: modelData.displayName
-                            font.pixelSize: 14
-                            Layout.fillWidth: true
-                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
-                        }
-
-                        // File size
-                        Label {
-                            text: logsDialog.formatFileSize(modelData.fileSize || 0)
-                            font.pixelSize: 12
-                            font.italic: true
-                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.disabledTextColor
-                            Layout.preferredWidth: 70
-                        }
-
-                        // Status text
-                        Label {
-                            text: modelData.exitCode === 0 ? "Success" : "Failed (exit " + modelData.exitCode + ")"
-                            font.pixelSize: 12
-                            font.italic: true
-                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : (modelData.exitCode === 0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor)
-                            Layout.preferredWidth: 120
-                        }
-
-                        // Open button
-                        Button {
-                            icon.name: "document-open"
-                            text: "Open"
-                            flat: true
-                            onClicked: {
-                                if (logManager)
-                                    logManager.openLogInEditor(modelData.filePath);
+                                readonly property color tint: delegateItem.buildType === "switch" ? Kirigami.Theme.positiveTextColor : delegateItem.buildType === "boot" ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.linkColor
+                                color: Qt.rgba(tint.r, tint.g, tint.b, 0.15)
+                                border.color: Qt.rgba(tint.r, tint.g, tint.b, 0.5)
+                                border.width: 1
+                                radius: height / 2
                             }
                         }
 
-                        // Delete button
-                        Button {
+                        ToolButton {
+                            id: deleteButton
                             icon.name: "edit-delete"
                             display: AbstractButton.IconOnly
-                            flat: true
+                            text: "Delete log"
                             ToolTip.visible: hovered
-                            ToolTip.text: "Delete log"
+                            ToolTip.text: text
                             onClicked: {
-                                deleteLogDialog.logToDelete = modelData.filePath;
-                                deleteLogDialog.logFileName = modelData.displayName;
+                                deleteLogDialog.logToDelete = delegateItem.modelData.filePath;
+                                deleteLogDialog.logFileName = delegateItem.modelData.displayName;
                                 deleteLogDialog.open();
                             }
                         }
                     }
-
-                    background: Rectangle {
-                        color: parent.hovered ? Kirigami.Theme.hoverColor : "transparent"
-                        radius: 3
-                    }
                 }
 
-                // Placeholder when no logs
-                Label {
+                Kirigami.PlaceholderMessage {
                     anchors.centerIn: parent
+                    width: parent.width - (Kirigami.Units.largeSpacing * 4)
                     visible: logsListView.count === 0
-                    text: "No build logs available yet"
-                    font.italic: true
-                    color: Kirigami.Theme.disabledTextColor
+                    icon.name: "documentation"
+                    text: "No build logs yet"
+                    explanation: "A log is saved every time a build, switch or boot finishes."
                 }
             }
         }
     }
 
     // Delete confirmation dialog
-    Dialog {
+    Kirigami.PromptDialog {
         id: deleteLogDialog
-        title: "Delete Log File"
-        modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        parent: Overlay.overlay
+        title: "Delete Log?"
+        subtitle: "The log from " + logFileName + " will be permanently deleted."
+        dialogType: Kirigami.PromptDialog.Warning
+        standardButtons: Kirigami.Dialog.Cancel
+        customFooterActions: [
+            Kirigami.Action {
+                text: "Delete"
+                icon.name: "edit-delete"
+                onTriggered: deleteLogDialog.accept()
+            }
+        ]
         property string logToDelete: ""
         property string logFileName: ""
-
-        Label {
-            text: "Are you sure you want to delete this log file?\n\n" + deleteLogDialog.logFileName
-            wrapMode: Text.WordWrap
-        }
 
         onAccepted: {
             if (logManager && logToDelete !== "") {

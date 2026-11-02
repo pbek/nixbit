@@ -6,8 +6,10 @@ import org.kde.kirigami as Kirigami
 Dialog {
     id: generationsDialog
     title: "NixOS Generations"
-    width: 600
-    height: 400
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    width: Math.min(Kirigami.Units.gridUnit * 30, parent.width - Kirigami.Units.gridUnit * 2)
+    height: Math.min(Kirigami.Units.gridUnit * 30, parent.height - Kirigami.Units.gridUnit * 2)
     modal: true
     standardButtons: Dialog.Close
 
@@ -18,23 +20,25 @@ Dialog {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: Kirigami.Units.smallSpacing
+        spacing: Kirigami.Units.largeSpacing
 
         RowLayout {
             Layout.fillWidth: true
+            spacing: Kirigami.Units.smallSpacing
 
             Label {
-                text: generationManager ? (generationManager.isLoading ? "Loading generations..." : "System generations:") : "System generations:"
-                font.bold: true
-            }
-
-            Item {
                 Layout.fillWidth: true
+                text: generationManager && generationManager.isLoading ? "Loading generations…" : generationsListView.count === 1 ? "1 system generation" : generationsListView.count + " system generations"
+                font.bold: true
+                elide: Text.ElideRight
             }
 
-            Button {
+            ToolButton {
                 icon.name: "view-refresh"
-                text: "Refresh"
+                display: AbstractButton.IconOnly
+                text: "Reload generations"
+                ToolTip.visible: hovered
+                ToolTip.text: text
                 enabled: generationManager ? !generationManager.isLoading : false
                 onClicked: {
                     if (generationManager)
@@ -43,70 +47,74 @@ Dialog {
             }
         }
 
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            type: Kirigami.MessageType.Error
+            text: generationManager && generationManager.error ? generationManager.error : ""
+            visible: text !== ""
+        }
+
         ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
 
+            Component.onCompleted: {
+                if (background) {
+                    background.visible = true;
+                }
+            }
+
             ListView {
                 id: generationsListView
                 model: generationManager
-                spacing: 2
 
                 delegate: ItemDelegate {
                     id: delegateItem
+                    required property int number
+                    required property string dateTime
+                    required property bool isCurrent
+
                     width: ListView.view.width
-                    highlighted: model.isCurrent
+                    hoverEnabled: false
+                    down: false
+                    highlighted: isCurrent
 
                     contentItem: RowLayout {
-                        spacing: Kirigami.Units.smallSpacing
+                        spacing: Kirigami.Units.largeSpacing
 
                         Label {
-                            text: "#" + model.number
-                            font.bold: model.isCurrent
-                            font.pixelSize: 14
-                            Layout.preferredWidth: 60
-                            color: (delegateItem.hovered && !model.isCurrent) ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+                            text: "#" + delegateItem.number
+                            font.bold: delegateItem.isCurrent
+                            Layout.minimumWidth: Kirigami.Units.gridUnit * 3
+                            color: delegateItem.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
                         }
 
                         Label {
-                            text: model.isCurrent ? "●" : ""
-                            font.bold: true
-                            color: (delegateItem.hovered && !model.isCurrent) ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.positiveTextColor
-                            font.pixelSize: 16
-                            Layout.preferredWidth: 20
-                        }
-
-                        Label {
-                            text: model.dateTime
-                            font.bold: model.isCurrent
-                            font.pixelSize: 14
+                            text: delegateItem.dateTime
+                            font.bold: delegateItem.isCurrent
                             Layout.fillWidth: true
-                            color: (delegateItem.hovered && !model.isCurrent) ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+                            elide: Text.ElideRight
+                            color: delegateItem.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
                         }
 
                         Label {
-                            text: model.isCurrent ? "(current)" : ""
-                            color: (delegateItem.hovered && !model.isCurrent) ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.positiveTextColor
-                            font.pixelSize: 14
-                            font.italic: true
+                            visible: delegateItem.isCurrent
+                            text: "Current"
+                            font: Kirigami.Theme.smallFont
+                            color: delegateItem.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.positiveTextColor
                         }
-                    }
-
-                    background: Rectangle {
-                        color: model.isCurrent ? Kirigami.Theme.alternateBackgroundColor : (parent.hovered ? Kirigami.Theme.hoverColor : "transparent")
-                        radius: 3
                     }
                 }
-            }
-        }
 
-        Label {
-            text: generationManager && generationManager.error ? generationManager.error : ""
-            visible: generationManager && generationManager.error !== ""
-            color: Kirigami.Theme.negativeTextColor
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
+                Kirigami.PlaceholderMessage {
+                    anchors.centerIn: parent
+                    width: parent.width - (Kirigami.Units.largeSpacing * 4)
+                    visible: generationsListView.count === 0 && generationManager && !generationManager.isLoading
+                    icon.name: "view-history"
+                    text: "No generations found"
+                }
+            }
         }
     }
 }

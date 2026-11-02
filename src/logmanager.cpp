@@ -137,7 +137,7 @@ QList<LogEntry> LogManager::parseLogFiles(const QString &logDir) {
 
   // Parse each log file - support both formats with and without build type
   QRegularExpression patternWithBuildType(
-      R"((build|switch)_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_exit(\d+)\.log)");
+      R"((build|switch|boot)_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_exit(\d+)\.log)");
   QRegularExpression patternLegacyFormat(
       R"(build_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_exit(\d+)\.log)");
 

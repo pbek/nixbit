@@ -6,10 +6,39 @@ import org.kde.kirigami as Kirigami
 Dialog {
     id: commitsDialog
     title: "Available Updates"
-    width: 800
-    height: 600
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    width: Math.min(Kirigami.Units.gridUnit * 40, parent.width - Kirigami.Units.gridUnit * 2)
+    height: Math.min(Kirigami.Units.gridUnit * 32, parent.height - Kirigami.Units.gridUnit * 2)
     modal: true
     standardButtons: Dialog.Close
+
+    readonly property int commitCount: commitListView.count
+
+    function commitUrl(sha) {
+        // Convert various GitHub URL formats to a web commit URL
+        var url = gitManager ? gitManager.repositoryUrl : "";
+        if (!sha || url.indexOf("github.com") === -1) {
+            return "";
+        }
+
+        // Handle git@ SSH format: git@github.com:user/repo.git
+        if (url.startsWith("git@github.com:")) {
+            url = url.replace("git@github.com:", "https://github.com/");
+        }
+
+        // Remove .git suffix if present
+        if (url.endsWith(".git")) {
+            url = url.substring(0, url.length - 4);
+        }
+
+        // Ensure it starts with https://
+        if (!url.startsWith("http")) {
+            url = "https://github.com/" + url;
+        }
+
+        return url + "/commit/" + sha;
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -18,26 +47,17 @@ Dialog {
         // Header information
         RowLayout {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.largeSpacing
+            spacing: Kirigami.Units.smallSpacing
 
             Label {
-                text: "Commits Behind:"
-                font.bold: true
-            }
-
-            Label {
-                text: gitManager ? gitManager.commitsBehind.toString() : "0"
-                font.bold: true
-                color: Kirigami.Theme.neutralTextColor
-                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.2
-            }
-
-            Item {
                 Layout.fillWidth: true
+                text: commitsDialog.commitCount > 0 ? (commitsDialog.commitCount === 1 ? "1 new commit is available:" : commitsDialog.commitCount + " new commits are available:") : "Your configuration is up to date."
+                font.bold: true
+                elide: Text.ElideRight
             }
 
             Button {
-                text: "Ignore commits"
+                text: "Pull Without Rebuilding"
                 icon.name: "download"
                 enabled: gitManager ? !gitManager.isBusy && gitManager.commitsBehind > 0 : false
                 onClicked: {
@@ -45,13 +65,16 @@ Dialog {
                         gitManager.ignoreUpdate();
                 }
                 ToolTip.visible: hovered
-                ToolTip.text: "Pulls changes from git to remove them from this list.\nNote: This doesn't actually ignore commits, it downloads them. Changes will be applied in the next build."
-                ToolTip.delay: 500
+                ToolTip.text: "Pull the commits so they are no longer listed here.\nThe changes will be applied with the next build."
+                ToolTip.delay: Kirigami.Units.toolTipDelay
             }
 
-            Button {
-                text: "Refresh"
+            ToolButton {
                 icon.name: "view-refresh"
+                display: AbstractButton.IconOnly
+                text: "Check for updates"
+                ToolTip.visible: hovered
+                ToolTip.text: text
                 enabled: gitManager ? !gitManager.isBusy : false
                 onClicked: {
                     if (gitManager)
@@ -60,130 +83,90 @@ Dialog {
             }
         }
 
-        Kirigami.Separator {
-            Layout.fillWidth: true
-        }
-
-        // Commits list
-        Label {
-            text: gitManager && gitManager.commitsBehindList && gitManager.commitsBehindList.length > 0 ? "The following commits are available for update:" : "No commits behind. Your system is up to date!"
-            font.italic: true
-            color: Kirigami.Theme.disabledTextColor
-        }
-
         ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
 
+            Component.onCompleted: {
+                if (background) {
+                    background.visible = true;
+                }
+            }
+
             ListView {
                 id: commitListView
                 model: gitManager ? gitManager.commitsBehindList : []
-                spacing: Kirigami.Units.smallSpacing
+                reuseItems: true
 
                 delegate: ItemDelegate {
                     id: delegateItem
+                    required property var modelData
+                    required property int index
+                    readonly property string url: commitsDialog.commitUrl(modelData.sha)
+
                     width: ListView.view.width
+                    hoverEnabled: url !== ""
+                    down: false
+                    onClicked: {
+                        if (url !== "")
+                            Qt.openUrlExternally(url);
+                    }
+
+                    ToolTip.visible: hovered && url !== ""
+                    ToolTip.delay: Kirigami.Units.toolTipDelay
+                    ToolTip.text: "Open commit in browser"
 
                     contentItem: ColumnLayout {
                         spacing: Kirigami.Units.smallSpacing
 
-                        // Header row with SHA, author, and date
+                        Label {
+                            Layout.fillWidth: true
+                            text: delegateItem.modelData.message || ""
+                            wrapMode: Text.Wrap
+                            maximumLineCount: 4
+                            elide: Text.ElideRight
+                        }
+
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: Kirigami.Units.largeSpacing
+                            spacing: Kirigami.Units.smallSpacing
 
-                            // SHA - clickable if GitHub repo
                             Label {
-                                text: {
-                                    var sha = modelData.sha || "";
-                                    var repoUrl = gitManager ? gitManager.repositoryUrl : "";
-                                    var isGitHub = repoUrl.includes("github.com");
-
-                                    if (isGitHub && sha) {
-                                        return '<a href="' + getGitHubCommitUrl(repoUrl, sha) + '">' + sha + '</a>';
-                                    }
-                                    return sha;
-                                }
-                                textFormat: Text.RichText
-                                font.family: "monospace"
-                                font.bold: true
-                                color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.linkColor
-                                Layout.preferredWidth: 70
-
-                                onLinkActivated: function (link) {
-                                    Qt.openUrlExternally(link);
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                    acceptedButtons: Qt.NoButton
-                                }
-
-                                function getGitHubCommitUrl(repoUrl, sha) {
-                                    // Convert various GitHub URL formats to web commit URL
-                                    var url = repoUrl;
-
-                                    // Handle git@ SSH format: git@github.com:user/repo.git
-                                    if (url.startsWith("git@github.com:")) {
-                                        url = url.replace("git@github.com:", "https://github.com/");
-                                    }
-
-                                    // Handle https format: https://github.com/user/repo.git
-                                    // Remove .git suffix if present
-                                    if (url.endsWith(".git")) {
-                                        url = url.substring(0, url.length - 4);
-                                    }
-
-                                    // Ensure it starts with https://
-                                    if (!url.startsWith("http")) {
-                                        url = "https://github.com/" + url;
-                                    }
-
-                                    return url + "/commit/" + sha;
-                                }
+                                text: delegateItem.modelData.sha || ""
+                                font.family: Kirigami.Theme.fixedWidthFont.family
+                                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                                color: delegateItem.url !== "" ? Kirigami.Theme.linkColor : Kirigami.Theme.disabledTextColor
                             }
 
-                            // Author
                             Label {
-                                text: modelData.author || ""
-                                color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
-                                font.bold: true
                                 Layout.fillWidth: true
+                                text: "· " + (delegateItem.modelData.author || "")
+                                font: Kirigami.Theme.smallFont
+                                color: Kirigami.Theme.disabledTextColor
                                 elide: Text.ElideRight
                             }
 
-                            // Relative date
                             Label {
-                                text: modelData.dateRelative || ""
-                                color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.disabledTextColor
-                                font.pointSize: Kirigami.Theme.smallFont.pointSize
+                                text: delegateItem.modelData.dateRelative || ""
+                                font: Kirigami.Theme.smallFont
+                                color: Kirigami.Theme.disabledTextColor
+
+                                HoverHandler {
+                                    id: dateHover
+                                }
+
+                                ToolTip.visible: dateHover.hovered && (delegateItem.modelData.date || "") !== ""
+                                ToolTip.text: delegateItem.modelData.date || ""
                             }
-                        }
-
-                        // Commit message
-                        Label {
-                            Layout.fillWidth: true
-                            text: modelData.message || ""
-                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
-                            wrapMode: Text.Wrap
-                        }
-
-                        // Full date (smaller, less prominent)
-                        Label {
-                            Layout.fillWidth: true
-                            text: "Committed: " + (modelData.date || "")
-                            color: delegateItem.hovered ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.disabledTextColor
-                            font.pointSize: Kirigami.Theme.smallFont.pointSize * 0.9
                         }
                     }
 
-                    background: Rectangle {
-                        color: parent.hovered ? Kirigami.Theme.hoverColor : Kirigami.Theme.backgroundColor
-                        border.color: Kirigami.Theme.disabledTextColor
-                        border.width: 1
-                        radius: Kirigami.Units.smallSpacing
+                    Kirigami.Separator {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        visible: delegateItem.index < commitListView.count - 1
                     }
                 }
 
@@ -192,7 +175,7 @@ Dialog {
                     anchors.centerIn: parent
                     width: parent.width - (Kirigami.Units.largeSpacing * 4)
                     visible: commitListView.count === 0
-                    icon.name: "checkmark"
+                    icon.name: "emblem-success"
                     text: "No updates available"
                     explanation: "Your system is up to date with the remote repository."
                 }

@@ -6,94 +6,81 @@ import org.kde.kirigami as Kirigami
 Dialog {
     id: aboutDialog
     title: "About Nixbit"
-    width: 500
-    height: 400
+    parent: Overlay.overlay
+    anchors.centerIn: parent
+    width: Math.min(Kirigami.Units.gridUnit * 26, parent.width - Kirigami.Units.gridUnit * 2)
     modal: true
     standardButtons: Dialog.Close
 
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: Kirigami.Units.largeSpacing
+    contentItem: ColumnLayout {
         spacing: Kirigami.Units.largeSpacing
 
         // Application Icon
         Image {
             Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: Kirigami.Units.largeSpacing
             source: "nixbit.svg"
-            sourceSize.width: 128
-            sourceSize.height: 128
+            sourceSize.width: Kirigami.Units.iconSizes.enormous
+            sourceSize.height: Kirigami.Units.iconSizes.enormous
             fillMode: Image.PreserveAspectFit
         }
 
-        // Application Name
-        Label {
-            Layout.alignment: Qt.AlignHCenter
-            text: "Nixbit"
-            font.pixelSize: 24
-            font.bold: true
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 0
+
+            Kirigami.Heading {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                text: "Nixbit"
+                level: 1
+            }
+
+            Label {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                text: "Version " + (typeof appVersion !== 'undefined' ? appVersion : "0.0.0")
+                color: Kirigami.Theme.disabledTextColor
+            }
         }
 
-        // Version
-        Label {
-            Layout.alignment: Qt.AlignHCenter
-            text: "Version " + (typeof appVersion !== 'undefined' ? appVersion : "0.0.0")
-            font.pixelSize: 16
-            color: Kirigami.Theme.disabledTextColor
-        }
-
-        // Description
         Label {
             Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.largeSpacing
             text: "A KDE Plasma application for updating NixOS systems from Git repositories."
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
-            font.pixelSize: 14
         }
 
-        Item {
-            Layout.fillHeight: true
-        }
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: Kirigami.Units.smallSpacing
 
-        // Links Section
-        GridLayout {
-            Layout.fillWidth: true
-            columns: 1
-            rowSpacing: Kirigami.Units.smallSpacing
-
-            // GitHub Repository Link
             Button {
-                Layout.fillWidth: true
                 icon.name: "internet-services"
-                text: "View on GitHub"
-                onClicked: {
-                    Qt.openUrlExternally("https://github.com/pbek/nixbit");
-                }
+                text: "Website"
+                onClicked: Qt.openUrlExternally("https://github.com/pbek/nixbit")
                 ToolTip.visible: hovered
+                ToolTip.delay: Kirigami.Units.toolTipDelay
                 ToolTip.text: "https://github.com/pbek/nixbit"
             }
 
-            // GitHub Issues Link
             Button {
-                Layout.fillWidth: true
                 icon.name: "tools-report-bug"
                 text: "Report an Issue"
-                onClicked: {
-                    Qt.openUrlExternally("https://github.com/pbek/nixbit/issues");
-                }
+                onClicked: Qt.openUrlExternally("https://github.com/pbek/nixbit/issues")
                 ToolTip.visible: hovered
+                ToolTip.delay: Kirigami.Units.toolTipDelay
                 ToolTip.text: "https://github.com/pbek/nixbit/issues"
             }
         }
 
-        // Copyright/License
         Label {
             Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.largeSpacing
-            text: "By Patrizio Bekerle\nLicensed under MIT License"
+            Layout.topMargin: Kirigami.Units.smallSpacing
+            text: "© Patrizio Bekerle · MIT License"
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
-            font.pixelSize: 12
+            font: Kirigami.Theme.smallFont
             color: Kirigami.Theme.disabledTextColor
         }
     }

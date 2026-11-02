@@ -9,6 +9,15 @@
 - **Added pausing for nh rebuilds**
   - With nh, the Pause button is also available for switch and boot, since nh builds as your user
   - While part of the process runs as root, e.g. sudo activating the new configuration, pausing is refused with a message
+- **Polished the main window and dialogs**
+  - The main window shows the repository status with an icon, the number of new commits in plain words,
+    and only shows the Pause and Stop buttons while a command is running
+  - The settings dialog got a cleaner layout with page descriptions and help texts, which also explain
+    why an option is unavailable, e.g. when nh or the embedded terminal can't be used
+  - The About dialog no longer overflows, and the commits, generations and build logs dialogs got a cleaner list design
+  - Commits can be opened in the browser by clicking them, and build logs by clicking them
+  - Confirmation dialogs use clear button labels like "Delete" instead of "OK"
+  - Boot logs are now shown with their correct type in the build logs dialog
 
 ## 1.1.0
 
