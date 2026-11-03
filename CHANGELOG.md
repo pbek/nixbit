@@ -1,5 +1,12 @@
 # Nixbit Changelog
 
+## 1.3.2
+
+- **Redesigned the application icon**
+  - The new icon follows the KDE Breeze style, with a flat rounded square in Nix blue,
+    the NixOS snowflake in the center and a green update badge
+  - It is easier to recognize at small sizes, e.g. in the task manager and the application launcher
+
 ## 1.3.1
 
 - **Fixed the `nixbit.useNh` NixOS module option having no effect**
