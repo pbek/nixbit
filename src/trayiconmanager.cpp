@@ -10,6 +10,8 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
+#include <QPolygonF>
+#include <QTransform>
 
 namespace {
 const QString notificationsService =
@@ -92,15 +94,15 @@ void TrayIconManager::createTrayIcon() {
 void TrayIconManager::updateIcon(int commitsBehind) {
   qDebug() << "TrayIconManager::updateIcon called with commitsBehind:"
            << commitsBehind;
-  QPixmap pixmap;
+  QIcon icon;
 
   QString debugSuffix = m_debugMode ? " (Debug Mode)" : "";
 
   if (commitsBehind > 0) {
-    // Create icon showing updates available (orange/yellow theme)
+    // Create icon showing updates available (orange badge with count)
     qDebug() << "Creating update available icon for" << commitsBehind
              << "commits";
-    pixmap = createUpdateAvailableIcon(commitsBehind);
+    icon = createUpdateAvailableIcon(commitsBehind);
     m_trayIcon->setToolTip(QString("Nixbit - %1 update(s) available%2")
                                .arg(commitsBehind)
                                .arg(debugSuffix));
@@ -114,15 +116,15 @@ void TrayIconManager::updateIcon(int commitsBehind) {
           QSystemTrayIcon::Information, 5000);
     }
   } else if (commitsBehind == 0) {
-    // Create icon showing system is up to date (green theme)
+    // Create icon showing system is up to date (green check badge)
     qDebug() << "Creating up-to-date icon";
-    pixmap = createUpToDateIcon();
+    icon = createUpToDateIcon();
     m_trayIcon->setToolTip(
         QString("Nixbit - System up to date%1").arg(debugSuffix));
   } else {
     // Unknown state or error
     qDebug() << "Creating default/unknown icon";
-    pixmap = createDefaultIcon();
+    icon = createDefaultIcon();
     m_trayIcon->setToolTip(
         QString("Nixbit - Repository status unknown%1").arg(debugSuffix));
   }
@@ -131,133 +133,117 @@ void TrayIconManager::updateIcon(int commitsBehind) {
     m_ignoreUpdateAction->setEnabled(commitsBehind > 0);
   }
 
-  qDebug() << "Setting tray icon, pixmap size:" << pixmap.size()
-           << "isNull:" << pixmap.isNull();
-  m_trayIcon->setIcon(QIcon(pixmap));
+  qDebug() << "Setting tray icon, isNull:" << icon.isNull();
+  m_trayIcon->setIcon(icon);
   m_currentCommitsBehind = commitsBehind;
   qDebug() << "Icon updated, m_currentCommitsBehind now:"
            << m_currentCommitsBehind;
 }
 
-QPixmap TrayIconManager::createDefaultIcon() {
-  // Create a neutral gray/blue icon (like system-software-update)
-  // In debug mode, use purple/magenta tones
-  QPixmap pixmap(48, 48);
-  pixmap.fill(Qt::transparent);
-
-  QPainter painter(&pixmap);
-  painter.setRenderHint(QPainter::Antialiasing);
-
-  // Draw a downward arrow in a circle (update symbol)
-  QColor penColor = m_debugMode ? QColor(150, 80, 150) : QColor(100, 100, 120);
-  QColor fillColor =
-      m_debugMode ? QColor(230, 200, 230) : QColor(220, 220, 230);
-  QColor arrowColor = m_debugMode ? QColor(120, 60, 120) : QColor(80, 80, 100);
-
-  QPen pen(penColor, 3);
-  painter.setPen(pen);
-  painter.setBrush(QBrush(fillColor));
-
-  // Circle
-  painter.drawEllipse(4, 4, 40, 40);
-
-  // Arrow pointing down
-  painter.setBrush(QBrush(arrowColor));
-  painter.setPen(Qt::NoPen);
-
-  // Arrow shaft
-  painter.drawRect(20, 13, 8, 15);
-
-  // Arrow head
-  QPolygon arrowHead;
-  arrowHead << QPoint(24, 34) << QPoint(15, 26) << QPoint(33, 26);
-  painter.drawPolygon(arrowHead);
-
-  return pixmap;
+QIcon TrayIconManager::createDefaultIcon() {
+  // Gray snowflake without badge, the repository status is unknown
+  const QColor primary =
+      m_debugMode ? QColor(0x8e, 0x6a, 0x9a) : QColor(0x7f, 0x8c, 0x8d);
+  const QColor secondary =
+      m_debugMode ? QColor(0xc9, 0xb3, 0xd1) : QColor(0xbd, 0xc3, 0xc7);
+  return createStatusIcon(primary, secondary, QColor(), Badge::None);
 }
 
-QPixmap TrayIconManager::createUpToDateIcon() {
-  // Create a green checkmark icon (system is up to date)
-  // In debug mode, use cyan/blue tones
-  QPixmap pixmap(48, 48);
-  pixmap.fill(Qt::transparent);
-
-  QPainter painter(&pixmap);
-  painter.setRenderHint(QPainter::Antialiasing);
-
-  // Draw a green circle background (cyan in debug mode)
-  QColor penColor = m_debugMode ? QColor(40, 120, 180) : QColor(40, 150, 60);
-  QColor fillColor = m_debugMode ? QColor(80, 180, 230) : QColor(100, 200, 120);
-
-  QPen pen(penColor, 2);
-  painter.setPen(pen);
-  painter.setBrush(QBrush(fillColor));
-  painter.drawEllipse(4, 4, 40, 40);
-
-  // Draw checkmark
-  painter.setPen(
-      QPen(Qt::white, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-  painter.setBrush(Qt::NoBrush);
-
-  QPainterPath checkPath;
-  checkPath.moveTo(14, 24);
-  checkPath.lineTo(21, 31);
-  checkPath.lineTo(34, 17);
-  painter.drawPath(checkPath);
-
-  return pixmap;
+QIcon TrayIconManager::createUpToDateIcon() {
+  return createStatusIcon(snowflakePrimaryColor(), snowflakeSecondaryColor(),
+                          QColor(0x27, 0xae, 0x60), Badge::Check);
 }
 
-QPixmap TrayIconManager::createUpdateAvailableIcon(int count) {
-  // Create an orange/amber icon with update count (updates available)
-  // In debug mode, use orange-red/coral tones
-  QPixmap pixmap(48, 48);
-  pixmap.fill(Qt::transparent);
+QIcon TrayIconManager::createUpdateAvailableIcon(int count) {
+  return createStatusIcon(snowflakePrimaryColor(), snowflakeSecondaryColor(),
+                          QColor(0xf6, 0x74, 0x00), Badge::Count, count);
+}
 
-  QPainter painter(&pixmap);
-  painter.setRenderHint(QPainter::Antialiasing);
+QColor TrayIconManager::snowflakePrimaryColor() const {
+  // Purple tones in debug mode to tell both instances apart
+  return m_debugMode ? QColor(0x8e, 0x44, 0xad) : QColor(0x52, 0x77, 0xc3);
+}
 
-  // Draw orange circle background (darker orange in debug mode)
-  QColor penColor = m_debugMode ? QColor(180, 70, 20) : QColor(220, 130, 20);
-  QColor fillColor = m_debugMode ? QColor(220, 100, 40) : QColor(255, 160, 50);
+QColor TrayIconManager::snowflakeSecondaryColor() const {
+  return m_debugMode ? QColor(0xc3, 0x9b, 0xd3) : QColor(0x7e, 0xba, 0xe4);
+}
 
-  QPen pen(penColor, 2);
-  painter.setPen(pen);
-  painter.setBrush(QBrush(fillColor));
-  painter.drawEllipse(4, 4, 40, 40);
+QIcon TrayIconManager::createStatusIcon(const QColor &primary,
+                                        const QColor &secondary,
+                                        const QColor &badgeColor, Badge badge,
+                                        int count) {
+  // One lambda of the Nix snowflake, normalized to a radius of 1
+  static const QPolygonF lambda = {
+      {-0.390, 0.022}, {0.097, 0.866},  {-0.126, 0.868},
+      {-0.257, 0.641}, {-0.387, 0.867}, {-0.499, 0.867},
+      {-0.556, 0.768}, {-0.369, 0.448}, {-0.502, 0.217}};
+  QPainterPath lambdaPath;
+  lambdaPath.addPolygon(lambda);
+  lambdaPath.closeSubpath();
 
-  // Draw downward arrow (update symbol)
-  painter.setBrush(QBrush(Qt::white));
-  painter.setPen(Qt::NoPen);
+  QIcon icon;
+  // Render every size separately, so the icon stays crisp in the panel
+  for (const int size : {16, 22, 24, 32, 48, 64, 128}) {
+    QPixmap pixmap(size, size);
+    pixmap.fill(Qt::transparent);
 
-  // Arrow shaft
-  painter.drawRect(20, 13, 8, 15);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
 
-  // Arrow head
-  QPolygon arrowHead;
-  arrowHead << QPoint(24, 34) << QPoint(15, 26) << QPoint(33, 26);
-  painter.drawPolygon(arrowHead);
+    const qreal half = size / 2.0;
+    for (int i = 0; i < 6; ++i) {
+      QTransform transform;
+      transform.translate(half, half);
+      transform.rotate(60 * i);
+      transform.scale(half, half);
+      painter.fillPath(transform.map(lambdaPath),
+                       i % 2 == 0 ? primary : secondary);
+    }
 
-  // Draw count badge if more than 1 update
-  if (count > 1) {
-    // Red notification badge in top-right corner (darker red in debug mode)
-    QColor badgeColor = m_debugMode ? QColor(200, 50, 50) : QColor(220, 50, 50);
-    painter.setBrush(QBrush(badgeColor));
-    painter.setPen(QPen(Qt::white, 1.5));
-    painter.drawEllipse(28, 0, 20, 20);
+    if (badge != Badge::None) {
+      const qreal radius = size * 0.3;
+      const QPointF center(size - radius, size - radius);
 
-    // Draw count text
-    painter.setPen(Qt::white);
-    QFont font = painter.font();
-    font.setPixelSize(count > 9 ? 10 : 12);
-    font.setBold(true);
-    painter.setFont(font);
+      // Cut out a gap around the badge, so it stands out from the snowflake
+      const qreal gap = qMax(1.0, size * 0.06);
+      painter.setCompositionMode(QPainter::CompositionMode_Clear);
+      painter.setBrush(Qt::black);
+      painter.drawEllipse(center, radius + gap, radius + gap);
+      painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
-    QString text = count > 99 ? "99+" : QString::number(count);
-    painter.drawText(QRect(28, 0, 20, 20), Qt::AlignCenter, text);
+      painter.setBrush(badgeColor);
+      painter.drawEllipse(center, radius, radius);
+
+      if (badge == Badge::Check) {
+        QPainterPath checkPath;
+        checkPath.moveTo(center + QPointF(-0.45, 0.02) * radius);
+        checkPath.lineTo(center + QPointF(-0.12, 0.35) * radius);
+        checkPath.lineTo(center + QPointF(0.45, -0.3) * radius);
+        painter.setPen(QPen(Qt::white, qMax(1.5, radius * 0.3), Qt::SolidLine,
+                            Qt::RoundCap, Qt::RoundJoin));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPath(checkPath);
+      } else {
+        // The exact number is shown in the tooltip
+        const QString text = count > 9 ? "9+" : QString::number(count);
+        QFont font = painter.font();
+        font.setBold(true);
+        font.setPixelSize(
+            qMax(6, qRound(radius * (text.length() > 1 ? 0.95 : 1.4))));
+        painter.setFont(font);
+        painter.setPen(Qt::white);
+        painter.drawText(QRectF(center.x() - radius, center.y() - radius,
+                                radius * 2, radius * 2),
+                         Qt::AlignCenter, text);
+      }
+    }
+
+    painter.end();
+    icon.addPixmap(pixmap);
   }
 
-  return pixmap;
+  return icon;
 }
 
 void TrayIconManager::setCommitsBehind(int count) {

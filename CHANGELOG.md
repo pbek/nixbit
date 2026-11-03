@@ -6,6 +6,11 @@
   - The new icon follows the KDE Breeze style, with a flat rounded square in Nix blue,
     the NixOS snowflake in the center and a green update badge
   - It is easier to recognize at small sizes, e.g. in the task manager and the application launcher
+- **Redesigned the system tray icons**
+  - The tray icon now shows the NixOS snowflake with a green check mark when the system is up to date,
+    and an orange badge with the number of new commits when updates are available
+  - When the repository status is unknown, the snowflake is shown in gray
+  - The icons are drawn sharply at every panel size and are easy to see on light and dark panels
 
 ## 1.3.1
 

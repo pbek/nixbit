@@ -2,9 +2,10 @@
 #define TRAYICONMANAGER_H
 
 #include <QAction>
+#include <QColor>
+#include <QIcon>
 #include <QMenu>
 #include <QObject>
-#include <QPixmap>
 #include <QSystemTrayIcon>
 
 class TrayIconManager : public QObject {
@@ -38,9 +39,16 @@ private slots:
 private:
   void createTrayIcon();
   void updateIcon(int commitsBehind);
-  QPixmap createDefaultIcon();
-  QPixmap createUpToDateIcon();
-  QPixmap createUpdateAvailableIcon(int count);
+  enum class Badge { None, Check, Count };
+
+  QIcon createDefaultIcon();
+  QIcon createUpToDateIcon();
+  QIcon createUpdateAvailableIcon(int count);
+  QColor snowflakePrimaryColor() const;
+  QColor snowflakeSecondaryColor() const;
+  // Draws the Nix snowflake with an optional status badge in several sizes
+  QIcon createStatusIcon(const QColor &primary, const QColor &secondary,
+                         const QColor &badgeColor, Badge badge, int count = 0);
 
   QSystemTrayIcon *m_trayIcon;
   QMenu *m_trayMenu;
