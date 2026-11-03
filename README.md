@@ -2,7 +2,8 @@
 
 [Changelog](https://github.com/pbek/nixbit/blob/main/CHANGELOG.md) |
 [Releases](https://github.com/pbek/nixbit/releases) |
-[Issues](https://github.com/pbek/nixbit/issues)
+[Issues](https://github.com/pbek/nixbit/issues) |
+[Screenshots](screenshots/README.md)
 
 [![🏗️ Build Nixbit](https://github.com/pbek/nixbit/actions/workflows/build-nix.yml/badge.svg)](https://github.com/pbek/nixbit/actions/workflows/build-nix.yml)
 
