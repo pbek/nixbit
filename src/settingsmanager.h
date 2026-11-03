@@ -39,6 +39,7 @@ class SettingsManager : public QObject {
   Q_PROPERTY(bool useEmbeddedTerminal READ useEmbeddedTerminal WRITE
                  setUseEmbeddedTerminal NOTIFY useEmbeddedTerminalChanged)
   Q_PROPERTY(bool useNh READ useNh WRITE setUseNh NOTIFY useNhChanged)
+  Q_PROPERTY(bool useNhOverridden READ useNhOverridden CONSTANT)
 
 public:
   explicit SettingsManager(QObject *parent = nullptr);
@@ -102,6 +103,7 @@ public:
   void setUseEmbeddedTerminal(bool enabled);
 
   bool useNh() const { return m_useNh; }
+  bool useNhOverridden() const { return m_useNhOverridden; }
   void setUseNh(bool enabled);
 
   Q_INVOKABLE QString getLogDirectory() const;
@@ -154,7 +156,7 @@ private:
   bool m_debugMode;
   bool m_useEmbeddedTerminal;
   bool m_useNh;
-  bool m_useNhDefault;
+  bool m_useNhOverridden;
   int m_settingsVersion;
 };
 

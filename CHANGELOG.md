@@ -1,5 +1,13 @@
 # Nixbit Changelog
 
+## 1.3.1
+
+- **Fixed the `nixbit.useNh` NixOS module option having no effect**
+  - The setting in `/etc/nixbit.conf` was not read, so nh was only used if it was turned on in the settings
+  - When set, the option now overrides the setting, which can't be changed in the settings dialog anymore,
+    like the repository URL and the notification command
+  - The option is now unset (`null`) by default, so users can choose themselves unless it is set
+
 ## 1.3.0
 
 - **The configuration area now uses two columns on wide windows**

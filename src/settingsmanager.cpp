@@ -12,7 +12,7 @@ SettingsManager::SettingsManager(QObject *parent)
       m_selectedBuildHost(""), m_selectedSwitchHost(""), m_selectedBootHost(""),
       m_maxStoredLogs(10), m_notificationCommandOverridden(false),
       m_debugMode(false), m_useEmbeddedTerminal(true), m_useNh(false),
-      m_useNhDefault(false), m_settingsVersion(0) {
+      m_useNhOverridden(false), m_settingsVersion(0) {
   loadSettings();
   checkAndCreateAutostart();
 }
@@ -236,7 +236,7 @@ void SettingsManager::setUseEmbeddedTerminal(bool enabled) {
 }
 
 void SettingsManager::setUseNh(bool enabled) {
-  if (m_useNh != enabled) {
+  if (!m_useNhOverridden && m_useNh != enabled) {
     m_useNh = enabled;
     saveSettings();
     emit useNhChanged();
@@ -438,10 +438,13 @@ void SettingsManager::loadSettings() {
 
   m_useEmbeddedTerminal =
       settings.value("General/UseEmbeddedTerminal", true).toBool();
-  // The system configuration only provides the default, so the user can still
-  // change it in the settings
-  m_useNhDefault = systemSettings.value("General/UseNh", false).toBool();
-  m_useNh = settings.value("General/UseNh", m_useNhDefault).toBool();
+  m_useNh = settings.value("General/UseNh", false).toBool();
+  // A value in the system configuration can't be changed by the user. QSettings
+  // reads keys of a "[General]" INI section as top-level keys.
+  m_useNhOverridden = systemSettings.contains("UseNh");
+  if (m_useNhOverridden) {
+    m_useNh = systemSettings.value("UseNh").toBool();
+  }
 
   qDebug() << "Loaded settings version:" << oldVersion;
   qDebug() << "Current settings version:" << m_settingsVersion;
@@ -501,11 +504,7 @@ void SettingsManager::saveSettings() {
   // Save debug mode
   settings.setValue("General/DebugMode", m_debugMode);
   settings.setValue("General/UseEmbeddedTerminal", m_useEmbeddedTerminal);
-  // Only store a choice that differs from the system default, so changes to the
-  // default in /etc/nixbit.conf still apply otherwise
-  if (m_useNh == m_useNhDefault) {
-    settings.remove("General/UseNh");
-  } else {
+  if (!m_useNhOverridden) {
     settings.setValue("General/UseNh", m_useNh);
   }
 

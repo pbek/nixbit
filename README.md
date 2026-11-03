@@ -96,9 +96,9 @@ The module provides the following configuration options:
 
 #### `nixbit.useNh`
 
-- **Type**: `boolean`
-- **Default**: `false`
-- **Description**: Uses [nh](https://github.com/nix-community/nh) instead of `nixos-rebuild` by default when commands run in the embedded Kwi terminal (see [Using nh](#using-nh)). Users can still change this in the settings. The setting is written to `/etc/nixbit.conf` (in the `[General]` section with `UseNh` key).
+- **Type**: `null` or `boolean`
+- **Default**: `null`
+- **Description**: Whether to use [nh](https://github.com/nix-community/nh) instead of `nixos-rebuild` when commands run in the embedded Kwi terminal (see [Using nh](#using-nh)). When set, the setting cannot be changed through the UI. When `null`, users choose in the settings. The setting is written to `/etc/nixbit.conf` (in the `[General]` section with `UseNh` key).
 
 ### What the Module Does
 

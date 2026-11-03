@@ -214,7 +214,7 @@ Dialog {
                     CheckBox {
                         Kirigami.FormData.label: "Rebuild tool:"
                         checked: settingsManager ? settingsManager.useNh : false
-                        enabled: processManager && settingsManager ? processManager.nhAvailable && processManager.terminalAvailable && settingsManager.useEmbeddedTerminal : false
+                        enabled: processManager && settingsManager ? !settingsManager.useNhOverridden && processManager.nhAvailable && processManager.terminalAvailable && settingsManager.useEmbeddedTerminal : false
                         text: "Use nh instead of nixos-rebuild"
                         onToggled: {
                             if (settingsManager)
@@ -223,7 +223,7 @@ Dialog {
                     }
 
                     HelpText {
-                        text: !processManager || !processManager.nhAvailable ? "Not available: nh was not found in PATH." : !processManager.terminalAvailable || !settingsManager.useEmbeddedTerminal ? "Not available: nh needs the embedded terminal to ask for your password." : "nh builds as your user and asks for your password in the terminal when activating."
+                        text: settingsManager && settingsManager.useNhOverridden ? "This setting is managed by /etc/nixbit.conf." + (processManager && processManager.nhAvailable && processManager.terminalAvailable && settingsManager.useEmbeddedTerminal ? "" : " nh is only used when it is in PATH and the embedded terminal is turned on.") : !processManager || !processManager.nhAvailable ? "Not available: nh was not found in PATH." : !processManager.terminalAvailable || !settingsManager.useEmbeddedTerminal ? "Not available: nh needs the embedded terminal to ask for your password." : "nh builds as your user and asks for your password in the terminal when activating."
                     }
                 }
             }
