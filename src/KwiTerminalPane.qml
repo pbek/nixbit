@@ -91,10 +91,13 @@ Item {
         id: contextMenu
 
         MenuItem {
-            text: "Copy"
-            icon.name: "edit-copy"
-            enabled: terminal.view.hasSelection
-            onTriggered: terminal.view.copy()
+            action: Action {
+                text: "Copy"
+                icon.name: "edit-copy"
+                shortcut: "Ctrl+Shift+C"
+                enabled: pane.visible && pane.hasSession && terminal.view.hasSelection && (terminal.activeFocus || terminal.view.activeFocus || contextMenu.opened)
+                onTriggered: terminal.view.copy()
+            }
         }
 
         MenuItem {

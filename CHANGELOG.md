@@ -1,5 +1,10 @@
 # Nixbit Changelog
 
+## 1.3.3
+
+- **Added Ctrl+Shift+C to copy selected text from the embedded Kwi terminal**
+  - The shortcut is also shown next to Copy in the terminal's context menu
+
 ## 1.3.2
 
 - **Redesigned the application icon**
