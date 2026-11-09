@@ -1,5 +1,10 @@
 # Nixbit Changelog
 
+## Unreleased
+
+- **Updated the embedded Kwi terminal's libghostty-vt dependency to 1.0.0**
+  - Uses the standalone library release and its offline dependency archive instead of the Ghostty application source
+
 ## 1.3.3
 
 - **Added Ctrl+Shift+C to copy selected text from the embedded Kwi terminal**
