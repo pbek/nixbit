@@ -4,6 +4,7 @@
 
 - **Updated the embedded Kwi terminal's libghostty-vt dependency to 1.0.0**
   - Uses the standalone library release and its offline dependency archive instead of the Ghostty application source
+  - Updated Kwi to a compatible upstream commit using the released library API
 
 ## 1.3.3
 
