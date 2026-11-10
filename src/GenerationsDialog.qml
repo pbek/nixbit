@@ -8,14 +8,32 @@ Dialog {
     title: "NixOS Generations"
     parent: Overlay.overlay
     anchors.centerIn: parent
-    width: Math.min(Kirigami.Units.gridUnit * 30, parent.width - Kirigami.Units.gridUnit * 2)
-    height: Math.min(Kirigami.Units.gridUnit * 30, parent.height - Kirigami.Units.gridUnit * 2)
+    width: Math.min(Kirigami.Units.gridUnit * 36, parent.width - Kirigami.Units.gridUnit * 2)
+    height: Math.min(Kirigami.Units.gridUnit * 32, parent.height - Kirigami.Units.gridUnit * 2)
     modal: true
     standardButtons: Dialog.Close
 
     onAboutToShow: {
         if (generationManager)
             generationManager.loadGenerations();
+    }
+
+    // Small rounded label, e.g. "Running"
+    component Badge: Label {
+        id: badge
+        property color tint: Kirigami.Theme.textColor
+
+        font: Kirigami.Theme.smallFont
+        color: tint
+        leftPadding: Kirigami.Units.smallSpacing
+        rightPadding: Kirigami.Units.smallSpacing
+        topPadding: 1
+        bottomPadding: 1
+        background: Rectangle {
+            radius: height / 2
+            color: Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, badge.tint, 0.14)
+            border.color: Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, badge.tint, 0.4)
+        }
     }
 
     ColumnLayout {
@@ -28,7 +46,7 @@ Dialog {
 
             Label {
                 Layout.fillWidth: true
-                text: generationManager && generationManager.isLoading ? "Loading generations…" : generationsListView.count === 1 ? "1 system generation" : generationsListView.count + " system generations"
+                text: generationManager && generationManager.isLoading && generationsListView.count === 0 ? "Loading generations…" : generationsListView.count === 1 ? "1 system generation" : generationsListView.count + " system generations"
                 font.bold: true
                 elide: Text.ElideRight
             }
@@ -74,35 +92,76 @@ Dialog {
                     required property int number
                     required property string dateTime
                     required property bool isCurrent
+                    required property bool isBootDefault
+                    required property string nixosVersion
+                    required property string kernelVersion
+                    required property string commit
+                    required property string revisionLabel
+
+                    readonly property string versions: [nixosVersion ? "NixOS " + nixosVersion : "", kernelVersion ? "Linux " + kernelVersion : ""].filter(function (part) {
+                        return part !== "";
+                    }).join(" · ")
 
                     width: ListView.view.width
                     hoverEnabled: false
                     down: false
-                    highlighted: isCurrent
+
+                    // Subtle background for the running generation
+                    background: Rectangle {
+                        color: delegateItem.isCurrent ? Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.positiveTextColor, 0.08) : "transparent"
+                    }
 
                     contentItem: RowLayout {
                         spacing: Kirigami.Units.largeSpacing
 
                         Label {
+                            Layout.alignment: Qt.AlignTop
+                            Layout.minimumWidth: Kirigami.Units.gridUnit * 3
                             text: "#" + delegateItem.number
                             font.bold: delegateItem.isCurrent
-                            Layout.minimumWidth: Kirigami.Units.gridUnit * 3
-                            color: delegateItem.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
                         }
 
-                        Label {
-                            text: delegateItem.dateTime
-                            font.bold: delegateItem.isCurrent
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            color: delegateItem.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
-                        }
+                            spacing: 0
 
-                        Label {
-                            visible: delegateItem.isCurrent
-                            text: "Current"
-                            font: Kirigami.Theme.smallFont
-                            color: delegateItem.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.positiveTextColor
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Kirigami.Units.smallSpacing
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: delegateItem.dateTime
+                                    font.bold: delegateItem.isCurrent
+                                    elide: Text.ElideRight
+                                }
+
+                                Badge {
+                                    visible: delegateItem.isCurrent
+                                    text: "Running"
+                                    tint: Kirigami.Theme.positiveTextColor
+                                }
+
+                                Badge {
+                                    visible: delegateItem.isBootDefault
+                                    text: "Boot default"
+                                    tint: delegateItem.isCurrent ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.neutralTextColor
+                                }
+
+                                RevisionChip {
+                                    text: delegateItem.revisionLabel
+                                    commit: delegateItem.commit
+                                }
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                visible: text !== ""
+                                text: delegateItem.versions
+                                font: Kirigami.Theme.smallFont
+                                color: Kirigami.Theme.disabledTextColor
+                                elide: Text.ElideRight
+                            }
                         }
                     }
                 }

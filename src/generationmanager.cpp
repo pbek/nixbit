@@ -1,12 +1,27 @@
 #include "generationmanager.h"
 #include <QDebug>
 #include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QProcess>
 #include <QRegularExpression>
 
+namespace {
+const QString profilesPath = QStringLiteral("/nix/var/nix/profiles");
+
+// Returns the commit hash of a configuration revision, without "-dirty"
+QString commitOfRevision(const QString &revision) {
+  static const QRegularExpression commit(
+      QStringLiteral("^([0-9a-f]{40})(-dirty)?$"));
+  const QRegularExpressionMatch match = commit.match(revision);
+  return match.hasMatch() ? match.captured(1) : QString();
+}
+} // namespace
+
 GenerationManager::GenerationManager(QObject *parent)
     : QAbstractListModel(parent), m_isLoading(false),
-      m_currentGenerationNumber(0) {
+      m_currentGenerationNumber(0), m_bootGenerationNumber(0) {
   m_refreshTimer = new QTimer(this);
   m_refreshTimer->setInterval(30000); // Refresh every 30 seconds
   connect(m_refreshTimer, &QTimer::timeout, this,
@@ -38,6 +53,19 @@ QVariant GenerationManager::data(const QModelIndex &index, int role) const {
     return gen.kernelVersion;
   case ConfigurationRevisionRole:
     return gen.configurationRevision;
+  case IsBootDefaultRole:
+    return gen.isBootDefault;
+  case CommitRole:
+    return commitOfRevision(gen.configurationRevision);
+  case RevisionLabelRole: {
+    const QString commit = commitOfRevision(gen.configurationRevision);
+    if (commit.isEmpty()) {
+      return QString();
+    }
+    const bool dirty =
+        gen.configurationRevision.endsWith(QStringLiteral("-dirty"));
+    return commit.left(7) + (dirty ? QStringLiteral(" (dirty)") : QString());
+  }
   default:
     return QVariant();
   }
@@ -51,6 +79,9 @@ QHash<int, QByteArray> GenerationManager::roleNames() const {
   roles[NixosVersionRole] = "nixosVersion";
   roles[KernelVersionRole] = "kernelVersion";
   roles[ConfigurationRevisionRole] = "configurationRevision";
+  roles[IsBootDefaultRole] = "isBootDefault";
+  roles[CommitRole] = "commit";
+  roles[RevisionLabelRole] = "revisionLabel";
   return roles;
 }
 
@@ -96,7 +127,41 @@ void GenerationManager::loadGenerations() {
   // Use ls with full timestamp format to list system generation links
   process->start("ls", QStringList()
                            << "-l" << "--time-style=+%Y-%m-%d %H:%M:%S"
-                           << "/nix/var/nix/profiles/");
+                           << profilesPath + "/");
+}
+
+void GenerationManager::readGenerationInfo(const QString &systemPath,
+                                           Generation &generation) {
+  // nixos-version is a script with the values embedded, reading it is much
+  // cheaper than running it for every generation
+  QFile script(systemPath + QStringLiteral("/sw/bin/nixos-version"));
+  if (systemPath.isEmpty() || !script.open(QIODevice::ReadOnly)) {
+    return;
+  }
+  const QString content = QString::fromUtf8(script.readAll());
+
+  // Output of the --json option
+  for (const QString &line : content.split('\n')) {
+    if (!line.startsWith('{')) {
+      continue;
+    }
+    const QJsonObject json = QJsonDocument::fromJson(line.toUtf8()).object();
+    if (!json.isEmpty()) {
+      generation.nixosVersion = json.value("nixosVersion").toString();
+      generation.kernelVersion = json.value("kernelVersion").toString();
+      generation.configurationRevision =
+          json.value("configurationRevision").toString();
+      return;
+    }
+  }
+
+  // Older nixos-version scripts don't have the --json option
+  static const QRegularExpression revisionRe(QStringLiteral(
+      R"re(--configuration-revision\)(?:(?!;;)[\s\S])*?\n\s*echo "([0-9a-f]{40}(?:-dirty)?)")re"));
+  const QRegularExpressionMatch match = revisionRe.match(content);
+  if (match.hasMatch()) {
+    generation.configurationRevision = match.captured(1);
+  }
 }
 
 void GenerationManager::parseGenerations(const QString &output) {
@@ -105,12 +170,15 @@ void GenerationManager::parseGenerations(const QString &output) {
 
   QStringList lines = output.split('\n', Qt::SkipEmptyParts);
 
-  // Get current generation by reading the system symlink
-  QString currentLink = QFile::symLinkTarget("/nix/var/nix/profiles/system");
-  QRegularExpression currentRe(R"(system-(\d+)-link)");
-  QRegularExpressionMatch currentMatch = currentRe.match(currentLink);
-  int currentGenNumber =
-      currentMatch.hasMatch() ? currentMatch.captured(1).toInt() : 0;
+  // The system profile points to the generation that boots by default, which
+  // isn't the running one after e.g. a boot rebuild
+  static const QRegularExpression linkRe(R"(system-(\d+)-link)");
+  const QRegularExpressionMatch bootMatch =
+      linkRe.match(QFile::symLinkTarget(profilesPath + "/system"));
+  const int bootGenNumber =
+      bootMatch.hasMatch() ? bootMatch.captured(1).toInt() : 0;
+  const QString runningPath =
+      QFileInfo(QStringLiteral("/run/current-system")).canonicalFilePath();
 
   // Parse ls -l output
   // Format: "lrwxrwxrwx ... 2024-11-20 14:30:25 system-42-link ->
@@ -125,11 +193,14 @@ void GenerationManager::parseGenerations(const QString &output) {
       gen.number = match.captured(2).toInt();
       QString rawTimestamp = match.captured(1);
       gen.dateTime = formatDateTime(rawTimestamp);
-      gen.isCurrent = (gen.number == currentGenNumber);
 
-      gen.nixosVersion = "";
-      gen.kernelVersion = "";
-      gen.configurationRevision = "";
+      const QString systemPath =
+          QFileInfo(
+              QString("%1/system-%2-link").arg(profilesPath).arg(gen.number))
+              .canonicalFilePath();
+      gen.isCurrent = !runningPath.isEmpty() && systemPath == runningPath;
+      gen.isBootDefault = gen.number == bootGenNumber;
+      readGenerationInfo(systemPath, gen);
 
       m_generations.append(gen);
     }
@@ -141,17 +212,26 @@ void GenerationManager::parseGenerations(const QString &output) {
               return a.number > b.number;
             });
 
-  // Update current generation info
-  for (const Generation &gen : m_generations) {
-    if (gen.isCurrent) {
-      if (m_currentGenerationNumber != gen.number ||
-          m_currentGenerationDate != gen.dateTime) {
-        m_currentGenerationNumber = gen.number;
-        m_currentGenerationDate = gen.dateTime;
-        emit currentGenerationChanged();
-      }
-      break;
+  // Several generations can point to the same system, e.g. after a rebuild
+  // without changes. The list is sorted, so the newest one is used.
+  int currentNumber = 0;
+  QString currentDate;
+  for (Generation &gen : m_generations) {
+    if (gen.isCurrent && currentNumber == 0) {
+      currentNumber = gen.number;
+      currentDate = gen.dateTime;
+    } else {
+      gen.isCurrent = false;
     }
+  }
+
+  if (m_currentGenerationNumber != currentNumber ||
+      m_currentGenerationDate != currentDate ||
+      m_bootGenerationNumber != bootGenNumber) {
+    m_currentGenerationNumber = currentNumber;
+    m_currentGenerationDate = currentDate;
+    m_bootGenerationNumber = bootGenNumber;
+    emit currentGenerationChanged();
   }
 
   endResetModel();

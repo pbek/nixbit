@@ -9,7 +9,10 @@
 
 struct Generation {
   int number;
+  // Generation of /run/current-system
   bool isCurrent;
+  // Generation the system profile points to, booted by default
+  bool isBootDefault;
   QString dateTime;
   QString nixosVersion;
   QString kernelVersion;
@@ -24,6 +27,9 @@ class GenerationManager : public QAbstractListModel {
                  currentGenerationChanged)
   Q_PROPERTY(QString currentGenerationDate READ currentGenerationDate NOTIFY
                  currentGenerationChanged)
+  // Number of the generation that boots by default, 0 if unknown
+  Q_PROPERTY(int bootGenerationNumber READ bootGenerationNumber NOTIFY
+                 currentGenerationChanged)
 
 public:
   enum GenerationRoles {
@@ -32,7 +38,10 @@ public:
     DateTimeRole,
     NixosVersionRole,
     KernelVersionRole,
-    ConfigurationRevisionRole
+    ConfigurationRevisionRole,
+    IsBootDefaultRole,
+    CommitRole,
+    RevisionLabelRole
   };
 
   explicit GenerationManager(QObject *parent = nullptr);
@@ -46,6 +55,7 @@ public:
   QString error() const { return m_error; }
   int currentGenerationNumber() const { return m_currentGenerationNumber; }
   QString currentGenerationDate() const { return m_currentGenerationDate; }
+  int bootGenerationNumber() const { return m_bootGenerationNumber; }
 
 public slots:
   void loadGenerations();
@@ -60,6 +70,9 @@ signals:
 private:
   void parseGenerations(const QString &output);
   QString formatDateTime(const QString &timestamp);
+  // Reads the versions and configuration revision of a generation
+  static void readGenerationInfo(const QString &systemPath,
+                                 Generation &generation);
 
   QList<Generation> m_generations;
   bool m_isLoading;
@@ -67,6 +80,7 @@ private:
   QTimer *m_refreshTimer;
   int m_currentGenerationNumber;
   QString m_currentGenerationDate;
+  int m_bootGenerationNumber;
 };
 
 #endif // GENERATIONMANAGER_H

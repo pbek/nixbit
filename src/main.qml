@@ -342,66 +342,9 @@ ApplicationWindow {
         return "The repository wasn't checked yet, or the check failed. See \"Status\" for details.";
     }
 
-    readonly property string forgeName: Utils.forgeName(gitManager ? gitManager.repositoryUrl : "")
-
-    // Short commit hash in a subtle monospace chip, opens the commit on the
-    // Git forge when clicked
-    component RevisionChip: Label {
-        id: chip
-        // Full commit hash, used for the link
-        property string commit
-        readonly property string url: Utils.commitUrl(gitManager ? gitManager.repositoryUrl : "", commit)
-        readonly property bool linked: url !== ""
-        readonly property bool hovered: chipHover.hovered
-        readonly property bool highlighted: linked && (chipHover.hovered || activeFocus)
-
-        visible: text !== ""
-        font.family: "monospace"
-        font.pointSize: Kirigami.Theme.smallFont.pointSize
-        font.underline: highlighted
-        color: highlighted ? Kirigami.Theme.linkColor : Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor, 0.75)
-        leftPadding: Kirigami.Units.smallSpacing
-        rightPadding: Kirigami.Units.smallSpacing
-        topPadding: 1
-        bottomPadding: 1
-        activeFocusOnTab: linked
-        Accessible.role: linked ? Accessible.Link : Accessible.StaticText
-        Accessible.name: linked ? "Open commit " + text + " on " + root.forgeName : "Commit " + text
-
-        background: Rectangle {
-            radius: Kirigami.Units.cornerRadius
-            color: chip.highlighted ? Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.linkColor, 0.12) : Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor, 0.07)
-            border.color: chip.highlighted ? Kirigami.Theme.linkColor : Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor, 0.18)
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: Kirigami.Units.shortDuration
-                }
-            }
-        }
-
-        function open() {
-            if (linked)
-                Qt.openUrlExternally(url);
-        }
-
-        Keys.onReturnPressed: open()
-        Keys.onSpacePressed: open()
-
-        HoverHandler {
-            id: chipHover
-            cursorShape: chip.linked ? Qt.PointingHandCursor : Qt.ArrowCursor
-        }
-
-        TapHandler {
-            enabled: chip.linked
-            onTapped: chip.open()
-        }
-
-        ToolTip.visible: chipHover.hovered
-        ToolTip.delay: Kirigami.Units.toolTipDelay
-        ToolTip.text: linked ? "Open commit " + text + " on " + root.forgeName : "Commit " + text
-    }
+    readonly property int runningGeneration: generationManager ? generationManager.currentGenerationNumber : 0
+    readonly property int bootGeneration: generationManager ? generationManager.bootGenerationNumber : 0
+    readonly property bool otherGenerationBootsNext: runningGeneration > 0 && bootGeneration > 0 && bootGeneration !== runningGeneration
 
     // Caption and value pair used in the system resources section
     component ResourceMetric: ColumnLayout {
@@ -649,6 +592,60 @@ ApplicationWindow {
                                     commit: systemUpdateStatus ? systemUpdateStatus.runningCommit : ""
                                 }
                             }
+
+                            RowLayout {
+                                Kirigami.FormData.label: "Generation:"
+                                Layout.fillWidth: true
+                                spacing: Kirigami.Units.largeSpacing
+
+                                Component.onCompleted: {
+                                    if (generationManager)
+                                        generationManager.loadGenerations();
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Kirigami.Units.smallSpacing
+
+                                    Label {
+                                        text: root.runningGeneration > 0 ? "#" + root.runningGeneration : "Unknown"
+                                        font.bold: root.runningGeneration > 0
+                                        color: root.runningGeneration > 0 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: !bootNextLabel.visible
+                                        text: generationManager && generationManager.currentGenerationDate ? "· " + generationManager.currentGenerationDate : ""
+                                        visible: text !== ""
+                                        color: Kirigami.Theme.disabledTextColor
+                                        elide: Text.ElideRight
+                                    }
+
+                                    // A boot rebuild makes another generation the boot default
+                                    Label {
+                                        id: bootNextLabel
+                                        Layout.fillWidth: true
+                                        visible: root.otherGenerationBootsNext
+                                        text: "· #" + root.bootGeneration + " boots next"
+                                        color: Kirigami.Theme.neutralTextColor
+                                        elide: Text.ElideRight
+
+                                        HoverHandler {
+                                            id: bootNextHover
+                                        }
+
+                                        ToolTip.visible: bootNextHover.hovered
+                                        ToolTip.delay: Kirigami.Units.toolTipDelay
+                                        ToolTip.text: "Generation #" + root.bootGeneration + " is the boot default. It will be activated with the next reboot, or by switching to it."
+                                    }
+                                }
+
+                                Button {
+                                    text: "Generations…"
+                                    icon.name: "view-history"
+                                    onClicked: generationsDialog.open()
+                                }
+                            }
                         }
 
                         Kirigami.Separator {
@@ -884,72 +881,6 @@ ApplicationWindow {
                 from: 0
                 to: 100
                 value: gitManager ? gitManager.progress : 0
-            }
-
-            // NixOS Generations Section
-            GroupBox {
-                title: "NixOS Generations"
-                Layout.fillWidth: true
-                visible: !root.processRunning
-
-                RowLayout {
-                    anchors.fill: parent
-                    spacing: Kirigami.Units.smallSpacing
-
-                    Label {
-                        text: "Current generation:"
-                    }
-
-                    Label {
-                        text: generationManager && generationManager.currentGenerationNumber > 0 ? "#" + generationManager.currentGenerationNumber : "Unknown"
-                        font.bold: true
-                        color: Kirigami.Theme.positiveTextColor
-                    }
-
-                    Label {
-                        text: "·"
-                        color: Kirigami.Theme.disabledTextColor
-                        visible: dateLabel.visible
-                    }
-
-                    Label {
-                        id: dateLabel
-                        Layout.fillWidth: true
-                        text: generationManager && generationManager.currentGenerationDate ? generationManager.currentGenerationDate : ""
-                        visible: text !== ""
-                        color: Kirigami.Theme.disabledTextColor
-                        elide: Text.ElideRight
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        visible: !dateLabel.visible
-                    }
-
-                    ToolButton {
-                        icon.name: "view-refresh"
-                        display: AbstractButton.IconOnly
-                        text: "Reload generations"
-                        ToolTip.visible: hovered
-                        ToolTip.text: text
-                        enabled: generationManager ? !generationManager.isLoading : false
-                        onClicked: {
-                            if (generationManager)
-                                generationManager.loadGenerations();
-                        }
-                    }
-
-                    Button {
-                        icon.name: "view-history"
-                        text: "All Generations…"
-                        onClicked: generationsDialog.open()
-                    }
-                }
-
-                Component.onCompleted: {
-                    if (generationManager)
-                        generationManager.loadGenerations();
-                }
             }
 
             GenerationsDialog {

@@ -171,6 +171,9 @@ int main(int argc, char *argv[]) {
   GenerationManager generationManager;
   engine.rootContext()->setContextProperty("generationManager",
                                            &generationManager);
+  // Notice switches done outside of Nixbit, e.g. with nixos-rebuild
+  QObject::connect(&systemUpdateStatus, &SystemUpdateStatus::statusChanged,
+                   &generationManager, &GenerationManager::loadGenerations);
 
   // Create and register OutputHighlighter
   OutputHighlighter outputHighlighter;

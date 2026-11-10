@@ -212,10 +212,13 @@ in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
 
 ### 🔄 NixOS Generations
 
-- **Current Generation Display**: Shows current generation number and date in main UI (hides during builds)
-- **Generation History**: "View All Generations" button opens a dialog with complete generation history
-- **Generation Management**: Manual refresh capability and automatic refresh after "switch" operations
-- **Visual Indicators**: Generation list highlights the current generation for easy identification
+- **Running Generation Display**: Shows the number and date of the running generation next to the running system status,
+  and which generation boots next if a boot rebuild made another generation the boot default
+- **Generation History**: The "Generations…" button opens a dialog with the complete generation history,
+  including the NixOS and kernel version, and the commit each generation was built from (see [Configuration Revision](#configuration-revision))
+- **Generation Management**: Manual refresh capability and automatic refresh after "switch" and "boot" operations,
+  and when the running system changes
+- **Visual Indicators**: The generation list marks the running generation and the boot default
 
 ### 📦 Repository Management
 

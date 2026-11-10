@@ -90,6 +90,7 @@ qt_add_qml_module(
   src/CommitsDialog.qml
   src/LogsDialog.qml
   src/KwiTerminalPane.qml
+  src/RevisionChip.qml
   src/Utils.js
   RESOURCES
   src/nixbit.svg)

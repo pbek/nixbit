@@ -1,24 +1,33 @@
 # Nixbit Changelog
 
-## Unreleased
+## 1.4.0
 
 - **Nixbit now checks whether the running system is built from the latest commit**
   - Previously the system was shown as up to date as soon as the repository was pulled,
     even if the new configuration was not built and activated yet
   - The configuration revision of the running system is compared with the latest fetched commit,
     and shown in a new "Running system" row in the main window
-  - The "Updates" and "Running system" rows show the short commit hash they refer to,
-    and explain in a tooltip what their status means
-  - Clicking a commit hash opens the commit on the Git forge
-  - The tray icon tooltip shows the latest fetched commit and the commit of the running system
-- **Commits can now be opened on more Git forges**
-  - Besides GitHub, the commits dialog and commit hashes now link to GitLab (also self-hosted),
-    Codeberg, Forgejo, Gitea, Bitbucket and SourceHut
-  - SSH remote URLs like `ssh://git@host:22/owner/repo.git` are supported as well
   - The tray icon shows an orange arrow when a switch is needed to activate the latest configuration
   - This needs `system.configurationRevision` to be set in your flake, see the README for an example
   - Without a revision Nixbit works as before, but shows the running system as "Not verified",
     and the tray icon uses a gray instead of a green check mark
+  - The "Updates" and "Running system" rows show the short commit hash they refer to,
+    and explain in a tooltip what their status means
+  - Clicking a commit hash opens the commit on the Git forge
+  - The tray icon tooltip shows the latest fetched commit and the commit of the running system
+- **Merged the NixOS generations panel into the configuration area**
+  - The running generation is shown below the running system status, which frees space for the terminal output
+  - The running generation is now detected from `/run/current-system`; previously the boot default
+    was shown as the current generation, which is a different one after a boot rebuild
+  - If another generation boots next, e.g. after a boot rebuild, this is shown as well
+- **The generations dialog shows more details about each generation**
+  - The commit each generation was built from links to the Git forge
+  - The NixOS and kernel version are shown below the date
+  - The running generation and the boot default are marked with badges
+- **Commits can now be opened on more Git forges**
+  - Besides GitHub, the commits dialog and commit hashes now link to GitLab (also self-hosted),
+    Codeberg, Forgejo, Gitea, Bitbucket and SourceHut
+  - SSH remote URLs like `ssh://git@host:22/owner/repo.git` are supported as well
 - **Added an activity indicator to the system tray icon**
   - A blue animated badge signals repository updates and running commands, including rebuilds
   - The animation stops while a command is paused or waiting for a password, with the reason shown in the tooltip
