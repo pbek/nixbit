@@ -24,7 +24,7 @@ const QString notificationsInterface =
 
 TrayIconManager::TrayIconManager(bool debugMode, QObject *parent)
     : QObject(parent), m_trayIcon(nullptr), m_trayMenu(nullptr),
-      m_currentCommitsBehind(0), m_debugMode(debugMode), m_notificationId(0) {
+      m_currentCommitsBehind(-1), m_debugMode(debugMode), m_notificationId(0) {
   createTrayIcon();
 
   m_activityTimer.setInterval(100);
@@ -116,18 +116,51 @@ void TrayIconManager::updateIcon() {
                                .arg(commitsBehind)
                                .arg(debugSuffix));
 
-  } else if (commitsBehind == 0) {
+  } else if (commitsBehind == 0 &&
+             m_systemStatus == SystemUpdateStatus::State::NeedsActivation) {
+    // The repository is current, but the running system was built from
+    // another commit (orange badge with an upward arrow)
+    icon = createStatusIcon(snowflakePrimaryColor(), snowflakeSecondaryColor(),
+                            QColor(0xf6, 0x74, 0x00), Badge::Pending);
+    m_trayIcon->setToolTip(
+        QString("Nixbit - Switch needed to activate the latest configuration%1")
+            .arg(debugSuffix));
+  } else if (commitsBehind == 0 &&
+             m_systemStatus == SystemUpdateStatus::State::Current) {
     // Create icon showing system is up to date (green check badge)
-    qDebug() << "Creating up-to-date icon";
     icon = createUpToDateIcon();
     m_trayIcon->setToolTip(
         QString("Nixbit - System up to date%1").arg(debugSuffix));
+  } else if (commitsBehind == 0) {
+    // Without a configuration revision only the repository can be checked
+    // (muted check badge)
+    icon = createStatusIcon(snowflakePrimaryColor(), snowflakeSecondaryColor(),
+                            QColor(0x7f, 0x8c, 0x8d), Badge::Check);
+    m_trayIcon->setToolTip(
+        QString("Nixbit - Repository up to date (running system not "
+                "verified)%1")
+            .arg(debugSuffix));
   } else {
     // Unknown state or error
     qDebug() << "Creating default/unknown icon";
     icon = createDefaultIcon();
     m_trayIcon->setToolTip(
         QString("Nixbit - Repository status unknown%1").arg(debugSuffix));
+  }
+
+  // Show which commits the status is based on
+  if (m_activity.isEmpty()) {
+    QStringList revisions;
+    if (!m_latestRevision.isEmpty()) {
+      revisions << QString("Latest commit: %1").arg(m_latestRevision);
+    }
+    if (!m_runningRevision.isEmpty()) {
+      revisions << QString("Running: %1").arg(m_runningRevision);
+    }
+    if (!revisions.isEmpty()) {
+      m_trayIcon->setToolTip(m_trayIcon->toolTip() + "\n" +
+                             revisions.join(QStringLiteral(" · ")));
+    }
   }
 
   if (m_ignoreUpdateAction) {
@@ -230,6 +263,18 @@ QIcon TrayIconManager::createStatusIcon(const QColor &primary,
         painter.drawArc(QRectF(center.x() - arcRadius, center.y() - arcRadius,
                                arcRadius * 2, arcRadius * 2),
                         -angle * 16, 270 * 16);
+      } else if (badge == Badge::Pending) {
+        // Upward arrow, drawn like the check mark
+        QPainterPath arrowPath;
+        arrowPath.moveTo(center + QPointF(0, 0.48) * radius);
+        arrowPath.lineTo(center + QPointF(0, -0.42) * radius);
+        arrowPath.moveTo(center + QPointF(-0.4, -0.04) * radius);
+        arrowPath.lineTo(center + QPointF(0, -0.44) * radius);
+        arrowPath.lineTo(center + QPointF(0.4, -0.04) * radius);
+        painter.setPen(QPen(Qt::white, qMax(1.5, radius * 0.3), Qt::SolidLine,
+                            Qt::RoundCap, Qt::RoundJoin));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPath(arrowPath);
       } else {
         // The exact number is shown in the tooltip
         const QString text = count > 9 ? "9+" : QString::number(count);
@@ -293,6 +338,18 @@ void TrayIconManager::setActivity(const QString &activity, bool animated) {
     m_activityFrame = 0;
   }
   updateIcon();
+}
+
+void TrayIconManager::setSystemStatus(SystemUpdateStatus::State state,
+                                      const QString &runningRevision,
+                                      const QString &latestRevision) {
+  if (m_systemStatus != state || m_runningRevision != runningRevision ||
+      m_latestRevision != latestRevision) {
+    m_systemStatus = state;
+    m_runningRevision = runningRevision;
+    m_latestRevision = latestRevision;
+    updateIcon();
+  }
 }
 
 void TrayIconManager::show() {

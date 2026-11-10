@@ -199,6 +199,20 @@ static int transfer_progress_cb(const git_indexer_progress *stats,
 
 static bool resolveRemoteTrackingOid(git_repository *repo,
                                      git_oid *remote_oid) {
+  // Prefer the checked-out branch's upstream over a hard-coded branch name.
+  git_reference *head = nullptr;
+  git_reference *upstream = nullptr;
+  if (git_repository_head(&head, repo) == 0) {
+    const bool resolved =
+        git_branch_upstream(&upstream, head) == 0 &&
+        git_reference_name_to_id(remote_oid, repo,
+                                 git_reference_name(upstream)) == 0;
+    git_reference_free(upstream);
+    git_reference_free(head);
+    if (resolved) {
+      return true;
+    }
+  }
   const char *remoteBranchNames[] = {"refs/remotes/origin/main",
                                      "refs/remotes/origin/master",
                                      "refs/remotes/origin/HEAD"};
@@ -215,8 +229,8 @@ static bool resolveRemoteTrackingOid(git_repository *repo,
 }
 
 GitManager::GitManager(QObject *parent)
-    : QObject(parent), m_repositoryUrl(""), m_isBusy(false), m_commitsBehind(0),
-      m_fetchIntervalMinutes(60), m_progress(0),
+    : QObject(parent), m_repositoryUrl(""), m_isBusy(false),
+      m_commitsBehind(-1), m_fetchIntervalMinutes(60), m_progress(0),
       m_isUrlFromGlobalSettings(false), m_fetchTimer(nullptr) {
   git_libgit2_init();
 
@@ -251,7 +265,8 @@ void GitManager::setRepositoryUrl(const QString &url) {
   if (m_repositoryUrl != url) {
     m_repositoryUrl = url;
     m_localPath = getRepositoryLocalPath();
-    setCommitsBehind(0);
+    setCommitsBehind(-1);
+    setLatestFetchedRevision(QString());
     saveSettings();
     emit repositoryUrlChanged();
     emit localPathChanged();
@@ -261,7 +276,8 @@ void GitManager::setRepositoryUrl(const QString &url) {
 void GitManager::setLocalPath(const QString &path) {
   if (m_localPath != path) {
     m_localPath = path;
-    setCommitsBehind(0);
+    setCommitsBehind(-1);
+    setLatestFetchedRevision(QString());
     saveSettings();
     emit localPathChanged();
   }
@@ -278,8 +294,33 @@ void GitManager::setStatus(const QString &status) {
 void GitManager::setIsBusy(bool busy) {
   if (m_isBusy != busy) {
     m_isBusy = busy;
+    if (!busy) {
+      refreshLatestFetchedRevision();
+    }
     emit isBusyChanged();
   }
+}
+
+void GitManager::setLatestFetchedRevision(const QString &revision) {
+  if (m_latestFetchedRevision != revision) {
+    m_latestFetchedRevision = revision;
+    emit latestFetchedRevisionChanged();
+  }
+}
+
+void GitManager::refreshLatestFetchedRevision() {
+  git_repository *repo = nullptr;
+  git_oid remoteOid;
+  QString revision;
+  if (git_repository_open(&repo, m_localPath.toUtf8().constData()) == 0) {
+    if (resolveRemoteTrackingOid(repo, &remoteOid)) {
+      char hash[GIT_OID_HEXSZ + 1];
+      git_oid_tostr(hash, sizeof(hash), &remoteOid);
+      revision = QString::fromLatin1(hash);
+    }
+    git_repository_free(repo);
+  }
+  setLatestFetchedRevision(revision);
 }
 
 void GitManager::setCommitsBehind(int count) {

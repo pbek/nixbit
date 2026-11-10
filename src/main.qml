@@ -320,6 +320,89 @@ ApplicationWindow {
         }
     }
 
+    readonly property bool systemUpToDate: systemUpdateStatus ? systemUpdateStatus.isUpToDate : false
+    readonly property bool systemNeedsSwitch: systemUpdateStatus ? systemUpdateStatus.needsActivation : false
+
+    // Status icon for the running system compared to the latest fetched commit
+    component SystemStatusIndicator: Kirigami.Icon {
+        implicitWidth: Kirigami.Units.iconSizes.small
+        implicitHeight: Kirigami.Units.iconSizes.small
+        source: root.systemUpToDate ? "emblem-success" : root.systemNeedsSwitch ? "emblem-warning" : "emblem-question"
+        fallback: "dialog-question"
+    }
+
+    readonly property string latestRevisionShort: gitManager && gitManager.latestFetchedRevision ? gitManager.latestFetchedRevision.substring(0, 7) : ""
+    readonly property string updatesDetails: {
+        if (commitsBehind > 0) {
+            return (commitsBehind === 1 ? "The remote repository has 1 new commit" : "The remote repository has " + commitsBehind + " new commits") + " that are not pulled yet" + (latestRevisionShort ? ", up to " + latestRevisionShort : "") + ". Use \"Update System\" to pull and rebuild.";
+        }
+        if (commitsBehind === 0) {
+            return "The local repository has all commits of the remote repository" + (latestRevisionShort ? ", up to " + latestRevisionShort : "") + ". Whether the system was rebuilt from them is shown under \"Running system\".";
+        }
+        return "The repository wasn't checked yet, or the check failed. See \"Status\" for details.";
+    }
+
+    readonly property string forgeName: Utils.forgeName(gitManager ? gitManager.repositoryUrl : "")
+
+    // Short commit hash in a subtle monospace chip, opens the commit on the
+    // Git forge when clicked
+    component RevisionChip: Label {
+        id: chip
+        // Full commit hash, used for the link
+        property string commit
+        readonly property string url: Utils.commitUrl(gitManager ? gitManager.repositoryUrl : "", commit)
+        readonly property bool linked: url !== ""
+        readonly property bool hovered: chipHover.hovered
+        readonly property bool highlighted: linked && (chipHover.hovered || activeFocus)
+
+        visible: text !== ""
+        font.family: "monospace"
+        font.pointSize: Kirigami.Theme.smallFont.pointSize
+        font.underline: highlighted
+        color: highlighted ? Kirigami.Theme.linkColor : Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor, 0.75)
+        leftPadding: Kirigami.Units.smallSpacing
+        rightPadding: Kirigami.Units.smallSpacing
+        topPadding: 1
+        bottomPadding: 1
+        activeFocusOnTab: linked
+        Accessible.role: linked ? Accessible.Link : Accessible.StaticText
+        Accessible.name: linked ? "Open commit " + text + " on " + root.forgeName : "Commit " + text
+
+        background: Rectangle {
+            radius: Kirigami.Units.cornerRadius
+            color: chip.highlighted ? Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.linkColor, 0.12) : Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor, 0.07)
+            border.color: chip.highlighted ? Kirigami.Theme.linkColor : Kirigami.ColorUtils.linearInterpolation(Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor, 0.18)
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: Kirigami.Units.shortDuration
+                }
+            }
+        }
+
+        function open() {
+            if (linked)
+                Qt.openUrlExternally(url);
+        }
+
+        Keys.onReturnPressed: open()
+        Keys.onSpacePressed: open()
+
+        HoverHandler {
+            id: chipHover
+            cursorShape: chip.linked ? Qt.PointingHandCursor : Qt.ArrowCursor
+        }
+
+        TapHandler {
+            enabled: chip.linked
+            onTapped: chip.open()
+        }
+
+        ToolTip.visible: chipHover.hovered
+        ToolTip.delay: Kirigami.Units.toolTipDelay
+        ToolTip.text: linked ? "Open commit " + text + " on " + root.forgeName : "Commit " + text
+    }
+
     // Caption and value pair used in the system resources section
     component ResourceMetric: ColumnLayout {
         property alias caption: captionLabel.text
@@ -382,6 +465,16 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             text: root.gitStatus
                             elide: Text.ElideRight
+                        }
+
+                        SystemStatusIndicator {
+                            ToolTip.visible: compactSystemHover.hovered
+                            ToolTip.delay: Kirigami.Units.toolTipDelay
+                            ToolTip.text: systemUpdateStatus ? "Running system: " + systemUpdateStatus.summary.toLowerCase() + ". " + systemUpdateStatus.details : ""
+
+                            HoverHandler {
+                                id: compactSystemHover
+                            }
                         }
 
                         Label {
@@ -494,10 +587,29 @@ ApplicationWindow {
                                 Kirigami.FormData.label: "Updates:"
                                 spacing: Kirigami.Units.largeSpacing
 
-                                Label {
-                                    text: root.commitsBehind > 0 ? (root.commitsBehind === 1 ? "1 new commit" : root.commitsBehind + " new commits") : root.commitsBehind === 0 ? "Up to date" : "Unknown"
-                                    font.bold: root.commitsBehind > 0
-                                    color: root.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : root.commitsBehind === 0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
+                                RowLayout {
+                                    spacing: Kirigami.Units.smallSpacing
+
+                                    HoverHandler {
+                                        id: updatesHover
+                                    }
+
+                                    ToolTip.visible: updatesHover.hovered && !latestChip.hovered
+                                    ToolTip.delay: Kirigami.Units.toolTipDelay
+                                    ToolTip.text: root.updatesDetails
+
+                                    Label {
+                                        text: root.commitsBehind > 0 ? (root.commitsBehind === 1 ? "1 new commit" : root.commitsBehind + " new commits") : root.commitsBehind === 0 ? "Up to date" : "Unknown"
+                                        font.bold: root.commitsBehind > 0
+                                        color: root.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : root.commitsBehind === 0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
+                                    }
+
+                                    // Latest commit fetched from the remote repository
+                                    RevisionChip {
+                                        id: latestChip
+                                        text: root.latestRevisionShort
+                                        commit: gitManager ? gitManager.latestFetchedRevision : ""
+                                    }
                                 }
 
                                 Button {
@@ -505,6 +617,36 @@ ApplicationWindow {
                                     icon.name: "view-list-details"
                                     visible: root.commitsBehind > 0
                                     onClicked: commitsDialog.open()
+                                }
+                            }
+
+                            RowLayout {
+                                id: runningSystemRow
+                                Kirigami.FormData.label: "Running system:"
+                                Layout.fillWidth: true
+                                spacing: Kirigami.Units.smallSpacing
+
+                                HoverHandler {
+                                    id: runningSystemHover
+                                }
+
+                                ToolTip.visible: runningSystemHover.hovered && !runningChip.hovered
+                                ToolTip.delay: Kirigami.Units.toolTipDelay
+                                ToolTip.text: systemUpdateStatus ? systemUpdateStatus.details : ""
+
+                                SystemStatusIndicator {}
+
+                                Label {
+                                    text: systemUpdateStatus ? systemUpdateStatus.summary : "Not verified"
+                                    font.bold: root.systemNeedsSwitch
+                                    color: root.systemUpToDate ? Kirigami.Theme.positiveTextColor : root.systemNeedsSwitch ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.disabledTextColor
+                                }
+
+                                // Commit the running configuration was built from
+                                RevisionChip {
+                                    id: runningChip
+                                    text: systemUpdateStatus ? systemUpdateStatus.runningRevisionShort : ""
+                                    commit: systemUpdateStatus ? systemUpdateStatus.runningCommit : ""
                                 }
                             }
                         }

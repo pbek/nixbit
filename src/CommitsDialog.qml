@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "Utils.js" as Utils
 
 Dialog {
     id: commitsDialog
@@ -16,28 +17,7 @@ Dialog {
     readonly property int commitCount: commitListView.count
 
     function commitUrl(sha) {
-        // Convert various GitHub URL formats to a web commit URL
-        var url = gitManager ? gitManager.repositoryUrl : "";
-        if (!sha || url.indexOf("github.com") === -1) {
-            return "";
-        }
-
-        // Handle git@ SSH format: git@github.com:user/repo.git
-        if (url.startsWith("git@github.com:")) {
-            url = url.replace("git@github.com:", "https://github.com/");
-        }
-
-        // Remove .git suffix if present
-        if (url.endsWith(".git")) {
-            url = url.substring(0, url.length - 4);
-        }
-
-        // Ensure it starts with https://
-        if (!url.startsWith("http")) {
-            url = "https://github.com/" + url;
-        }
-
-        return url + "/commit/" + sha;
+        return Utils.commitUrl(gitManager ? gitManager.repositoryUrl : "", sha);
     }
 
     ColumnLayout {
@@ -115,7 +95,7 @@ Dialog {
 
                     ToolTip.visible: hovered && url !== ""
                     ToolTip.delay: Kirigami.Units.toolTipDelay
-                    ToolTip.text: "Open commit in browser"
+                    ToolTip.text: "Open commit on " + Utils.forgeName(gitManager ? gitManager.repositoryUrl : "")
 
                     contentItem: ColumnLayout {
                         spacing: Kirigami.Units.smallSpacing

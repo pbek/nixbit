@@ -1,6 +1,7 @@
 #ifndef TRAYICONMANAGER_H
 #define TRAYICONMANAGER_H
 
+#include "systemupdatestatus.h"
 #include <QAction>
 #include <QColor>
 #include <QIcon>
@@ -20,6 +21,10 @@ public:
   void setCommitsBehind(int count);
   // An empty activity restores the repository status icon.
   void setActivity(const QString &activity, bool animated = true);
+  // The short revisions are shown in the tooltip, empty if unknown
+  void setSystemStatus(SystemUpdateStatus::State state,
+                       const QString &runningRevision = QString(),
+                       const QString &latestRevision = QString());
   void show();
   void hide();
   // Shows a desktop notification with an action to show the window. A new
@@ -43,7 +48,7 @@ private slots:
 private:
   void createTrayIcon();
   void updateIcon();
-  enum class Badge { None, Check, Count, Busy };
+  enum class Badge { None, Check, Count, Busy, Pending };
 
   QIcon createDefaultIcon();
   QIcon createUpToDateIcon();
@@ -62,6 +67,9 @@ private:
   QAction *m_ignoreUpdateAction;
   QAction *m_quitAction;
   int m_currentCommitsBehind;
+  SystemUpdateStatus::State m_systemStatus = SystemUpdateStatus::State::Unknown;
+  QString m_runningRevision;
+  QString m_latestRevision;
   bool m_debugMode;
   QString m_activity;
   QTimer m_activityTimer;

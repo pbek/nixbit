@@ -6,6 +6,7 @@
 #include "settingsmanager.h"
 #include "systemmonitor.h"
 #include "systemresumedetector.h"
+#include "systemupdatestatus.h"
 #include "trayiconmanager.h"
 #include "utils/cli.h"
 #include "version.h"
@@ -132,6 +133,24 @@ int main(int argc, char *argv[]) {
   TrayIconManager trayIconManager(debugMode);
   engine.rootContext()->setContextProperty("trayIconManager", &trayIconManager);
 
+  SystemUpdateStatus systemUpdateStatus;
+  engine.rootContext()->setContextProperty("systemUpdateStatus",
+                                           &systemUpdateStatus);
+  QObject::connect(&gitManager, &GitManager::latestFetchedRevisionChanged,
+                   &systemUpdateStatus, [&]() {
+                     systemUpdateStatus.setLatestRevision(
+                         gitManager.latestFetchedRevision());
+                   });
+  QObject::connect(&systemUpdateStatus, &SystemUpdateStatus::statusChanged,
+                   &trayIconManager, [&]() {
+                     trayIconManager.setSystemStatus(
+                         systemUpdateStatus.state(),
+                         systemUpdateStatus.runningRevisionShort(),
+                         systemUpdateStatus.latestRevisionShort());
+                   });
+  QObject::connect(&processManager, &ProcessManager::commandFinished,
+                   &systemUpdateStatus, &SystemUpdateStatus::refresh);
+
   // Create and register SettingsManager
   SettingsManager settingsManager;
   engine.rootContext()->setContextProperty("settingsManager", &settingsManager);
@@ -166,6 +185,8 @@ int main(int argc, char *argv[]) {
   SystemResumeDetector resumeDetector;
   QObject::connect(&resumeDetector, &SystemResumeDetector::systemResumed,
                    &gitManager, &GitManager::checkForUpdates);
+  QObject::connect(&resumeDetector, &SystemResumeDetector::systemResumed,
+                   &systemUpdateStatus, &SystemUpdateStatus::refresh);
 
   KLocalization::setupLocalizedContext(&engine);
 
@@ -265,6 +286,9 @@ int main(int argc, char *argv[]) {
 
   // Sync initial state
   trayIconManager.setCommitsBehind(gitManager.commitsBehind());
+  trayIconManager.setSystemStatus(systemUpdateStatus.state(),
+                                  systemUpdateStatus.runningRevisionShort(),
+                                  systemUpdateStatus.latestRevisionShort());
 
   // Combine activity sources so finishing one operation doesn't clear the
   // indicator while another is still running.

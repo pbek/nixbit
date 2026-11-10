@@ -112,6 +112,46 @@ When the module is enabled, it:
    - The optional notification command (in the `[Notifications]` section with `Command` key)
 3. **Locks settings**: Any settings written to `/etc/nixbit.conf` cannot be modified through the Nixbit UI, ensuring your fleet configuration remains consistent
 
+## Configuration Revision
+
+A pulled repository doesn't mean the new configuration is running yet. To tell
+whether the running system was built from the latest fetched commit, Nixbit
+reads the configuration revision of `/run/current-system` with
+`nixos-version --configuration-revision`. Your flake needs to embed this
+revision into every host configuration, for example in a module shared by all
+hosts:
+
+```nix
+{
+  outputs =
+    { self, nixpkgs, ... }:
+    {
+      nixosConfigurations.my-host = nixpkgs.lib.nixosSystem {
+        modules = [
+          ./configuration.nix
+          { system.configurationRevision = self.rev or self.dirtyRev or null; }
+        ];
+      };
+    };
+}
+```
+
+With the revision in place, the main window and the tray icon show:
+
+- **Up to date** (green check mark): the running system was built from the latest fetched commit
+- **Switch needed** (orange arrow): the repository is up to date, but the running system was built
+  from another commit, e.g. after a build or a boot rebuild that wasn't activated yet
+
+The "Updates" row shows the latest fetched commit, and the "Running system" row
+the commit the running system was built from. Hover over them for an
+explanation of the status; the tray icon tooltip shows both commits as well.
+Click a commit hash to open the commit on the Git forge (GitHub, GitLab,
+Codeberg, Forgejo, Gitea, Bitbucket and SourceHut are supported).
+
+Without a revision, or if the system was built with uncommitted changes, Nixbit still works as usual,
+but can only check the repository. The running system is then shown as **Not verified**, and the
+tray icon shows a gray instead of a green check mark when the repository is up to date.
+
 ## Privilege Escalation (pkexec / sudo)
 
 The `switch` and `boot` rebuild modes need root privileges. Nixbit resolves a
@@ -190,7 +230,7 @@ in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
   - Short SHA hash (7 characters, monospace font)
   - Commit author name and message
   - Relative time (e.g., "2 hours ago") and full timestamp
-  - Clickable commit hashes for GitHub repositories (opens commit page in browser)
+  - Clickable commits that open the commit page on the Git forge (GitHub, GitLab, Codeberg, Forgejo, Gitea, Bitbucket, SourceHut)
   - Manual refresh capability
 
 ### 🚀 System Update
@@ -239,7 +279,9 @@ in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
   - Messages persist until dismissed or next action
 - **Progress Indicators**: Progress bar for cloning operations and busy indicators for ongoing tasks
 - **System Tray Support**: Option to start the application hidden in the system tray
-  - Tray icon reflects update status (up-to-date, updates available, unknown)
+  - Tray icon reflects update status (up to date, updates available, switch needed, not verified, unknown)
+  - An animated badge is shown while the repository is updated or a command is running
+  - The running system is compared with the latest fetched commit (see [Configuration Revision](#configuration-revision))
   - Debug mode uses different colors for easier identification (cyan, darker orange, purple)
 - **Autostart Option**: Checkbox to create or remove autostart desktop entry
 - **Settings Dialog**: KDE System Settings-style interface with vertical category menu

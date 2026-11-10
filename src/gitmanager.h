@@ -20,6 +20,8 @@ class GitManager : public QObject {
   Q_PROPERTY(QString status READ status NOTIFY statusChanged)
   Q_PROPERTY(bool isBusy READ isBusy NOTIFY isBusyChanged)
   Q_PROPERTY(int commitsBehind READ commitsBehind NOTIFY commitsBehindChanged)
+  Q_PROPERTY(QString latestFetchedRevision READ latestFetchedRevision NOTIFY
+                 latestFetchedRevisionChanged)
   Q_PROPERTY(QVariantList commitsBehindList READ commitsBehindList NOTIFY
                  commitsBehindListChanged)
   Q_PROPERTY(int fetchIntervalMinutes READ fetchIntervalMinutes WRITE
@@ -41,6 +43,7 @@ public:
   QString status() const { return m_status; }
   bool isBusy() const { return m_isBusy; }
   int commitsBehind() const { return m_commitsBehind; }
+  QString latestFetchedRevision() const { return m_latestFetchedRevision; }
   QVariantList commitsBehindList() const { return m_commitsBehindList; }
   int fetchIntervalMinutes() const { return m_fetchIntervalMinutes; }
   void setFetchIntervalMinutes(int minutes);
@@ -62,6 +65,7 @@ signals:
   void statusChanged();
   void isBusyChanged();
   void commitsBehindChanged();
+  void latestFetchedRevisionChanged();
   void commitsBehindListChanged();
   void fetchIntervalMinutesChanged();
   void progressChanged();
@@ -77,6 +81,8 @@ private:
   void saveSettings();
   void setIsBusy(bool busy);
   void setCommitsBehind(int count);
+  void refreshLatestFetchedRevision();
+  void setLatestFetchedRevision(const QString &revision);
   void setCommitsBehindList(const QVariantList &list);
   void startFetchTimer();
   void stopFetchTimer();
@@ -93,6 +99,7 @@ private:
   QString m_status;
   bool m_isBusy;
   int m_commitsBehind;
+  QString m_latestFetchedRevision;
   QVariantList m_commitsBehindList;
   int m_fetchIntervalMinutes;
   int m_progress;

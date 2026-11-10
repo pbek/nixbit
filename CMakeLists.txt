@@ -57,6 +57,8 @@ qt_add_executable(
   src/settingsmanager.h
   src/systemmonitor.cpp
   src/systemmonitor.h
+  src/systemupdatestatus.cpp
+  src/systemupdatestatus.h
   src/systemresumedetector.cpp
   src/systemresumedetector.h
   src/generationmanager.cpp

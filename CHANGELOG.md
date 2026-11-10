@@ -2,11 +2,27 @@
 
 ## Unreleased
 
+- **Nixbit now checks whether the running system is built from the latest commit**
+  - Previously the system was shown as up to date as soon as the repository was pulled,
+    even if the new configuration was not built and activated yet
+  - The configuration revision of the running system is compared with the latest fetched commit,
+    and shown in a new "Running system" row in the main window
+  - The "Updates" and "Running system" rows show the short commit hash they refer to,
+    and explain in a tooltip what their status means
+  - Clicking a commit hash opens the commit on the Git forge
+  - The tray icon tooltip shows the latest fetched commit and the commit of the running system
+- **Commits can now be opened on more Git forges**
+  - Besides GitHub, the commits dialog and commit hashes now link to GitLab (also self-hosted),
+    Codeberg, Forgejo, Gitea, Bitbucket and SourceHut
+  - SSH remote URLs like `ssh://git@host:22/owner/repo.git` are supported as well
+  - The tray icon shows an orange arrow when a switch is needed to activate the latest configuration
+  - This needs `system.configurationRevision` to be set in your flake, see the README for an example
+  - Without a revision Nixbit works as before, but shows the running system as "Not verified",
+    and the tray icon uses a gray instead of a green check mark
 - **Added an activity indicator to the system tray icon**
   - A blue animated badge signals repository updates and running commands, including rebuilds
   - The animation stops while a command is paused or waiting for a password, with the reason shown in the tooltip
   - The usual update-status icon returns when all work has finished
-
 - **Updated the embedded Kwi terminal's libghostty-vt dependency to 1.0.0**
   - Uses the standalone library release and its offline dependency archive instead of the Ghostty application source
   - Updated Kwi to a compatible upstream commit using the released library API
