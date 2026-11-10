@@ -266,6 +266,33 @@ int main(int argc, char *argv[]) {
   // Sync initial state
   trayIconManager.setCommitsBehind(gitManager.commitsBehind());
 
+  // Combine activity sources so finishing one operation doesn't clear the
+  // indicator while another is still running.
+  const auto updateTrayActivity = [&]() {
+    if (processManager.isRunning()) {
+      if (processManager.waitingForPassword()) {
+        trayIconManager.setActivity("Waiting for password", false);
+      } else if (processManager.isPaused()) {
+        trayIconManager.setActivity("Process paused", false);
+      } else {
+        trayIconManager.setActivity("Process running");
+      }
+    } else if (gitManager.isBusy()) {
+      trayIconManager.setActivity("Updating repository");
+    } else {
+      trayIconManager.setActivity(QString());
+    }
+  };
+  QObject::connect(&gitManager, &GitManager::isBusyChanged, &trayIconManager,
+                   updateTrayActivity);
+  QObject::connect(&processManager, &ProcessManager::isRunningChanged,
+                   &trayIconManager, updateTrayActivity);
+  QObject::connect(&processManager, &ProcessManager::isPausedChanged,
+                   &trayIconManager, updateTrayActivity);
+  QObject::connect(&processManager, &ProcessManager::waitingForPasswordChanged,
+                   &trayIconManager, updateTrayActivity);
+  updateTrayActivity();
+
   // Show the tray icon
   trayIconManager.show();
 

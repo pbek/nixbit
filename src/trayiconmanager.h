@@ -7,6 +7,8 @@
 #include <QMenu>
 #include <QObject>
 #include <QSystemTrayIcon>
+#include <QTimer>
+#include <QVector>
 
 class TrayIconManager : public QObject {
   Q_OBJECT
@@ -16,6 +18,8 @@ public:
   ~TrayIconManager();
 
   void setCommitsBehind(int count);
+  // An empty activity restores the repository status icon.
+  void setActivity(const QString &activity, bool animated = true);
   void show();
   void hide();
   // Shows a desktop notification with an action to show the window. A new
@@ -38,8 +42,8 @@ private slots:
 
 private:
   void createTrayIcon();
-  void updateIcon(int commitsBehind);
-  enum class Badge { None, Check, Count };
+  void updateIcon();
+  enum class Badge { None, Check, Count, Busy };
 
   QIcon createDefaultIcon();
   QIcon createUpToDateIcon();
@@ -48,7 +52,8 @@ private:
   QColor snowflakeSecondaryColor() const;
   // Draws the Nix snowflake with an optional status badge in several sizes
   QIcon createStatusIcon(const QColor &primary, const QColor &secondary,
-                         const QColor &badgeColor, Badge badge, int count = 0);
+                         const QColor &badgeColor, Badge badge, int count = 0,
+                         int angle = 0);
 
   QSystemTrayIcon *m_trayIcon;
   QMenu *m_trayMenu;
@@ -58,6 +63,10 @@ private:
   QAction *m_quitAction;
   int m_currentCommitsBehind;
   bool m_debugMode;
+  QString m_activity;
+  QTimer m_activityTimer;
+  QVector<QIcon> m_activityFrames;
+  int m_activityFrame = 0;
   // Id of the shown desktop notification, 0 if there is none
   uint m_notificationId;
 };

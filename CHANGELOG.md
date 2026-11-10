@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Added an activity indicator to the system tray icon**
+  - A blue animated badge signals repository updates and running commands, including rebuilds
+  - The animation stops while a command is paused or waiting for a password, with the reason shown in the tooltip
+  - The usual update-status icon returns when all work has finished
+
 - **Updated the embedded Kwi terminal's libghostty-vt dependency to 1.0.0**
   - Uses the standalone library release and its offline dependency archive instead of the Ghostty application source
   - Updated Kwi to a compatible upstream commit using the released library API

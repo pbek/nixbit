@@ -27,6 +27,12 @@ TrayIconManager::TrayIconManager(bool debugMode, QObject *parent)
       m_currentCommitsBehind(0), m_debugMode(debugMode), m_notificationId(0) {
   createTrayIcon();
 
+  m_activityTimer.setInterval(100);
+  connect(&m_activityTimer, &QTimer::timeout, this, [this]() {
+    m_activityFrame = (m_activityFrame + 1) % m_activityFrames.size();
+    m_trayIcon->setIcon(m_activityFrames.at(m_activityFrame));
+  });
+
   QDBusConnection bus = QDBusConnection::sessionBus();
   bus.connect(notificationsService, notificationsPath, notificationsInterface,
               "ActionInvoked", this,
@@ -88,17 +94,20 @@ void TrayIconManager::createTrayIcon() {
           &TrayIconManager::showWindowRequested);
 
   // Set initial icon
-  updateIcon(0);
+  updateIcon();
 }
 
-void TrayIconManager::updateIcon(int commitsBehind) {
-  qDebug() << "TrayIconManager::updateIcon called with commitsBehind:"
-           << commitsBehind;
+void TrayIconManager::updateIcon() {
+  const int commitsBehind = m_currentCommitsBehind;
   QIcon icon;
 
   QString debugSuffix = m_debugMode ? " (Debug Mode)" : "";
 
-  if (commitsBehind > 0) {
+  if (!m_activity.isEmpty()) {
+    icon = m_activityFrames.at(m_activityFrame);
+    m_trayIcon->setToolTip(
+        QString("Nixbit - %1%2").arg(m_activity, debugSuffix));
+  } else if (commitsBehind > 0) {
     // Create icon showing updates available (orange badge with count)
     qDebug() << "Creating update available icon for" << commitsBehind
              << "commits";
@@ -107,14 +116,6 @@ void TrayIconManager::updateIcon(int commitsBehind) {
                                .arg(commitsBehind)
                                .arg(debugSuffix));
 
-    // Show a notification if commits behind increased
-    if (commitsBehind > m_currentCommitsBehind && m_currentCommitsBehind >= 0) {
-      qDebug() << "Showing notification for increased commits";
-      m_trayIcon->showMessage(
-          "Nixbit - Updates Available",
-          QString("%1 new commit(s) available from origin").arg(commitsBehind),
-          QSystemTrayIcon::Information, 5000);
-    }
   } else if (commitsBehind == 0) {
     // Create icon showing system is up to date (green check badge)
     qDebug() << "Creating up-to-date icon";
@@ -135,9 +136,6 @@ void TrayIconManager::updateIcon(int commitsBehind) {
 
   qDebug() << "Setting tray icon, isNull:" << icon.isNull();
   m_trayIcon->setIcon(icon);
-  m_currentCommitsBehind = commitsBehind;
-  qDebug() << "Icon updated, m_currentCommitsBehind now:"
-           << m_currentCommitsBehind;
 }
 
 QIcon TrayIconManager::createDefaultIcon() {
@@ -171,7 +169,7 @@ QColor TrayIconManager::snowflakeSecondaryColor() const {
 QIcon TrayIconManager::createStatusIcon(const QColor &primary,
                                         const QColor &secondary,
                                         const QColor &badgeColor, Badge badge,
-                                        int count) {
+                                        int count, int angle) {
   // One lambda of the Nix snowflake, normalized to a radius of 1
   static const QPolygonF lambda = {
       {-0.390, 0.022}, {0.097, 0.866},  {-0.126, 0.868},
@@ -224,6 +222,14 @@ QIcon TrayIconManager::createStatusIcon(const QColor &primary,
                             Qt::RoundCap, Qt::RoundJoin));
         painter.setBrush(Qt::NoBrush);
         painter.drawPath(checkPath);
+      } else if (badge == Badge::Busy) {
+        painter.setPen(QPen(Qt::white, qMax(1.2, radius * 0.25), Qt::SolidLine,
+                            Qt::RoundCap));
+        painter.setBrush(Qt::NoBrush);
+        const qreal arcRadius = radius * 0.55;
+        painter.drawArc(QRectF(center.x() - arcRadius, center.y() - arcRadius,
+                               arcRadius * 2, arcRadius * 2),
+                        -angle * 16, 270 * 16);
       } else {
         // The exact number is shown in the tooltip
         const QString text = count > 9 ? "9+" : QString::number(count);
@@ -250,11 +256,43 @@ void TrayIconManager::setCommitsBehind(int count) {
   qDebug() << "TrayIconManager::setCommitsBehind called with count:" << count
            << "current:" << m_currentCommitsBehind;
   if (count != m_currentCommitsBehind) {
-    qDebug() << "Updating icon from" << m_currentCommitsBehind << "to" << count;
-    updateIcon(count);
+    // Keep tracking updates while the activity badge takes precedence.
+    if (count > m_currentCommitsBehind && m_currentCommitsBehind >= 0) {
+      m_trayIcon->showMessage(
+          "Nixbit - Updates Available",
+          QString("%1 new commit(s) available from origin").arg(count),
+          QSystemTrayIcon::Information, 5000);
+    }
+    m_currentCommitsBehind = count;
+    updateIcon();
   } else {
     qDebug() << "Icon update skipped - count unchanged";
   }
+}
+
+void TrayIconManager::setActivity(const QString &activity, bool animated) {
+  const bool shouldAnimate = !activity.isEmpty() && animated;
+  if (activity == m_activity && shouldAnimate == m_activityTimer.isActive()) {
+    return;
+  }
+
+  if (!activity.isEmpty() && m_activityFrames.isEmpty()) {
+    // Cache the frames so animation only changes the icon, not its rendering.
+    for (int angle = 0; angle < 360; angle += 30) {
+      m_activityFrames.append(
+          createStatusIcon(snowflakePrimaryColor(), snowflakeSecondaryColor(),
+                           QColor(0x29, 0x80, 0xb9), Badge::Busy, 0, angle));
+    }
+  }
+
+  m_activity = activity;
+  if (shouldAnimate) {
+    m_activityTimer.start();
+  } else {
+    m_activityTimer.stop();
+    m_activityFrame = 0;
+  }
+  updateIcon();
 }
 
 void TrayIconManager::show() {
