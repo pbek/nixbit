@@ -720,8 +720,8 @@ ApplicationWindow {
                                     restoreSelectionForMode(rebuildModeComboBox.currentText);
                                 }
 
-                                onCurrentIndexChanged: {
-                                    // Save immediately when selection changes
+                                onActivated: {
+                                    // Save only user selections, not initialization or model changes
                                     if (ignoreChanges || !settingsManager) {
                                         console.log("Ignoring change, ignoreChanges:", ignoreChanges);
                                         return;

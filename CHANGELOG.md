@@ -1,5 +1,10 @@
 # Nixbit Changelog
 
+## 1.4.1
+
+- **Fixed build host selections being reset to local on startup**
+  - Each rebuild mode keeps its remembered host when the selector initializes or the host list changes
+
 ## 1.4.0
 
 - **Nixbit now checks whether the running system is built from the latest commit**
