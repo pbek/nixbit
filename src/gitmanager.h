@@ -22,6 +22,8 @@ class GitManager : public QObject {
   Q_PROPERTY(int commitsBehind READ commitsBehind NOTIFY commitsBehindChanged)
   Q_PROPERTY(QString latestFetchedRevision READ latestFetchedRevision NOTIFY
                  latestFetchedRevisionChanged)
+  Q_PROPERTY(
+      QString localRevision READ localRevision NOTIFY localRevisionChanged)
   Q_PROPERTY(QVariantList commitsBehindList READ commitsBehindList NOTIFY
                  commitsBehindListChanged)
   Q_PROPERTY(int fetchIntervalMinutes READ fetchIntervalMinutes WRITE
@@ -44,7 +46,10 @@ public:
   bool isBusy() const { return m_isBusy; }
   int commitsBehind() const { return m_commitsBehind; }
   QString latestFetchedRevision() const { return m_latestFetchedRevision; }
+  QString localRevision() const { return m_localRevision; }
   QVariantList commitsBehindList() const { return m_commitsBehindList; }
+  // Maximum number of commits listed in commitsBehindList
+  static constexpr int maxCommitsBehindListSize = 250;
   int fetchIntervalMinutes() const { return m_fetchIntervalMinutes; }
   void setFetchIntervalMinutes(int minutes);
   int progress() const { return m_progress; }
@@ -66,6 +71,7 @@ signals:
   void isBusyChanged();
   void commitsBehindChanged();
   void latestFetchedRevisionChanged();
+  void localRevisionChanged();
   void commitsBehindListChanged();
   void fetchIntervalMinutesChanged();
   void progressChanged();
@@ -83,6 +89,7 @@ private:
   void setCommitsBehind(int count);
   void refreshLatestFetchedRevision();
   void setLatestFetchedRevision(const QString &revision);
+  void setLocalRevision(const QString &revision);
   void setCommitsBehindList(const QVariantList &list);
   void startFetchTimer();
   void stopFetchTimer();
@@ -100,6 +107,7 @@ private:
   bool m_isBusy;
   int m_commitsBehind;
   QString m_latestFetchedRevision;
+  QString m_localRevision;
   QVariantList m_commitsBehindList;
   int m_fetchIntervalMinutes;
   int m_progress;

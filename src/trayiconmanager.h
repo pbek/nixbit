@@ -18,7 +18,10 @@ public:
   explicit TrayIconManager(bool debugMode = false, QObject *parent = nullptr);
   ~TrayIconManager();
 
-  void setCommitsBehind(int count);
+  // The summaries of the new commits, newest first, are shown in the
+  // notification about new commits
+  void setCommitsBehind(int count,
+                        const QStringList &commitSummaries = QStringList());
   // An empty activity restores the repository status icon.
   void setActivity(const QString &activity, bool animated = true);
   // The short revisions are shown in the tooltip, empty if unknown
@@ -27,13 +30,18 @@ public:
                        const QString &latestRevision = QString());
   void show();
   void hide();
-  // Shows a desktop notification with an action to show the window. A new
-  // notification replaces the previous one.
-  void showNotification(const QString &title, const QString &message);
-  void closeNotification();
+  enum class NotificationKind { Password, Updates };
+  // Shows a desktop notification with an action to show the window, or the
+  // new commits for update notifications. A new notification replaces the
+  // previous one.
+  void showNotification(const QString &title, const QString &message,
+                        NotificationKind kind = NotificationKind::Password);
+  // Closes the shown notification if it is of the given kind
+  void closeNotification(NotificationKind kind = NotificationKind::Password);
 
 signals:
   void showWindowRequested();
+  void showCommitsRequested();
   void toggleWindowRequested();
   void checkForUpdatesRequested();
   void ignoreUpdateRequested();
@@ -64,6 +72,7 @@ private:
   QMenu *m_trayMenu;
   QAction *m_showAction;
   QAction *m_checkUpdatesAction;
+  QAction *m_showCommitsAction;
   QAction *m_ignoreUpdateAction;
   QAction *m_quitAction;
   int m_currentCommitsBehind;
@@ -77,6 +86,10 @@ private:
   int m_activityFrame = 0;
   // Id of the shown desktop notification, 0 if there is none
   uint m_notificationId;
+  NotificationKind m_notificationKind = NotificationKind::Password;
+  // Kind of the last tray message, used as fallback without notification
+  // server
+  NotificationKind m_messageKind = NotificationKind::Password;
 };
 
 #endif // TRAYICONMANAGER_H

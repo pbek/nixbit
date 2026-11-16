@@ -66,6 +66,71 @@ function forgeName(remoteUrl) {
 }
 
 /**
+ * Returns the web URL comparing two commits on the Git forge
+ * @param {string} remoteUrl - The Git remote URL
+ * @param {string} fromSha - The full hash of the older commit
+ * @param {string} toSha - The full hash of the newer commit
+ * @returns {string} The compare URL, or an empty string if unsupported
+ */
+function compareUrl(remoteUrl, fromSha, toSha) {
+  var webUrl = repositoryWebUrl(remoteUrl);
+  var shaPattern = /^[0-9a-f]{7,40}$/;
+  if (
+    !webUrl ||
+    !shaPattern.test(fromSha || "") ||
+    !shaPattern.test(toSha || "")
+  ) {
+    return "";
+  }
+
+  var host = webUrl.split("/")[2].toLowerCase();
+  // Bitbucket and SourceHut have no comparable page
+  if (host === "bitbucket.org" || host.indexOf("sr.ht") !== -1) {
+    return "";
+  }
+  if (host.indexOf("gitlab") !== -1) {
+    return webUrl + "/-/compare/" + fromSha + "..." + toSha;
+  }
+  // GitHub, Codeberg, Forgejo and Gitea
+  return webUrl + "/compare/" + fromSha + "..." + toSha;
+}
+
+/**
+ * Returns the repository path on the Git forge, e.g. "owner/repo"
+ * @param {string} remoteUrl - The Git remote URL
+ * @returns {string} The repository path, or an empty string if unknown
+ */
+function repositoryPath(remoteUrl) {
+  var webUrl = repositoryWebUrl(remoteUrl);
+  return webUrl ? webUrl.split("/").slice(3).join("/") : "";
+}
+
+/**
+ * Formats a point in time relative to now, e.g. "3 hours ago"
+ * @param {number} timestamp - Milliseconds since the epoch
+ * @param {number} now - Milliseconds since the epoch of the current time
+ * @returns {string} The relative time
+ */
+function relativeTime(timestamp, now) {
+  var seconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  var units = [
+    [31536000, "year"],
+    [2592000, "month"],
+    [604800, "week"],
+    [86400, "day"],
+    [3600, "hour"],
+    [60, "minute"],
+  ];
+  for (var i = 0; i < units.length; i++) {
+    var value = Math.floor(seconds / units[i][0]);
+    if (value >= 1) {
+      return value + " " + units[i][1] + (value === 1 ? "" : "s") + " ago";
+    }
+  }
+  return "just now";
+}
+
+/**
  * Opens a terminal in the specified directory
  * Tries multiple terminal emulators in order of preference
  * @param {string} path - The directory path to open the terminal in

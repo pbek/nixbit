@@ -1,5 +1,23 @@
 # Nixbit Changelog
 
+## 1.5.0
+
+- **New commits can now be reviewed everywhere updates are shown**
+  - Previously only the number of new commits was shown in most places
+  - Click the commit count in the "Updates" row, the new "New Commits" button in the compact view,
+    the "View New Commits" entry in the tray menu, the "Tools" menu and the right-click menu of the "Updates" row,
+    or the notification about new commits to see them
+  - The menu entries show the number of new commits, and stay available when you're up to date
+  - The notification about new commits lists the newest commit messages
+- **Redesigned the commits dialog, so you can decide whether to update**
+  - A summary shows the number of commits, authors and changed lines
+  - Commits are grouped by day and show the author, changed files and added and removed lines
+  - Merge commits are marked, and the full commit message can be expanded
+  - Commits can be filtered by message, author or hash
+  - Each commit links to the Git forge, and all new commits can be compared at once on forges that support it
+  - A context menu copies the commit hash or link
+  - The system can be updated, or the commits pulled without rebuilding, directly from the dialog
+
 ## 1.4.1
 
 - **Fixed build host selections being reset to local on startup**

@@ -24,6 +24,22 @@ ApplicationWindow {
         return mode === "switch" ? "Switch" : mode === "boot" ? "Boot" : "Build";
     }
 
+    readonly property string updateActionText: rebuildModeComboBox.currentText === "build" ? "Build System" : rebuildModeComboBox.currentText === "switch" ? "Update System" : "Set Boot Default"
+    readonly property bool canUpdate: !processRunning && !gitBusy
+
+    // Pull the repository, the rebuild starts when the pull completed
+    function startUpdate() {
+        if (!gitManager || !canUpdate)
+            return;
+        shouldRebuildAfterPull = true;
+        gitManager.pullRepository();
+    }
+
+    // Shows the commits that are not pulled yet, also called from the tray icon
+    function showCommitsDialog() {
+        commitsDialog.open();
+    }
+
     // Property to track if we're in a chained build-then-switch operation
     property bool isChainedBuildSwitch: false
     property bool shouldRebuildAfterPull: false
@@ -112,6 +128,8 @@ ApplicationWindow {
     // Keyboard shortcut for search (Ctrl+F)
     Shortcut {
         sequence: StandardKey.Find
+        // The commits dialog uses the shortcut to filter commits
+        enabled: !commitsDialog.opened
         onActivated: searchBar.show()
     }
 
@@ -270,6 +288,11 @@ ApplicationWindow {
                 }
             }
             Action {
+                text: root.commitsBehind > 0 ? (root.commitsBehind === 1 ? "View 1 &New Commit…" : "View " + root.commitsBehind + " &New Commits…") : "View &New Commits…"
+                icon.name: "view-list-details"
+                onTriggered: commitsDialog.open()
+            }
+            Action {
                 text: "&Generations…"
                 icon.name: "view-history"
                 onTriggered: generationsDialog.open()
@@ -334,7 +357,7 @@ ApplicationWindow {
     readonly property string latestRevisionShort: gitManager && gitManager.latestFetchedRevision ? gitManager.latestFetchedRevision.substring(0, 7) : ""
     readonly property string updatesDetails: {
         if (commitsBehind > 0) {
-            return (commitsBehind === 1 ? "The remote repository has 1 new commit" : "The remote repository has " + commitsBehind + " new commits") + " that are not pulled yet" + (latestRevisionShort ? ", up to " + latestRevisionShort : "") + ". Use \"Update System\" to pull and rebuild.";
+            return (commitsBehind === 1 ? "The remote repository has 1 new commit" : "The remote repository has " + commitsBehind + " new commits") + " that are not pulled yet" + (latestRevisionShort ? ", up to " + latestRevisionShort : "") + ". Use \"" + updateActionText + "\" to pull and rebuild.";
         }
         if (commitsBehind === 0) {
             return "The local repository has all commits of the remote repository" + (latestRevisionShort ? ", up to " + latestRevisionShort : "") + ". Whether the system was rebuilt from them is shown under \"Running system\".";
@@ -408,6 +431,16 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             text: root.gitStatus
                             elide: Text.ElideRight
+                        }
+
+                        Button {
+                            visible: root.commitsBehind > 0
+                            text: root.commitsBehind === 1 ? "1 New Commit…" : root.commitsBehind + " New Commits…"
+                            icon.name: "view-list-details"
+                            onClicked: commitsDialog.open()
+                            ToolTip.visible: hovered
+                            ToolTip.delay: Kirigami.Units.toolTipDelay
+                            ToolTip.text: "Show the commits that are not pulled yet"
                         }
 
                         SystemStatusIndicator {
@@ -530,6 +563,28 @@ ApplicationWindow {
                                 Kirigami.FormData.label: "Updates:"
                                 spacing: Kirigami.Units.largeSpacing
 
+                                TapHandler {
+                                    acceptedButtons: Qt.RightButton
+                                    onTapped: updatesContextMenu.popup()
+                                }
+
+                                Menu {
+                                    id: updatesContextMenu
+
+                                    MenuItem {
+                                        text: root.commitsBehind > 0 ? (root.commitsBehind === 1 ? "View 1 New Commit…" : "View " + root.commitsBehind + " New Commits…") : "View New Commits…"
+                                        icon.name: "view-list-details"
+                                        onTriggered: commitsDialog.open()
+                                    }
+
+                                    MenuItem {
+                                        text: "Check for Updates"
+                                        icon.name: "view-refresh"
+                                        enabled: !root.gitBusy
+                                        onTriggered: gitManager.checkForUpdates()
+                                    }
+                                }
+
                                 RowLayout {
                                     spacing: Kirigami.Units.smallSpacing
 
@@ -539,12 +594,27 @@ ApplicationWindow {
 
                                     ToolTip.visible: updatesHover.hovered && !latestChip.hovered
                                     ToolTip.delay: Kirigami.Units.toolTipDelay
-                                    ToolTip.text: root.updatesDetails
+                                    ToolTip.text: root.updatesDetails + (root.commitsBehind > 0 ? " Click the commit count to review them." : "")
 
                                     Label {
+                                        id: commitsBehindLabel
+                                        readonly property bool linked: root.commitsBehind > 0
                                         text: root.commitsBehind > 0 ? (root.commitsBehind === 1 ? "1 new commit" : root.commitsBehind + " new commits") : root.commitsBehind === 0 ? "Up to date" : "Unknown"
                                         font.bold: root.commitsBehind > 0
+                                        font.underline: linked && commitsBehindHover.hovered
                                         color: root.commitsBehind > 0 ? Kirigami.Theme.neutralTextColor : root.commitsBehind === 0 ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.disabledTextColor
+                                        Accessible.role: linked ? Accessible.Link : Accessible.StaticText
+
+                                        // Opens the new commits like the "View Commits" button
+                                        HoverHandler {
+                                            id: commitsBehindHover
+                                            cursorShape: commitsBehindLabel.linked ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                        }
+
+                                        TapHandler {
+                                            enabled: commitsBehindLabel.linked
+                                            onTapped: commitsDialog.open()
+                                        }
                                     }
 
                                     // Latest commit fetched from the remote repository
@@ -804,20 +874,14 @@ ApplicationWindow {
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
-                    text: rebuildModeComboBox.currentText === "build" ? "Build System" : rebuildModeComboBox.currentText === "switch" ? "Update System" : "Set Boot Default"
+                    text: root.updateActionText
                     icon.name: "system-software-update"
                     highlighted: true
-                    enabled: !root.processRunning && !root.gitBusy
+                    enabled: root.canUpdate
                     ToolTip.visible: hovered
                     ToolTip.delay: Kirigami.Units.toolTipDelay
                     ToolTip.text: "Pull the latest changes, then run " + rebuildModeComboBox.currentText
-                    onClicked: {
-                        // First pull the repository, then update system
-                        if (gitManager) {
-                            root.shouldRebuildAfterPull = true;
-                            gitManager.pullRepository();
-                        }
-                    }
+                    onClicked: root.startUpdate()
                 }
 
                 Button {
@@ -889,6 +953,10 @@ ApplicationWindow {
 
             CommitsDialog {
                 id: commitsDialog
+                updateText: root.updateActionText
+                updateToolTip: "Pull the commits, then run " + rebuildModeComboBox.currentText
+                canUpdate: root.canUpdate
+                onUpdateRequested: root.startUpdate()
             }
 
             LogsDialog {

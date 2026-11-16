@@ -266,7 +266,9 @@ void GitManager::setRepositoryUrl(const QString &url) {
     m_repositoryUrl = url;
     m_localPath = getRepositoryLocalPath();
     setCommitsBehind(-1);
+    setCommitsBehindList(QVariantList());
     setLatestFetchedRevision(QString());
+    setLocalRevision(QString());
     saveSettings();
     emit repositoryUrlChanged();
     emit localPathChanged();
@@ -277,7 +279,9 @@ void GitManager::setLocalPath(const QString &path) {
   if (m_localPath != path) {
     m_localPath = path;
     setCommitsBehind(-1);
+    setCommitsBehindList(QVariantList());
     setLatestFetchedRevision(QString());
+    setLocalRevision(QString());
     saveSettings();
     emit localPathChanged();
   }
@@ -308,19 +312,32 @@ void GitManager::setLatestFetchedRevision(const QString &revision) {
   }
 }
 
+void GitManager::setLocalRevision(const QString &revision) {
+  if (m_localRevision != revision) {
+    m_localRevision = revision;
+    emit localRevisionChanged();
+  }
+}
+
 void GitManager::refreshLatestFetchedRevision() {
   git_repository *repo = nullptr;
-  git_oid remoteOid;
+  git_oid oid;
+  char hash[GIT_OID_HEXSZ + 1];
   QString revision;
+  QString localRevision;
   if (git_repository_open(&repo, m_localPath.toUtf8().constData()) == 0) {
-    if (resolveRemoteTrackingOid(repo, &remoteOid)) {
-      char hash[GIT_OID_HEXSZ + 1];
-      git_oid_tostr(hash, sizeof(hash), &remoteOid);
+    if (resolveRemoteTrackingOid(repo, &oid)) {
+      git_oid_tostr(hash, sizeof(hash), &oid);
       revision = QString::fromLatin1(hash);
+    }
+    if (git_reference_name_to_id(&oid, repo, "HEAD") == 0) {
+      git_oid_tostr(hash, sizeof(hash), &oid);
+      localRevision = QString::fromLatin1(hash);
     }
     git_repository_free(repo);
   }
   setLatestFetchedRevision(revision);
+  setLocalRevision(localRevision);
 }
 
 void GitManager::setCommitsBehind(int count) {
@@ -406,6 +423,7 @@ void GitManager::checkForUpdates() {
     if (success) {
       setStatus("Repository cloned successfully");
       // After cloning, check commits behind (should be 0)
+      setCommitsBehindList(QVariantList());
       int behind = calculateCommitsBehind();
       setCommitsBehind(behind);
     } else {
@@ -420,12 +438,10 @@ void GitManager::checkForUpdates() {
 
   bool success = fetchRepository();
   if (success) {
+    // Set the details first, so they are available when the count changes
+    setCommitsBehindList(getCommitsBehindDetails());
     int behind = calculateCommitsBehind();
     setCommitsBehind(behind);
-
-    // Get detailed commit information
-    QVariantList commitDetails = getCommitsBehindDetails();
-    setCommitsBehindList(commitDetails);
 
     if (behind > 0) {
       setStatus(
@@ -513,12 +529,10 @@ void GitManager::cloneOrPullRepository() {
 
   // After successful clone/pull, check how many commits behind we are
   if (success) {
+    // Set the details first, so they are available when the count changes
+    setCommitsBehindList(getCommitsBehindDetails());
     int behind = calculateCommitsBehind();
     setCommitsBehind(behind);
-
-    // Get detailed commit information
-    QVariantList commitDetails = getCommitsBehindDetails();
-    setCommitsBehindList(commitDetails);
   }
 
   setIsBusy(false);
@@ -550,8 +564,8 @@ void GitManager::pullRepository() {
     if (success) {
       setStatus("Repository cloned successfully");
       // After cloning, we're up to date
-      setCommitsBehind(0);
       setCommitsBehindList(QVariantList());
+      setCommitsBehind(0);
       emit pullCompletedForUpdate();
     } else {
       setStatus("Failed to clone repository");
@@ -571,8 +585,8 @@ void GitManager::pullRepository() {
 
   // After successful pull, we should be up to date
   if (success) {
-    setCommitsBehind(0);
     setCommitsBehindList(QVariantList());
+    setCommitsBehind(0);
     emit pullCompletedForUpdate();
   }
 
@@ -951,50 +965,77 @@ QVariantList GitManager::getCommitsBehindDetails() {
     return commitList;
   }
 
+  // Sort commits by time, parents always after their children
+  git_revwalk_sorting(walker, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
+
   // Push the remote OID (where we want to walk to)
   git_revwalk_push(walker, &remote_oid);
 
   // Hide commits reachable from local HEAD
   git_revwalk_hide(walker, &local_oid);
 
-  // Sort commits by time
-  git_revwalk_sorting(walker, GIT_SORT_TIME);
-
-  // Walk through commits
+  // Walk through commits, newest first
   git_oid oid;
-  while (git_revwalk_next(&oid, walker) == 0) {
+  while (commitList.size() < maxCommitsBehindListSize &&
+         git_revwalk_next(&oid, walker) == 0) {
     git_commit *commit = nullptr;
     error = git_commit_lookup(&commit, repo, &oid);
     if (error != 0) {
       continue;
     }
 
-    // Get commit information
-    const char *message = git_commit_message(commit);
     const git_signature *author = git_commit_author(commit);
-    git_time_t time = author->when.time;
+    const QDateTime dateTime = QDateTime::fromSecsSinceEpoch(author->when.time);
 
-    // Convert git_time_t to QDateTime
-    QDateTime dateTime = QDateTime::fromSecsSinceEpoch(time);
+    char sha[GIT_OID_HEXSZ + 1];
+    git_oid_tostr(sha, sizeof(sha), &oid);
+    const QString fullSha = QString::fromLatin1(sha);
 
-    // Get short SHA
-    char short_sha[8];
-    git_oid_tostr(short_sha, 8, &oid);
+    const char *summary = git_commit_summary(commit);
+    const char *body = git_commit_body(commit);
 
-    // Get first line of commit message
-    QString fullMessage = QString::fromUtf8(message);
-    QString shortMessage = fullMessage.split('\n').first();
-    if (shortMessage.length() > 80) {
-      shortMessage = shortMessage.left(77) + "...";
-    }
-
-    // Create a map for this commit
     QVariantMap commitInfo;
-    commitInfo["sha"] = QString(short_sha);
-    commitInfo["message"] = shortMessage;
+    commitInfo["sha"] = fullSha;
+    commitInfo["shortSha"] = fullSha.left(7);
+    commitInfo["message"] = summary ? QString::fromUtf8(summary) : QString();
+    commitInfo["body"] = body ? QString::fromUtf8(body).trimmed() : QString();
     commitInfo["author"] = QString::fromUtf8(author->name);
+    commitInfo["authorEmail"] = QString::fromUtf8(author->email);
     commitInfo["date"] = dateTime.toString("yyyy-MM-dd HH:mm:ss");
+    commitInfo["timestamp"] = dateTime.toMSecsSinceEpoch();
     commitInfo["dateRelative"] = getRelativeTime(dateTime);
+    commitInfo["parentCount"] =
+        static_cast<int>(git_commit_parentcount(commit));
+
+    // Diff statistics against the first parent
+    int filesChanged = -1;
+    int insertions = -1;
+    int deletions = -1;
+    git_tree *tree = nullptr;
+    git_tree *parentTree = nullptr;
+    git_commit *parent = nullptr;
+    if (git_commit_tree(&tree, commit) == 0) {
+      if (git_commit_parentcount(commit) > 0 &&
+          git_commit_parent(&parent, commit, 0) == 0) {
+        git_commit_tree(&parentTree, parent);
+      }
+      git_diff *diff = nullptr;
+      git_diff_stats *stats = nullptr;
+      if (git_diff_tree_to_tree(&diff, repo, parentTree, tree, nullptr) == 0 &&
+          git_diff_get_stats(&stats, diff) == 0) {
+        filesChanged = static_cast<int>(git_diff_stats_files_changed(stats));
+        insertions = static_cast<int>(git_diff_stats_insertions(stats));
+        deletions = static_cast<int>(git_diff_stats_deletions(stats));
+      }
+      git_diff_stats_free(stats);
+      git_diff_free(diff);
+    }
+    git_tree_free(parentTree);
+    git_commit_free(parent);
+    git_tree_free(tree);
+    commitInfo["filesChanged"] = filesChanged;
+    commitInfo["insertions"] = insertions;
+    commitInfo["deletions"] = deletions;
 
     commitList.append(commitInfo);
 

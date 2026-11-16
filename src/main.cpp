@@ -247,6 +247,18 @@ int main(int argc, char *argv[]) {
                      }
                    });
 
+  // Show the window with the new commits, so the user can decide whether to
+  // update
+  QObject::connect(
+      &trayIconManager, &TrayIconManager::showCommitsRequested, [mainWindow]() {
+        if (mainWindow) {
+          mainWindow->show();
+          mainWindow->raise();
+          mainWindow->requestActivate();
+          QMetaObject::invokeMethod(mainWindow, "showCommitsDialog");
+        }
+      });
+
   QObject::connect(&trayIconManager, &TrayIconManager::checkForUpdatesRequested,
                    &gitManager, &GitManager::checkForUpdates);
 
@@ -257,11 +269,15 @@ int main(int argc, char *argv[]) {
                    &QApplication::quit);
 
   // Update tray icon when commits behind changes
-  QObject::connect(&gitManager, &GitManager::commitsBehindChanged,
-                   [&gitManager, &trayIconManager]() {
-                     trayIconManager.setCommitsBehind(
-                         gitManager.commitsBehind());
-                   });
+  QObject::connect(
+      &gitManager, &GitManager::commitsBehindChanged,
+      [&gitManager, &trayIconManager]() {
+        QStringList summaries;
+        for (const QVariant &commit : gitManager.commitsBehindList()) {
+          summaries << commit.toMap().value("message").toString();
+        }
+        trayIconManager.setCommitsBehind(gitManager.commitsBehind(), summaries);
+      });
 
   // Tell the user when a command in the embedded terminal waits for a password
   // and they might not see it, because the window is hidden or not active

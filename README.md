@@ -229,12 +229,14 @@ in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
 - **Auto-fetch Interval**: Configurable automatic fetch interval in minutes
 - **Network Resilience**: Waits for network availability after system resume before checking for updates (10-second timeout)
 - **Smart Refresh**: Automatically checks for repository updates when window becomes visible or is unhidden
-- **Commit History Viewer**: "View Commits" button displays all available updates with detailed information
-  - Short SHA hash (7 characters, monospace font)
-  - Commit author name and message
-  - Relative time (e.g., "2 hours ago") and full timestamp
-  - Clickable commits that open the commit page on the Git forge (GitHub, GitLab, Codeberg, Forgejo, Gitea, Bitbucket, SourceHut)
-  - Manual refresh capability
+- **Commit Review Dialog**: Review the commits that are not pulled yet before deciding whether to update
+  - Opens from the commit count and the "View Commits" button in the main window, the "View New Commits" entry
+    in the tray menu, the "Tools" menu and the right-click menu of the "Updates" row, and the notification about new commits
+  - Commits are grouped by day, with the author, relative time, changed files and added and removed lines
+  - Expand a commit to read its full message, and filter commits by message, author or hash
+  - Open each commit on the Git forge (GitHub, GitLab, Codeberg, Forgejo, Gitea, Bitbucket, SourceHut),
+    or compare all new commits at once where the forge supports it
+  - Update the system, or pull without rebuilding, directly from the dialog
 
 ### 🚀 System Update
 

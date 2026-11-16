@@ -71,6 +71,11 @@ void TrayIconManager::createTrayIcon() {
   connect(m_checkUpdatesAction, &QAction::triggered, this,
           &TrayIconManager::checkForUpdatesRequested);
 
+  m_showCommitsAction = m_trayMenu->addAction(
+      QIcon::fromTheme("view-list-details"), "View New Commits…");
+  connect(m_showCommitsAction, &QAction::triggered, this,
+          &TrayIconManager::showCommitsRequested);
+
   m_ignoreUpdateAction =
       m_trayMenu->addAction(QIcon::fromTheme("download"), "Ignore Updates");
   m_ignoreUpdateAction->setEnabled(false);
@@ -90,8 +95,13 @@ void TrayIconManager::createTrayIcon() {
 
   connect(m_trayIcon, &QSystemTrayIcon::activated, this,
           &TrayIconManager::onActivated);
-  connect(m_trayIcon, &QSystemTrayIcon::messageClicked, this,
-          &TrayIconManager::showWindowRequested);
+  connect(m_trayIcon, &QSystemTrayIcon::messageClicked, this, [this]() {
+    if (m_messageKind == NotificationKind::Updates) {
+      emit showCommitsRequested();
+    } else {
+      emit showWindowRequested();
+    }
+  });
 
   // Set initial icon
   updateIcon();
@@ -112,9 +122,12 @@ void TrayIconManager::updateIcon() {
     qDebug() << "Creating update available icon for" << commitsBehind
              << "commits";
     icon = createUpdateAvailableIcon(commitsBehind);
-    m_trayIcon->setToolTip(QString("Nixbit - %1 update(s) available%2")
-                               .arg(commitsBehind)
-                               .arg(debugSuffix));
+    m_trayIcon->setToolTip(
+        QString("Nixbit - %1%2")
+            .arg(commitsBehind == 1
+                     ? QStringLiteral("1 new commit available")
+                     : QString("%1 new commits available").arg(commitsBehind),
+                 debugSuffix));
 
   } else if (commitsBehind == 0 &&
              m_systemStatus == SystemUpdateStatus::State::NeedsActivation) {
@@ -165,6 +178,13 @@ void TrayIconManager::updateIcon() {
 
   if (m_ignoreUpdateAction) {
     m_ignoreUpdateAction->setEnabled(commitsBehind > 0);
+  }
+  // Stays enabled, so the commits can also be checked when up to date
+  if (m_showCommitsAction) {
+    m_showCommitsAction->setText(
+        commitsBehind == 1  ? QStringLiteral("View 1 New Commit…")
+        : commitsBehind > 1 ? QString("View %1 New Commits…").arg(commitsBehind)
+                            : QStringLiteral("View New Commits…"));
   }
 
   qDebug() << "Setting tray icon, isNull:" << icon.isNull();
@@ -297,16 +317,38 @@ QIcon TrayIconManager::createStatusIcon(const QColor &primary,
   return icon;
 }
 
-void TrayIconManager::setCommitsBehind(int count) {
+void TrayIconManager::setCommitsBehind(int count,
+                                       const QStringList &commitSummaries) {
   qDebug() << "TrayIconManager::setCommitsBehind called with count:" << count
            << "current:" << m_currentCommitsBehind;
   if (count != m_currentCommitsBehind) {
     // Keep tracking updates while the activity badge takes precedence.
-    if (count > m_currentCommitsBehind && m_currentCommitsBehind >= 0) {
-      m_trayIcon->showMessage(
-          "Nixbit - Updates Available",
-          QString("%1 new commit(s) available from origin").arg(count),
-          QSystemTrayIcon::Information, 5000);
+    // Don't replace a password prompt notification, it is more urgent
+    const bool passwordNotificationShown =
+        m_notificationId != 0 &&
+        m_notificationKind == NotificationKind::Password;
+    if (count > m_currentCommitsBehind && m_currentCommitsBehind >= 0 &&
+        !passwordNotificationShown) {
+      // List the newest commits, so the user can tell if updating is worth it
+      constexpr int maxListedCommits = 3;
+      QStringList lines;
+      for (const QString &summary : commitSummaries.mid(0, maxListedCommits)) {
+        lines << QStringLiteral("• ") + summary.toHtmlEscaped();
+      }
+      if (count > lines.size() && !lines.isEmpty()) {
+        lines << QString("and %1 more").arg(count - lines.size());
+      }
+      const QString title =
+          count == 1 ? QStringLiteral("1 new commit available")
+                     : QString("%1 new commits available").arg(count);
+      showNotification(title,
+                       lines.isEmpty()
+                           ? QStringLiteral("Open the commits to decide "
+                                            "whether to update.")
+                           : lines.join('\n'),
+                       NotificationKind::Updates);
+    } else if (count <= 0) {
+      closeNotification(NotificationKind::Updates);
     }
     m_currentCommitsBehind = count;
     updateIcon();
@@ -365,7 +407,9 @@ void TrayIconManager::hide() {
 }
 
 void TrayIconManager::showNotification(const QString &title,
-                                       const QString &message) {
+                                       const QString &message,
+                                       NotificationKind kind) {
+  const bool updates = kind == NotificationKind::Updates;
   // QSystemTrayIcon::showMessage() doesn't offer actions, so talk to the
   // notification server directly
   QDBusMessage call =
@@ -375,33 +419,42 @@ void TrayIconManager::showNotification(const QString &title,
   hints.insert("desktop-entry", "nixbit");
   hints.insert("urgency", QVariant::fromValue(uchar(1)));
   // "default" is triggered by clicking the notification itself
-  const QStringList actions{"default", "Show Nixbit", "show", "Show Nixbit"};
-  // Expire timeout 0 keeps the notification until it is closed
+  const QStringList actions =
+      updates
+          ? QStringList{"default", "View Commits", "commits", "View Commits"}
+          : QStringList{"default", "Show Nixbit", "show", "Show Nixbit"};
+  // Expire timeout 0 keeps the notification until it is closed, -1 uses the
+  // default of the notification server
   call << QStringLiteral("Nixbit") << m_notificationId
-       << QStringLiteral("dialog-password") << title << message << actions
-       << hints << 0;
+       << (updates ? QStringLiteral("system-software-update")
+                   : QStringLiteral("dialog-password"))
+       << title << message << actions << hints << (updates ? -1 : 0);
 
   auto *watcher = new QDBusPendingCallWatcher(
       QDBusConnection::sessionBus().asyncCall(call), this);
   connect(watcher, &QDBusPendingCallWatcher::finished, this,
-          [this, watcher, title, message]() {
+          [this, watcher, title, message, kind, updates]() {
             const QDBusPendingReply<uint> reply = *watcher;
             if (reply.isError()) {
               qWarning() << "Failed to show notification:"
                          << reply.error().message();
               if (m_trayIcon) {
+                m_messageKind = kind;
                 m_trayIcon->showMessage(title, message,
-                                        QSystemTrayIcon::Warning, 30000);
+                                        updates ? QSystemTrayIcon::Information
+                                                : QSystemTrayIcon::Warning,
+                                        updates ? 10000 : 30000);
               }
             } else {
               m_notificationId = reply.value();
+              m_notificationKind = kind;
             }
             watcher->deleteLater();
           });
 }
 
-void TrayIconManager::closeNotification() {
-  if (m_notificationId == 0) {
+void TrayIconManager::closeNotification(NotificationKind kind) {
+  if (m_notificationId == 0 || m_notificationKind != kind) {
     return;
   }
   QDBusMessage call = QDBusMessage::createMethodCall(
@@ -417,10 +470,14 @@ void TrayIconManager::onNotificationActionInvoked(uint id,
   if (id == 0 || id != m_notificationId) {
     return;
   }
-  if (action == "default" || action == "show") {
+  if (m_notificationKind == NotificationKind::Updates) {
+    if (action == "default" || action == "commits") {
+      emit showCommitsRequested();
+    }
+  } else if (action == "default" || action == "show") {
     emit showWindowRequested();
   }
-  closeNotification();
+  closeNotification(m_notificationKind);
 }
 
 void TrayIconManager::onNotificationActivationToken(uint id,
