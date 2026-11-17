@@ -30,6 +30,8 @@ pkgs.testers.runNixOSTest {
     environment.systemPackages = [
       nixbit
       pkgs.python3
+      pkgs.kdotool
+      pkgs.kdePackages.spectacle
     ];
     virtualisation = {
       memorySize = 4096;
@@ -65,6 +67,7 @@ pkgs.testers.runNixOSTest {
     import re
     assert re.fullmatch(r"wayland-[0-9]+", display), display
     machine.wait_for_file("/run/user/1000/" + display, timeout=120)
+    machine.wait_until_succeeds("su - demo -c 'env XDG_RUNTIME_DIR=/run/user/1000 systemctl --user is-active plasma-workspace-wayland.target'", timeout=120)
     machine.succeed("install -d -o demo -g users /home/demo/captures")
     machine.succeed(
         f"su - demo -c 'env XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY={display} "
@@ -74,7 +77,7 @@ pkgs.testers.runNixOSTest {
         "QT_PLUGIN_PATH=${pkgs.kdePackages.plasma-integration}/lib/qt-6/plugins:${pkgs.kdePackages.breeze}/lib/qt-6/plugins "
         "QT_QPA_PLATFORM=wayland QT_QUICK_BACKEND=software "
         "python3 ${../scripts/screenshots.py} --binary ${nixbit}/bin/nixbit "
-        "--output /home/demo/captures/screenshots --overview'"
+        "--output /home/demo/captures/screenshots --overview --framed'"
     )
     machine.copy_from_machine("/home/demo/captures/screenshots", "")
   '';

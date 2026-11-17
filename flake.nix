@@ -129,6 +129,8 @@
             git
             python3
             libwebp
+            kdotool
+            kdePackages.spectacle
           ];
         };
       }

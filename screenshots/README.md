@@ -2,7 +2,8 @@
 
 This directory contains screenshots showcasing the various features and interfaces of Nixbit.
 
-Regenerate them with `just screenshots-vm` or `just screenshots`, then review and
+Regenerate them with `just screenshots-vm` (including window borders) or
+`just screenshots --framed` on Plasma, then review and
 publish with `just screenshots-publish <capture-directory>`.
 See [automatic screenshot documentation](../docs/screenshots.md) for scene coverage,
 requirements and debugging.

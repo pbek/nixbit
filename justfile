@@ -81,7 +81,7 @@ screenshots *args:
 screenshots-publish capture_dir="":
     python3 ./scripts/screenshots.py --publish {{ capture_dir }}
 
-# Capture every scene in a fresh, isolated NixOS Plasma VM
+# Capture every scene with window borders in a fresh NixOS Plasma VM
 [group('screenshots')]
 screenshots-vm *args:
     #!/usr/bin/env bash

@@ -11,6 +11,8 @@
     just
     python3
     libwebp
+    kdotool
+    kdePackages.spectacle
     pkg-config
     libgit2
     libssh2

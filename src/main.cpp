@@ -24,6 +24,7 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickWindow>
+#include <QSaveFile>
 #include <QTimer>
 #include <memory>
 
@@ -81,6 +82,8 @@ int main(int argc, char *argv[]) {
         "screenshot-scene", "Render an isolated demo scene", "scene"));
     parser.addOption(QCommandLineOption(
         "screenshot-output", "Save the demo window as PNG and exit", "path"));
+    parser.addOption(QCommandLineOption(
+        "screenshot-keep-open", "Keep the demo open for compositor capture"));
 
     parser.process(coreApp);
 
@@ -138,6 +141,8 @@ int main(int argc, char *argv[]) {
       "screenshot-scene", "Render an isolated demo scene", "scene"));
   guiParser.addOption(QCommandLineOption(
       "screenshot-output", "Save the demo window as PNG and exit", "path"));
+  guiParser.addOption(QCommandLineOption(
+      "screenshot-keep-open", "Keep the demo open for compositor capture"));
   guiParser.process(app);
 
   // Do not even construct the real managers in demo mode: their constructors
@@ -200,15 +205,19 @@ int main(int argc, char *argv[]) {
     }
     QTimer::singleShot(2500, &app, [&]() {
       const QImage image = window->grabWindow();
-      app.exit(!image.isNull() &&
-                       image.save(guiParser.value("screenshot-output"), "PNG")
-                   ? 0
-                   : 1);
+      QSaveFile file(guiParser.value("screenshot-output"));
+      if (image.isNull() || !file.open(QIODevice::WriteOnly) ||
+          !image.save(&file, "PNG") || !file.commit()) {
+        app.exit(1);
+      } else if (!guiParser.isSet("screenshot-keep-open")) {
+        app.exit(0);
+      }
     });
     return app.exec();
   }
-  if (guiParser.isSet("screenshot-output")) {
-    qCritical() << "--screenshot-output requires --screenshot-scene";
+  if (guiParser.isSet("screenshot-output") ||
+      guiParser.isSet("screenshot-keep-open")) {
+    qCritical() << "Screenshot output options require --screenshot-scene";
     return 1;
   }
 

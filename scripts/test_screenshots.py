@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 SPEC = importlib.util.spec_from_file_location("screenshots", Path(__file__).with_name("screenshots.py"))
 screenshots = importlib.util.module_from_spec(SPEC)
@@ -21,9 +21,9 @@ class ScreenshotTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
 
-    def png(self, path):
+    def png(self, path, height=900):
         path.write_bytes(screenshots.PNG_SIGNATURE + b"\0\0\0\rIHDR" +
-                         (1100).to_bytes(4, "big") + (900).to_bytes(4, "big"))
+                         (1100).to_bytes(4, "big") + height.to_bytes(4, "big"))
 
     def test_scene_lists_match_entry_point(self):
         source = (screenshots.ROOT / "src/main.cpp").read_text()
@@ -104,6 +104,76 @@ class ScreenshotTests(unittest.TestCase):
                 screenshots.capture(binary, output, ["packages"], 1)
         self.assertFalse((output / "capture.json").exists())
         self.assertTrue((output / "packages.log").is_file())
+
+    def framed_capture(self, change_focus=False, frame_height=960):
+        ready = self.root / "ready.png"
+        image = self.root / "published.png"
+        self.png(ready)
+        process = Mock(pid=1234)
+        process.poll.return_value = None
+        active = ["original-window"]
+
+        def desktop(env, *arguments):
+            action = arguments[1]
+            if action == "getactivewindow":
+                return active[0]
+            if action == "search":
+                return "demo-window"
+            if action == "getwindowpid":
+                return "1234"
+            if action == "windowactivate":
+                active[0] = arguments[2]
+            return ""
+
+        def spectacle(command, **kwargs):
+            self.assertIn("--activewindow", command)
+            self.assertIn("--background", command)
+            self.assertNotIn("--fullscreen", command)
+            self.assertNotIn("--no-decoration", command)
+            self.assertNotIn("--no-shadow", command)
+            self.assertNotIn("--pointer", command)
+            self.png(Path(command[-1]), height=frame_height)
+            if change_focus:
+                active[0] = "unrelated-window"
+
+        with patch.object(screenshots.subprocess, "Popen", return_value=process) as launch, \
+                patch.object(screenshots, "desktop_command", side_effect=desktop), \
+                patch.object(screenshots.subprocess, "run", side_effect=spectacle), \
+                patch.object(screenshots.time, "sleep"):
+            if change_focus or frame_height <= 900:
+                with self.assertRaisesRegex(RuntimeError, "discarded" if change_focus else "window frame"):
+                    screenshots.capture_frame(["nixbit"], {}, ready, image, 45, Mock())
+                self.assertFalse(image.exists())
+            else:
+                screenshots.capture_frame(["nixbit"], {}, ready, image, 45, Mock())
+                screenshots.validate_png(image)
+            self.assertIn("--screenshot-keep-open", launch.call_args.args[0])
+        process.terminate.assert_called_once()
+        process.wait.assert_called_once()
+        self.assertEqual(active[0], "original-window")
+
+    def test_frame_includes_decorations_and_restores_focus(self):
+        self.framed_capture()
+
+    def test_frame_discards_image_if_focus_changes(self):
+        self.framed_capture(change_focus=True)
+
+    def test_frame_rejects_undecorated_capture(self):
+        self.framed_capture(frame_height=900)
+
+    def test_frame_rejects_foreign_window(self):
+        process = Mock(pid=1234)
+        process.poll.return_value = None
+        with patch.object(screenshots, "desktop_command", side_effect=["demo-window", "5678"]):
+            with self.assertRaisesRegex(RuntimeError, "ownership"):
+                screenshots.verify_window({}, "demo-window", process)
+
+    def test_frame_requires_capture_tools_before_creating_output(self):
+        output = self.root / "not-created"
+        with patch.object(screenshots.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "kdotool"):
+                screenshots.capture(self.root / "nixbit", output, ["packages"], 45, framed=True)
+        self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

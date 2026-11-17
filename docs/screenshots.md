@@ -10,6 +10,7 @@ illustrative, not a live report of nixpkgs.
 ```bash
 just flake-build
 just screenshots
+just screenshots --framed
 just screenshots --scenes packages packages-details packages-search
 ```
 
@@ -21,9 +22,18 @@ and `capture.json` identifying the binary version and completed scenes. Use
 Only desktop appearance settings are copied to disposable directories. Qt
 renders the application window contents directly, including embedded dialogs;
 desktop contents, other windows, window decorations and the pointer are never
-captured. This works on X11 and Wayland without Spectacle or focus automation.
+captured in the default frameless mode. This works on X11 and Wayland without
+Spectacle or focus automation.
 For CI without a desktop, use `QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software`.
 Prefer the VM for consistent Plasma styling and matching Qt plugins.
+
+Use `--framed` on a Plasma 6 desktop to include the real window borders, title
+bar and shadow. This requires `kdotool` and Spectacle, provided by `nix develop`
+and devenv. The application stays open until Spectacle captures its active
+window; the script checks window ownership and focus before and after capture,
+discards images if focus changed, and restores the previously active window.
+Avoid switching windows during framed capture. No pointer or full-desktop
+capture is requested. Spectacle also uses disposable settings.
 
 ## Isolated NixOS Plasma VM
 
@@ -37,7 +47,7 @@ a Nix builder configured to expose KVM (`system-features = kvm`). The VM uses
 the locked nixpkgs and a disposable Plasma session. It needs about 4 GiB of RAM.
 Nix may download substantial dependencies on the first run.
 
-The VM recipe captures every scene, copies results into a fresh
+The VM recipe captures every scene **with borders and shadows**, copies results into a fresh
 `build-screenshots/<timestamp>-vm` directory, and does not replace `result`.
 Extra arguments go to `nix build`, for example `--show-trace`.
 Each recipe run changes the capture derivation so existing screenshots are not
