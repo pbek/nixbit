@@ -63,8 +63,14 @@ qt_add_executable(
   src/systemresumedetector.h
   src/generationmanager.cpp
   src/generationmanager.h
+  src/packagemanager.cpp
+  src/packagemanager.h
+  src/packagesearch.cpp
+  src/packagesearch.h
   src/utils/cli.cpp
-  src/utils/cli.h)
+  src/utils/cli.h
+  src/utils/nix.cpp
+  src/utils/nix.h)
 
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -88,6 +94,7 @@ qt_add_qml_module(
   src/AboutDialog.qml
   src/GenerationsDialog.qml
   src/CommitsDialog.qml
+  src/PackagesDialog.qml
   src/LogsDialog.qml
   src/KwiTerminalPane.qml
   src/RevisionChip.qml

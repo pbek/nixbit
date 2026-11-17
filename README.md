@@ -220,6 +220,34 @@ in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
   and when the running system changes
 - **Visual Indicators**: The generation list marks the running generation and the boot default
 
+### 🧩 User Packages
+
+Manage the packages you installed for your user with `nix profile add nixpkgs#<package>`,
+without rebuilding your system. Open the "Packages" dialog with the "Packages…" button
+next to "User packages" in the main window, or from the "Tools" menu.
+
+- **Installed Packages**: Lists the packages of your profile installed from a flake, with their version,
+  description, license, disk usage including dependencies, the flake they were installed from,
+  and when they were installed or last updated
+  - Expand a package to see its homepage, the command it provides, its store paths and more
+  - Filter packages, and sort them by name, size or last change
+- **Package Updates**: Compares your packages with the newest version of the flake they were installed from,
+  and shows the version each package would be updated to, or whether it was only rebuilt
+  - Updates are checked in the background, when the dialog is opened, and with the refresh button
+  - Update single packages, or all packages with `nix profile upgrade --all`
+- **Package Search**: Find packages in nixpkgs by name or description and install them with
+  `nix profile add nixpkgs#<package>`
+  - All packages are loaded once with `nix search`, so the results update while you type.
+    The first search evaluates nixpkgs, which takes a minute or two; later searches use the evaluation cache of Nix.
+- **Progress and Errors**: Installs, updates and removals show the current step next to the package,
+  and the output of Nix can be shown
+  - Unfree packages can be allowed for a single install or update (`NIXPKGS_ALLOW_UNFREE=1 … --impure`)
+  - Packages that contain a file of an installed package can be installed with a lower priority
+
+> [!NOTE]
+> Profiles created with `nix-env` can't be managed with `nix profile`. Entries that weren't
+> installed from a flake, e.g. the `home-manager-path` of Home Manager, are listed but can't be updated.
+
 ### 📦 Repository Management
 
 - **Repository URL Configuration**: Input field for Git repository URLs with confirmation dialog for changes

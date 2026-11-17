@@ -128,8 +128,8 @@ ApplicationWindow {
     // Keyboard shortcut for search (Ctrl+F)
     Shortcut {
         sequence: StandardKey.Find
-        // The commits dialog uses the shortcut to filter commits
-        enabled: !commitsDialog.opened
+        // The commits and packages dialogs use the shortcut to filter
+        enabled: !commitsDialog.opened && !packagesDialog.opened
         onActivated: searchBar.show()
     }
 
@@ -304,6 +304,17 @@ ApplicationWindow {
             }
             MenuSeparator {}
             Action {
+                text: root.packageUpdates > 0 ? (root.packageUpdates === 1 ? "&Packages (1 Update)…" : "&Packages (" + root.packageUpdates + " Updates)…") : "&Packages…"
+                icon.name: "package-x-generic"
+                onTriggered: packagesDialog.openInstalled()
+            }
+            Action {
+                text: "&Find Packages…"
+                icon.name: "search"
+                onTriggered: packagesDialog.openSearch()
+            }
+            MenuSeparator {}
+            Action {
                 text: "&Settings…"
                 icon.name: "configure"
                 shortcut: StandardKey.Preferences
@@ -364,6 +375,9 @@ ApplicationWindow {
         }
         return "The repository wasn't checked yet, or the check failed. See \"Status\" for details.";
     }
+
+    readonly property int packageCount: packageManager ? packageManager.packageCount : 0
+    readonly property int packageUpdates: packageManager ? packageManager.updateCount : 0
 
     readonly property int runningGeneration: generationManager ? generationManager.currentGenerationNumber : 0
     readonly property int bootGeneration: generationManager ? generationManager.bootGenerationNumber : 0
@@ -441,6 +455,16 @@ ApplicationWindow {
                             ToolTip.visible: hovered
                             ToolTip.delay: Kirigami.Units.toolTipDelay
                             ToolTip.text: "Show the commits that are not pulled yet"
+                        }
+
+                        Button {
+                            visible: root.packageUpdates > 0
+                            text: root.packageUpdates === 1 ? "1 Package Update…" : root.packageUpdates + " Package Updates…"
+                            icon.name: "package-x-generic"
+                            onClicked: packagesDialog.openInstalled()
+                            ToolTip.visible: hovered
+                            ToolTip.delay: Kirigami.Units.toolTipDelay
+                            ToolTip.text: "Show the packages installed with nix profile add that can be updated"
                         }
 
                         SystemStatusIndicator {
@@ -716,6 +740,74 @@ ApplicationWindow {
                                     onClicked: generationsDialog.open()
                                 }
                             }
+
+                            // Packages installed with "nix profile add"
+                            RowLayout {
+                                Kirigami.FormData.label: "User packages:"
+                                Layout.fillWidth: true
+                                spacing: Kirigami.Units.largeSpacing
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Kirigami.Units.smallSpacing
+
+                                    HoverHandler {
+                                        id: packagesHover
+                                    }
+
+                                    ToolTip.visible: packagesHover.hovered
+                                    ToolTip.delay: Kirigami.Units.toolTipDelay
+                                    ToolTip.text: "Packages installed for your user with nix profile add, separate from the system configuration." + (packageManager && packageManager.lastUpdateCheck > 0 ? " Checked for updates " + Utils.relativeTime(packageManager.lastUpdateCheck, Date.now()) + "." : "")
+
+                                    BusyIndicator {
+                                        implicitWidth: Kirigami.Units.iconSizes.small
+                                        implicitHeight: implicitWidth
+                                        padding: 0
+                                        running: packageManager !== null && (packageManager.isBusy || packageManager.isCheckingUpdates)
+                                        visible: running
+                                    }
+
+                                    Label {
+                                        id: packagesLabel
+                                        readonly property bool linked: root.packageUpdates > 0
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
+                                        text: {
+                                            if (!packageManager)
+                                                return "";
+                                            if (packageManager.isBusy)
+                                                return packageManager.activityText + "…";
+                                            if (!packageManager.loaded)
+                                                return packageManager.error !== "" ? "Unavailable" : "Loading…";
+                                            if (root.packageUpdates > 0)
+                                                return root.packageUpdates === 1 ? "1 update available" : root.packageUpdates + " updates available";
+                                            if (root.packageCount === 0)
+                                                return "None installed";
+                                            return (root.packageCount === 1 ? "1 package" : root.packageCount + " packages") + (packageManager.isCheckingUpdates ? " · checking for updates…" : packageManager.lastUpdateCheck > 0 ? " · up to date" : "");
+                                        }
+                                        font.bold: linked
+                                        font.underline: linked && packagesLabelHover.hovered
+                                        color: linked ? Kirigami.Theme.neutralTextColor : root.packageCount > 0 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
+                                        Accessible.role: linked ? Accessible.Link : Accessible.StaticText
+
+                                        HoverHandler {
+                                            id: packagesLabelHover
+                                            cursorShape: packagesLabel.linked ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                        }
+
+                                        TapHandler {
+                                            enabled: packagesLabel.linked
+                                            onTapped: packagesDialog.openInstalled()
+                                        }
+                                    }
+                                }
+
+                                Button {
+                                    text: "Packages…"
+                                    icon.name: "package-x-generic"
+                                    onClicked: packagesDialog.openInstalled()
+                                }
+                            }
                         }
 
                         Kirigami.Separator {
@@ -961,6 +1053,10 @@ ApplicationWindow {
 
             LogsDialog {
                 id: logsDialog
+            }
+
+            PackagesDialog {
+                id: packagesDialog
             }
 
             // System Resources Section

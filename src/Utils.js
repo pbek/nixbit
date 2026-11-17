@@ -131,6 +131,34 @@ function relativeTime(timestamp, now) {
 }
 
 /**
+ * Formats a size in bytes, e.g. "38.5 MiB" like nix does
+ * @param {number} bytes - The size in bytes
+ * @returns {string} The formatted size, or an empty string if unknown
+ */
+function formatBytes(bytes) {
+  if (bytes === undefined || bytes === null || bytes < 0) {
+    return "";
+  }
+  var units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  var value = bytes;
+  var unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return (unit === 0 ? value : value.toFixed(1)) + " " + units[unit];
+}
+
+/**
+ * Formats a number with the separators of the locale, e.g. "113,522"
+ * @param {number} value - The number
+ * @returns {string} The formatted number
+ */
+function formatNumber(value) {
+  return Number(value).toLocaleString(Qt.locale(), "f", 0);
+}
+
+/**
  * Opens a terminal in the specified directory
  * Tries multiple terminal emulators in order of preference
  * @param {string} path - The directory path to open the terminal in

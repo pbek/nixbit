@@ -2,6 +2,8 @@
 #include "gitmanager.h"
 #include "logmanager.h"
 #include "outputhighlighter.h"
+#include "packagemanager.h"
+#include "packagesearch.h"
 #include "processmanager.h"
 #include "settingsmanager.h"
 #include "systemmonitor.h"
@@ -175,6 +177,18 @@ int main(int argc, char *argv[]) {
   QObject::connect(&systemUpdateStatus, &SystemUpdateStatus::statusChanged,
                    &generationManager, &GenerationManager::loadGenerations);
 
+  // Packages installed with "nix profile add", and the search for new ones
+  PackageManager packageManager;
+  engine.rootContext()->setContextProperty("packageManager", &packageManager);
+  PackageSearch packageSearch;
+  engine.rootContext()->setContextProperty("packageSearch", &packageSearch);
+  QObject::connect(&packageManager, &PackageManager::packagesChanged,
+                   &packageSearch, [&]() {
+                     packageSearch.setInstalledAttrNames(
+                         packageManager.installedAttrNames());
+                   });
+  packageManager.refresh();
+
   // Create and register OutputHighlighter
   OutputHighlighter outputHighlighter;
   engine.rootContext()->setContextProperty("outputHighlighter",
@@ -322,6 +336,8 @@ int main(int argc, char *argv[]) {
       }
     } else if (gitManager.isBusy()) {
       trayIconManager.setActivity("Updating repository");
+    } else if (packageManager.isBusy()) {
+      trayIconManager.setActivity(packageManager.activityText());
     } else {
       trayIconManager.setActivity(QString());
     }
@@ -333,6 +349,8 @@ int main(int argc, char *argv[]) {
   QObject::connect(&processManager, &ProcessManager::isPausedChanged,
                    &trayIconManager, updateTrayActivity);
   QObject::connect(&processManager, &ProcessManager::waitingForPasswordChanged,
+                   &trayIconManager, updateTrayActivity);
+  QObject::connect(&packageManager, &PackageManager::operationChanged,
                    &trayIconManager, updateTrayActivity);
   updateTrayActivity();
 

@@ -1,5 +1,31 @@
 # Nixbit Changelog
 
+## 1.6.0
+
+- **Packages installed with `nix profile add` can now be managed in Nixbit**
+  - The new "Packages" dialog opens from the "User packages" row in the main window and the "Tools" menu
+  - Each package shows its version, description, license, disk usage including dependencies,
+    the flake it was installed from, and when it was installed or last updated
+  - Details like the homepage, the command it provides and its store paths can be expanded,
+    and packages can be filtered and sorted by name, size or last change
+  - Profile entries that weren't installed from a flake, e.g. by Home Manager, are listed below
+- **Updates of the packages are found and installed**
+  - Nixbit compares your packages with the newest version of the flake they were installed from,
+    shows the version they would be updated to, and marks packages that were only rebuilt
+  - Updates are checked in the background and when the dialog is opened, and are shown in the main window
+  - Update single packages, or all of them with `nix profile upgrade --all`
+- **New packages can be searched in nixpkgs and installed**
+  - Search all packages of nixpkgs by name or description, with results updating while you type
+  - The first search evaluates nixpkgs once with progress shown, later searches start instantly
+  - Install packages with `nix profile add nixpkgs#<package>` directly from the results
+  - Installed packages are marked in the results, and can be removed again from the installed packages
+- **Installs, updates and removals show their progress**
+  - The current step, e.g. which package is downloaded or built, is shown next to the package,
+    and the full output of Nix can be shown
+  - Unfree packages can be allowed for a single install or update,
+    and packages that conflict with an installed one can be installed with a lower priority
+  - The tray icon shows the activity while packages are changed
+
 ## 1.5.0
 
 - **New commits can now be reviewed everywhere updates are shown**
