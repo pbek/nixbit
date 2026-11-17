@@ -258,6 +258,7 @@ void PackageManager::refresh() {
         setError(QString());
         const bool firstLoad = !m_loaded;
         parseProfile(result.standardOutput);
+        loadInstallations();
         readHistory();
         applyUpdates();
         m_loaded = true;
@@ -297,6 +298,7 @@ void PackageManager::parseProfile(const QByteArray &json) {
 
   QList<Package> packages;
   QStringList otherEntries;
+  QHash<QString, QStringList> otherEntryPaths;
 
   const auto addElement = [&](const QString &name, const QJsonObject &element) {
     Package package;
@@ -311,6 +313,7 @@ void PackageManager::parseProfile(const QByteArray &json) {
 
     if (package.attrPath.isEmpty() || package.originalUrl.isEmpty()) {
       otherEntries << name;
+      otherEntryPaths.insert(name, package.storePaths);
       return;
     }
 
@@ -354,6 +357,102 @@ void PackageManager::parseProfile(const QByteArray &json) {
 
   m_packages = packages;
   m_otherEntries = otherEntries;
+  m_otherEntryPaths = otherEntryPaths;
+}
+
+void PackageManager::loadInstallations() {
+  // Environments whose packages are the store paths they reference, e.g. the
+  // system-path of environment.systemPackages
+  struct Environment {
+    QString source;
+    QString description;
+  };
+  QHash<QString, Environment> environments;
+  const auto addEnvironment = [&](const QString &path, const QString &source,
+                                  const QString &description) {
+    const QString storePath = QFileInfo(path).canonicalFilePath();
+    if (storePath.startsWith("/nix/store/") &&
+        !environments.contains(storePath)) {
+      environments.insert(storePath, {source, description});
+    }
+  };
+
+  addEnvironment("/run/current-system/sw", "system config",
+                 "your system configuration");
+  const QString user = qEnvironmentVariable("USER");
+  if (!user.isEmpty()) {
+    addEnvironment("/etc/profiles/per-user/" + user, "user config",
+                   "your NixOS user configuration");
+  }
+  for (auto it = m_otherEntryPaths.constBegin();
+       it != m_otherEntryPaths.constEnd(); ++it) {
+    const bool homeManager = it.key().contains("home-manager");
+    for (const QString &path : it.value()) {
+      addEnvironment(
+          path, homeManager ? QStringLiteral("Home Manager") : it.key(),
+          homeManager ? QStringLiteral("Home Manager")
+                      : QStringLiteral("the profile entry %1").arg(it.key()));
+    }
+  }
+
+  if (environments.isEmpty()) {
+    if (!m_installations.isEmpty()) {
+      m_installations.clear();
+      emit installationsChanged();
+    }
+    return;
+  }
+
+  Utils::Nix::run(
+      this, QStringList{"path-info", "--json"} + environments.keys(),
+      [this, environments](const Utils::Nix::Result &result) {
+        if (!result.ok()) {
+          qWarning() << "Failed to read installed environments:"
+                     << result.errorMessage();
+          return;
+        }
+
+        // References of every environment, keyed by its store path name
+        QHash<QString, QJsonArray> references;
+        const QJsonDocument document =
+            QJsonDocument::fromJson(result.standardOutput);
+        if (document.isObject()) {
+          const QJsonObject object = document.object();
+          for (auto it = object.constBegin(); it != object.constEnd(); ++it) {
+            references.insert(
+                storeName(it.key()),
+                it.value().toObject().value("references").toArray());
+          }
+        } else {
+          for (const QJsonValue &value : document.array()) {
+            const QJsonObject info = value.toObject();
+            references.insert(storeName(info.value("path").toString()),
+                              info.value("references").toArray());
+          }
+        }
+
+        Utils::Nix::Installations installations;
+        for (auto it = environments.constBegin(); it != environments.constEnd();
+             ++it) {
+          QSet<QString> seen;
+          for (const QJsonValue &reference :
+               references.value(storeName(it.key()))) {
+            const QString path = reference.toString();
+            const QString key = Utils::Nix::parseStoreName(path).name.toLower();
+            const QString version = Utils::Nix::versionFromStorePath(path);
+            // Outputs of the same package, e.g. jq-1.8.2-bin and jq-1.8.2-man
+            if (version.isEmpty() || seen.contains(key + '-' + version)) {
+              continue;
+            }
+            seen.insert(key + '-' + version);
+            installations[key].append(
+                {it.value().source, it.value().description, version});
+          }
+        }
+
+        m_installations = installations;
+        emit installationsChanged();
+      });
 }
 
 void PackageManager::readHistory() {

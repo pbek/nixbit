@@ -237,6 +237,8 @@ next to "User packages" in the main window, or from the "Tools" menu.
   - Update single packages, or all packages with `nix profile upgrade --all`
 - **Package Search**: Find packages in nixpkgs by name or description and install them with
   `nix profile add nixpkgs#<package>`
+  - Packages that are already installed by other means are marked, e.g. "In system config" for
+    `environment.systemPackages`, "In user config" for `users.users.<name>.packages` or "In Home Manager"
   - All packages are loaded once with `nix search`, so the results update while you type.
     The first search evaluates nixpkgs, which takes a minute or two; later searches use the evaluation cache of Nix.
 - **Progress and Errors**: Installs, updates and removals show the current step next to the package,

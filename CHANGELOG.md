@@ -19,6 +19,8 @@
   - The first search evaluates nixpkgs once with progress shown, later searches start instantly
   - Install packages with `nix profile add nixpkgs#<package>` directly from the results
   - Installed packages are marked in the results, and can be removed again from the installed packages
+  - Packages already installed by your system configuration, your NixOS user configuration
+    or Home Manager are marked as well, with their version if it differs from nixpkgs
 - **Installs, updates and removals show their progress**
   - The current step, e.g. which package is downloaded or built, is shown next to the package,
     and the full output of Nix can be shown

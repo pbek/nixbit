@@ -34,6 +34,15 @@ void PackageSearch::setInstalledAttrNames(const QStringList &names) {
   updateResults();
 }
 
+void PackageSearch::setInstallations(
+    const Utils::Nix::Installations &installations) {
+  if (installations == m_installations) {
+    return;
+  }
+  m_installations = installations;
+  updateResults();
+}
+
 void PackageSearch::setProgress(double progress, const QString &status) {
   m_progress = progress;
   m_status = status;
@@ -319,6 +328,40 @@ void PackageSearch::updateResults() {
     result["version"] = entry->version;
     result["description"] = entry->description;
     result["installed"] = m_installed.contains(entry->attrName);
+
+    // Installed by e.g. the system configuration. Store paths only have the
+    // name and version, so packages of nested sets like python3Packages.*,
+    // which often share their name with other packages, need the same version.
+    const QList<Utils::Nix::Installation> installations = m_installations.value(
+        entry->pnameLower.isEmpty() ? entry->lastNameLower : entry->pnameLower);
+    // A package can be installed by several sources, e.g. the system
+    // configuration and Home Manager
+    QStringList sources;
+    QStringList descriptions;
+    QString installedVersion;
+    const auto addMatches = [&](bool sameVersion) {
+      for (const Utils::Nix::Installation &installation : installations) {
+        if (sameVersion && installation.version != entry->version) {
+          continue;
+        }
+        if (installedVersion.isEmpty()) {
+          installedVersion = installation.version;
+        }
+        if (installation.version == installedVersion &&
+            !sources.contains(installation.source)) {
+          sources << installation.source;
+          descriptions << installation.description;
+        }
+      }
+    };
+    addMatches(true);
+    if (sources.isEmpty() && !entry->attrName.contains('.')) {
+      addMatches(false);
+    }
+    result["installedBy"] = sources.join(QStringLiteral(" & "));
+    result["installedByDescription"] =
+        descriptions.join(QStringLiteral(" and "));
+    result["installedVersion"] = installedVersion;
     m_results << result;
   }
   emit resultsChanged();

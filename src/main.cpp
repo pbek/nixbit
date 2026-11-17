@@ -187,6 +187,11 @@ int main(int argc, char *argv[]) {
                      packageSearch.setInstalledAttrNames(
                          packageManager.installedAttrNames());
                    });
+  QObject::connect(&packageManager, &PackageManager::installationsChanged,
+                   &packageSearch, [&]() {
+                     packageSearch.setInstallations(
+                         packageManager.installations());
+                   });
   packageManager.refresh();
 
   // Create and register OutputHighlighter

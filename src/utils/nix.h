@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QHash>
 #include <QObject>
 #include <QProcess>
 #include <QString>
@@ -46,6 +47,31 @@ QStringList splitAttrPath(const QString &attrPath);
 
 // Version part of a store path name like /nix/store/<hash>-jq-1.8.2-bin
 QString versionFromStorePath(const QString &storePath);
+
+// Name and version of a store path like /nix/store/<hash>-jq-1.8.2-bin, split
+// like builtins.parseDrvName, so the version may end with an output name
+struct StoreName {
+  QString name;
+  QString version;
+};
+StoreName parseStoreName(const QString &storePath);
+
+// A package installed other than with "nix profile add", e.g. by the system
+// configuration
+struct Installation {
+  // Short label, e.g. "system config"
+  QString source;
+  // Description, e.g. "your system configuration"
+  QString description;
+  QString version;
+
+  bool operator==(const Installation &other) const {
+    return source == other.source && description == other.description &&
+           version == other.version;
+  }
+};
+// Installations keyed by the lower case package name
+using Installations = QHash<QString, QList<Installation>>;
 
 } // namespace Nix
 } // namespace Utils

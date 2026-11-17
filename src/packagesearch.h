@@ -12,6 +12,8 @@
 #include <QVector>
 #include <memory>
 
+#include "utils/nix.h"
+
 // Searches the packages of nixpkgs. All packages are loaded once with
 // "nix search", which uses the evaluation cache of nix after the first time,
 // then searching is done locally while typing.
@@ -52,6 +54,8 @@ public:
   int matchCount() const { return m_matchCount; }
 
   void setInstalledAttrNames(const QStringList &names);
+  // Packages installed other than with "nix profile add"
+  void setInstallations(const Utils::Nix::Installations &installations);
 
 public slots:
   // Loads the package index if it isn't loaded yet, or again if forced
@@ -102,6 +106,7 @@ private:
   QVariantList m_results;
   int m_matchCount = 0;
   QSet<QString> m_installed;
+  Utils::Nix::Installations m_installations;
 };
 
 #endif // PACKAGESEARCH_H

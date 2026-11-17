@@ -484,6 +484,9 @@ Dialog {
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // The hidden tab has no width, so its wrapped texts would make it
+            // much taller than the dialog
+            Layout.minimumHeight: 0
             currentIndex: packagesDialog.currentTab
 
             // Installed packages
@@ -1402,6 +1405,10 @@ Dialog {
                                 readonly property string attrName: modelData.attrName
                                 readonly property bool installed: modelData.installed
                                 readonly property bool installing: packagesDialog.busy && packagesDialog.operation === "install" && packagesDialog.operationTargets.indexOf(attrName) !== -1
+                                // Installed other than with nix profile add, e.g. by the system configuration
+                                readonly property string installedBy: modelData.installedBy || ""
+                                readonly property bool sameVersionInstalled: modelData.installedVersion === modelData.version
+                                readonly property string installedByText: installedBy === "" ? "" : sameVersionInstalled ? "Version " + modelData.version + " is already installed by " + modelData.installedByDescription + "." : modelData.installedByDescription.charAt(0).toUpperCase() + modelData.installedByDescription.slice(1) + " installs version " + modelData.installedVersion + ", nixpkgs has " + modelData.version + "."
 
                                 width: ListView.view.width
                                 padding: Kirigami.Units.largeSpacing
@@ -1472,6 +1479,21 @@ Dialog {
                                                 tint: Kirigami.Theme.positiveTextColor
                                             }
 
+                                            // Installed by e.g. the system configuration
+                                            Badge {
+                                                visible: searchDelegate.installedBy !== ""
+                                                text: "In " + searchDelegate.installedBy + (searchDelegate.sameVersionInstalled ? "" : " · " + searchDelegate.modelData.installedVersion)
+                                                tint: Kirigami.Theme.linkColor
+
+                                                HoverHandler {
+                                                    id: installedByHover
+                                                }
+
+                                                ToolTip.visible: installedByHover.hovered
+                                                ToolTip.delay: Kirigami.Units.toolTipDelay
+                                                ToolTip.text: searchDelegate.installedByText
+                                            }
+
                                             Item {
                                                 Layout.fillWidth: true
                                             }
@@ -1516,10 +1538,12 @@ Dialog {
                                         visible: !searchDelegate.installed && !searchDelegate.installing
                                         text: "Install"
                                         icon.name: "download"
+                                        // Installing another copy is rarely needed
+                                        flat: searchDelegate.installedBy !== ""
                                         enabled: !packagesDialog.busy
                                         ToolTip.visible: hovered
                                         ToolTip.delay: Kirigami.Units.toolTipDelay
-                                        ToolTip.text: "nix profile add nixpkgs#" + searchDelegate.attrName
+                                        ToolTip.text: (searchDelegate.installedBy !== "" ? searchDelegate.installedByText + " Installing it adds a separate copy to your profile.\n" : "") + "nix profile add nixpkgs#" + searchDelegate.attrName
                                         onClicked: packageManager.install(searchDelegate.attrName)
                                     }
 

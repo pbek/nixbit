@@ -12,6 +12,8 @@
 #include <QVariantList>
 #include <functional>
 
+#include "utils/nix.h"
+
 // Packages of the user profile that were installed with
 // "nix profile add <flake>#<package>", e.g. "nix profile add nixpkgs#hello"
 class PackageManager : public QObject {
@@ -84,6 +86,9 @@ public:
   QString operationStatus() const { return m_operationStatus; }
   QString operationLog() const { return m_operationLog.join('\n'); }
   QString activityText() const;
+  // Packages installed by the system or user configuration, Home Manager or
+  // other profile entries, see installationsChanged()
+  Utils::Nix::Installations installations() const { return m_installations; }
 
   // First of the names that the icon theme has an icon for, e.g. the icon of
   // an application named after its program, or an empty string
@@ -109,6 +114,7 @@ public slots:
 
 signals:
   void packagesChanged();
+  void installationsChanged();
   void isLoadingChanged();
   void errorChanged();
   void updateCheckChanged();
@@ -183,6 +189,7 @@ private:
   void readHistory();
   void loadSizes(int serial);
   void loadMetadata(int serial);
+  void loadInstallations();
   void finishLoadStep(int serial);
   void applyUpdates();
   void finishUpdateCheck();
@@ -220,6 +227,9 @@ private:
 
   QList<Package> m_packages;
   QStringList m_otherEntries;
+  // Store paths of the other entries, keyed by their name
+  QHash<QString, QStringList> m_otherEntryPaths;
+  Utils::Nix::Installations m_installations;
   qint64 m_totalSize = -1;
   bool m_isLoading = false;
   bool m_loaded = false;

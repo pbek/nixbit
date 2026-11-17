@@ -124,7 +124,7 @@ QStringList splitAttrPath(const QString &attrPath) {
   return parts;
 }
 
-QString versionFromStorePath(const QString &storePath) {
+StoreName parseStoreName(const QString &storePath) {
   // /nix/store/<32 character hash>-<name>
   const QString baseName = storePath.section('/', -1);
   const QString name = baseName.mid(baseName.indexOf('-') + 1);
@@ -134,13 +134,21 @@ QString versionFromStorePath(const QString &storePath) {
   static const QRegularExpression versionStart(QStringLiteral("-(?=\\d)"));
   const QRegularExpressionMatch match = versionStart.match(name);
   if (!match.hasMatch()) {
-    return QString();
+    return {name, QString()};
   }
-  QString version = name.mid(match.capturedEnd());
+  return {name.left(match.capturedStart()), name.mid(match.capturedEnd())};
+}
+
+QString versionFromStorePath(const QString &storePath) {
+  QString version = parseStoreName(storePath).version;
+  if (version.isEmpty()) {
+    return version;
+  }
 
   // Drop the output name of e.g. jq-1.8.2-bin
   static const QRegularExpression outputSuffix(QStringLiteral(
-      "-(bin|out|man|dev|doc|devdoc|info|lib|libexec|share|data|debug)$"));
+      "-(bin|out|man|dev|doc|devdoc|info|lib|libexec|share|data|debug|"
+      "terminfo|static)$"));
   version.remove(outputSuffix);
   return version;
 }
