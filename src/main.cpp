@@ -19,9 +19,13 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QIcon>
+#include <QImage>
 #include <QQmlApplicationEngine>
+#include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickWindow>
+#include <QTimer>
+#include <memory>
 
 using namespace Qt::StringLiterals;
 
@@ -73,6 +77,11 @@ int main(int argc, char *argv[]) {
         "Run in debug mode with separate settings and data directories");
     parser.addOption(debugOption);
 
+    parser.addOption(QCommandLineOption(
+        "screenshot-scene", "Render an isolated demo scene", "scene"));
+    parser.addOption(QCommandLineOption(
+        "screenshot-output", "Save the demo window as PNG and exit", "path"));
+
     parser.process(coreApp);
 
     QList<QCommandLineOption> options;
@@ -122,6 +131,86 @@ int main(int argc, char *argv[]) {
   engine.rootContext()->setContextProperty("appVersion",
                                            QString(NIXBIT_VERSION));
   engine.rootContext()->setContextProperty("isDebugMode", debugMode);
+
+  QCommandLineParser guiParser;
+  guiParser.addOption(QCommandLineOption("debug"));
+  guiParser.addOption(QCommandLineOption(
+      "screenshot-scene", "Render an isolated demo scene", "scene"));
+  guiParser.addOption(QCommandLineOption(
+      "screenshot-output", "Save the demo window as PNG and exit", "path"));
+  guiParser.process(app);
+
+  // Do not even construct the real managers in demo mode: their constructors
+  // read settings, create autostart entries and start background commands.
+  if (guiParser.isSet("screenshot-scene")) {
+    const QString scene = guiParser.value("screenshot-scene");
+    const QStringList scenes = {"mainwindow",
+                                "monitor",
+                                "settings",
+                                "settings-repository",
+                                "settings-hosts",
+                                "settings-notifications",
+                                "settings-performance",
+                                "settings-debug",
+                                "about",
+                                "commits",
+                                "generations",
+                                "logs",
+                                "packages",
+                                "packages-details",
+                                "packages-search",
+                                "packages-remove",
+                                "packages-progress",
+                                "packages-unfree",
+                                "packages-conflict"};
+    if (!scenes.contains(scene) ||
+        guiParser.value("screenshot-output").isEmpty()) {
+      qCritical() << "Use a supported screenshot scene and --screenshot-output";
+      return 1;
+    }
+    KLocalization::setupLocalizedContext(&engine);
+    QQmlComponent component(
+        &engine, QUrl(u"qrc:/qt/qml/nixbit/src/ScreenshotData.qml"_s));
+    std::unique_ptr<QObject> data(component.create());
+    if (!data) {
+      qCritical() << component.errors();
+      return 1;
+    }
+    for (const auto &name :
+         {"gitManager", "processManager", "settingsManager", "systemMonitor",
+          "systemUpdateStatus", "generationManager", "packageManager",
+          "packageSearch", "logManager"}) {
+      engine.rootContext()->setContextProperty(
+          QString::fromLatin1(name), data->property(name).value<QObject *>());
+    }
+    OutputHighlighter highlighter;
+    engine.rootContext()->setContextProperty("outputHighlighter", &highlighter);
+    engine.load(QUrl(u"qrc:/qt/qml/nixbit/src/main.qml"_s));
+    if (engine.rootObjects().isEmpty())
+      return 1;
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    if (!window)
+      return 1;
+    window->show();
+    window->requestActivate();
+    if (!QMetaObject::invokeMethod(window, "showScreenshotScene",
+                                   Q_ARG(QVariant, scene))) {
+      qCritical() << "Failed to open screenshot scene" << scene;
+      return 1;
+    }
+    QTimer::singleShot(2500, &app, [&]() {
+      const QImage image = window->grabWindow();
+      app.exit(!image.isNull() &&
+                       image.save(guiParser.value("screenshot-output"), "PNG")
+                   ? 0
+                   : 1);
+    });
+    return app.exec();
+  }
+  if (guiParser.isSet("screenshot-output")) {
+    qCritical() << "--screenshot-output requires --screenshot-scene";
+    return 1;
+  }
 
   // Create and register GitManager
   GitManager gitManager;

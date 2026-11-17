@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## Unreleased
+
+- Add automatic screenshots of the main window, settings pages, commits,
+  generations, logs and user package dialogs using isolated offline demo data
+- Add capture, reviewed publishing and NixOS Plasma VM screenshot recipes
+
 ## 1.6.0
 
 - **Packages installed with `nix profile add` can now be managed in Nixbit**

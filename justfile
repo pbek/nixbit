@@ -71,6 +71,44 @@ nix-run:
     fi
     exec result/bin/nixbit --debug
 
+# Capture all demo scenes on the current desktop (or pass --scenes)
+[group('screenshots')]
+screenshots *args:
+    python3 ./scripts/screenshots.py {{ args }}
+
+# Publish reviewed captures as lossless WebP images
+[group('screenshots')]
+screenshots-publish capture_dir="":
+    python3 ./scripts/screenshots.py --publish {{ capture_dir }}
+
+# Capture every scene in a fresh, isolated NixOS Plasma VM
+[group('screenshots')]
+screenshots-vm *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+        echo "Screenshot VMs require Linux with access to /dev/kvm." >&2
+        exit 1
+    fi
+    system=$(nix eval --impure --raw --expr builtins.currentSystem)
+    stamp=$(date +%Y%m%d-%H%M%S-%N)
+    result=$(NIXBIT_SCREENSHOT_RUN="$stamp" nix build 'path:{{ justfile_directory() }}#checks.'"$system"'.screenshots' --impure --no-link --print-out-paths -L {{ args }})
+    output="build-screenshots/$stamp-vm"
+    mkdir -p build-screenshots
+    cp -R "$result/screenshots" "$output"
+    chmod -R u+w "$output"
+    echo "VM screenshots: $output"
+
+# Open the screenshot VM driver without replacing the application result link
+[group('screenshots')]
+screenshots-vm-interactive:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    system=$(nix eval --impure --raw --expr builtins.currentSystem)
+    driver=$(nix build 'path:{{ justfile_directory() }}#checks.'"$system"'.screenshots.driverInteractive' --no-link --print-out-paths -L)
+    echo "Run start_all() to boot Plasma, or test_script() to capture all scenes."
+    "$driver/bin/nixos-test-driver"
+
 # Show the build result
 nix-result:
     @ls -la result/bin/

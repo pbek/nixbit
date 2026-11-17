@@ -37,6 +37,11 @@ stdenv.mkDerivation (
         in
         !(builtins.elem baseName [
           "build"
+          "build-screenshots"
+          "screenshots"
+          "__pycache__"
+          ".devenv"
+          ".direnv"
           "cmake-build-debug"
           "result"
           ".git"
@@ -60,11 +65,14 @@ stdenv.mkDerivation (
       kdePackages.kcoreaddons
       kdePackages.ki18n
       kdePackages.kirigami
+      kdePackages.qqc2-desktop-style
+      kdePackages.breeze-icons
       libgit2
       libssh2
       qt6.qtbase
       qt6.qtdeclarative
       qt6.qtwayland
+      qt6.qtsvg
     ]
     ++ lib.optionals (kwi != null) [ kwi ];
 

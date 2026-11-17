@@ -115,11 +115,20 @@
           default = self.apps.${system}.nixbit;
         };
 
+        checks = pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          screenshots = import ./nix/screenshots.nix {
+            inherit pkgs;
+            inherit (self.packages.${system}) nixbit;
+          };
+        };
+
         devShells.default = pkgs.mkShell {
           inputsFrom = [ self.packages.${system}.nixbit ];
           packages = with pkgs; [
             just
             git
+            python3
+            libwebp
           ];
         };
       }

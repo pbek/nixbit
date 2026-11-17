@@ -40,6 +40,28 @@ ApplicationWindow {
         commitsDialog.open();
     }
 
+    // Called only by the isolated screenshot entry point, never normal startup.
+    function showScreenshotScene(scene) {
+        if (scene === "monitor") {
+            processManager.output = processManager.output.split("Build completed successfully.")[0];
+            processManager.isRunning = true;
+            systemMonitor.active = true;
+        } else if (scene.indexOf("settings") === 0) {
+            settingsDialog.open();
+            var pages = ["settings", "settings-repository", "settings-hosts", "settings-notifications", "settings-performance", "settings-debug"];
+            settingsDialog.selectPage(pages.indexOf(scene));
+        } else if (scene === "about")
+            aboutDialog.open();
+        else if (scene === "commits")
+            commitsDialog.open();
+        else if (scene === "generations")
+            generationsDialog.open();
+        else if (scene === "logs")
+            logsDialog.open();
+        else if (scene.indexOf("packages") === 0)
+            packagesDialog.showScreenshotScene(scene);
+    }
+
     // Property to track if we're in a chained build-then-switch operation
     property bool isChainedBuildSwitch: false
     property bool shouldRebuildAfterPull: false

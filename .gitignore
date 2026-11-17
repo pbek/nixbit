@@ -1,4 +1,6 @@
 build/
+build-screenshots/
+__pycache__/
 .devenv/
 .direnv/
 .devenv.flake.nix

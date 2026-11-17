@@ -34,6 +34,10 @@ nix run github:pbek/nixbit#nixbit-kwi
 > [!NOTE]
 > See more [screenshots](screenshots/README.md) showcasing the system monitor and settings dialog.
 
+To automatically capture all important dialogs, including user packages, run
+`just screenshots-vm` in an isolated NixOS Plasma VM, or `just screenshots` on
+your desktop after building the app. See [automatic screenshots](docs/screenshots.md).
+
 There also is a **NixOS Module** to allow the configuration of the Git repository,
 so you can preset it for all systems in your fleet.
 

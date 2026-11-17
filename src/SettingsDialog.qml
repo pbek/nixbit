@@ -15,6 +15,10 @@ Dialog {
     padding: 0
     standardButtons: Dialog.Close
 
+    function selectPage(index) {
+        categoryList.currentIndex = index;
+    }
+
     // Title and description shown at the top of every page
     component PageHeader: ColumnLayout {
         property alias title: heading.text

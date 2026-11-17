@@ -9,6 +9,8 @@
     ninja
     git
     just
+    python3
+    libwebp
     pkg-config
     libgit2
     libssh2
@@ -20,6 +22,7 @@
     qt6.qtbase
     qt6.qtdeclarative
     qt6.qtwayland
+    qt6.qtsvg
     kdePackages.wrapQtAppsHook
   ];
 

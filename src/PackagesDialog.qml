@@ -54,6 +54,37 @@ Dialog {
         open();
     }
 
+    function showScreenshotScene(scene) {
+        if (scene === "packages-search") {
+            openSearch();
+            searchField.text = "git";
+            packageSearch.search("git");
+            return;
+        }
+        openInstalled();
+        if (scene === "packages-details")
+            expandedNames = {
+                ripgrep: true
+            };
+        if (scene === "packages-remove")
+            confirmRemove(["ripgrep"]);
+        if (scene === "packages-progress") {
+            packageManager.operation = "upgrade";
+            packageManager.operationTargets = ["ripgrep"];
+            packageManager.isBusy = true;
+            packageManager.operationStatus = "Downloading ripgrep and its dependencies…";
+            packageManager.operationLog = "these 2 paths will be fetched (1.8 MiB download):\n  /nix/store/demo-ripgrep-14.1.1\ncopying path from https://cache.nixos.org…";
+            outputVisible = true;
+        }
+        if (scene === "packages-unfree" || scene === "packages-conflict") {
+            resultSuccess = false;
+            resultHint = scene === "packages-unfree" ? "unfree" : "priority";
+            resultOperation = "install";
+            resultMessage = scene === "packages-unfree" ? "This package has an unfree license. Allow it for this installation?" : "A file conflicts with an installed package. Install with a lower priority?";
+            resultMessageBox.visible = true;
+        }
+    }
+
     function isOperationTarget(name) {
         if (!busy)
             return false;
