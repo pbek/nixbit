@@ -7,7 +7,14 @@
 
 [![🏗️ Build Nixbit](https://github.com/pbek/nixbit/actions/workflows/build-nix.yml/badge.svg)](https://github.com/pbek/nixbit/actions/workflows/build-nix.yml)
 
-A **GUI application for updating your NixOS system** from a Nix Flakes Git repository.
+A **GUI application for updating your NixOS system** from a Nix Flakes Git repository,
+and for **installing and updating your user packages** with `nix profile`.
+
+- Pull your configuration repository, review the new commits, and build, switch or boot your system
+- Find packages in nixpkgs and install them for your user with `nix profile add`,
+  without touching your system configuration
+- Keep the packages you installed with `nix profile add` up to date, see
+  [Installing and Updating User Packages](#installing-and-updating-user-packages)
 
 You can try it out by running:
 
@@ -40,6 +47,94 @@ your desktop after building the app. See [automatic screenshots](docs/screenshot
 
 There also is a **NixOS Module** to allow the configuration of the Git repository,
 so you can preset it for all systems in your fleet.
+
+## Installing and Updating User Packages
+
+Not every program needs to be part of your system configuration. Packages you only want for
+yourself, or only want to try out, can be installed into your user profile with
+`nix profile add nixpkgs#<package>`. They are available right away, without a system rebuild,
+and don't change your configuration repository. Nixbit lets you find, install, update and remove
+these packages without using the command line.
+
+Open the **Packages** dialog with the "Packages…" button next to "User packages" in the main window,
+or with "Packages…" and "Find Packages…" in the "Tools" menu. The "User packages" row also shows
+how many packages are installed and whether updates are available, and a "Package Updates…" button
+appears in the compact view when there are updates.
+
+![Installed user packages and available updates](screenshots/packages.webp)
+
+### Installing Packages
+
+1. Open the **Find Packages** tab and type what you're looking for, either the name of a program
+   or what it does, e.g. `json processor`. The results update while you type, with the best matches first.
+2. Check the version and description, and whether the package is already installed:
+   - **Installed** means it's already in your user profile
+   - **In system config**, **In user config** or **In Home Manager** means it's already provided by your
+     `environment.systemPackages`, your `users.users.<name>.packages` or Home Manager,
+     with the installed version if it differs from nixpkgs
+3. Click **Install**. Nixbit runs `nix profile add nixpkgs#<package>` and shows the current step,
+   e.g. which package is downloaded or built, next to the package. Show the output of Nix with the
+   terminal button, or cancel the installation.
+
+The package is ready as soon as the installation is finished. Open a new terminal to use its commands.
+
+![Package search](screenshots/packages-search.webp)
+
+> [!TIP]
+> The first search evaluates all packages of nixpkgs once, which takes a minute or two and shows
+> its progress. After that, Nix keeps the result in its evaluation cache, so later searches start
+> within seconds, even after restarting Nixbit.
+
+If Nix refuses to install a package, Nixbit explains why and offers a fix:
+
+- **Unfree packages**, e.g. `rar`, are only installed if you allow them. Click
+  **Allow Unfree and Install** to allow it for this package only (`NIXPKGS_ALLOW_UNFREE=1 … --impure`).
+  Updates of unfree packages are allowed automatically.
+- **File conflicts** happen if an installed package contains a file of the same name, e.g. `rar` and
+  `unrar` both contain `bin/unrar`. Click **Install Anyway** to install the package with a lower
+  priority, so the installed package keeps providing the file.
+
+### Updating Packages
+
+Nixbit checks for updates of your packages in the background, about a minute after it starts and then
+every six hours, and whenever you open the Packages dialog and the last check is older than an hour.
+Click the refresh button in the dialog to check right away.
+
+For each package, Nixbit fetches the newest revision of the flake it was installed from, e.g. `nixpkgs`,
+and compares the package it would build with the installed one, like `nix profile upgrade` would.
+Packages with updates are listed first and show:
+
+- the **new version**, e.g. `2.12.3 → 2.13.0`
+- **Rebuilt** if the version stays the same, but the package changed, e.g. because a dependency was updated
+
+Click **Update** next to a package to update only that package, or **Update All** to update all packages
+with `nix profile upgrade --all`. The progress and the output of Nix are shown like when installing.
+
+![Package update progress and output](screenshots/packages-progress.webp)
+
+> [!NOTE]
+> Packages are updated to the newest revision of the flake **as your Nix registry resolves it**.
+> On NixOS, `nixpkgs` often points to the nixpkgs your system was built from
+> (`nixpkgs.flake.setFlakeRegistry`), so your user packages get updates together with your system.
+> Packages installed from a pinned revision, e.g. `github:NixOS/nixpkgs/<commit>`, are never updated.
+
+### Package Details
+
+Every installed package shows its version, description, license, disk usage including its dependencies,
+the flake it was installed from, and when it was installed or last updated. Click a package to see
+its homepage, the command it provides, the exact source revision and its store paths.
+Filter the list, and sort it by name, size or last change.
+
+From the menu of a package you can open its homepage or its page on search.nixos.org, copy its
+command, install command or store path, and remove it from your profile. You can return to the
+previous profile generation with `nix profile rollback` after removing a package by mistake.
+
+![Package metadata, source revision and store paths](screenshots/packages-details.webp)
+
+> [!NOTE]
+> Profiles created with `nix-env` can't be managed with `nix profile`. Entries that weren't
+> installed from a flake, e.g. the `home-manager-path` of Home Manager, are listed below the
+> packages, but can't be updated in Nixbit.
 
 ## NixOS Module
 
@@ -226,33 +321,22 @@ in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
 
 ### 🧩 User Packages
 
-Manage the packages you installed for your user with `nix profile add nixpkgs#<package>`,
-without rebuilding your system. Open the "Packages" dialog with the "Packages…" button
-next to "User packages" in the main window, or from the "Tools" menu.
+Install, update and remove the packages of your user profile with `nix profile`, without rebuilding
+your system. See [Installing and Updating User Packages](#installing-and-updating-user-packages)
+for a walkthrough.
 
-- **Installed Packages**: Lists the packages of your profile installed from a flake, with their version,
-  description, license, disk usage including dependencies, the flake they were installed from,
-  and when they were installed or last updated
-  - Expand a package to see its homepage, the command it provides, its store paths and more
-  - Filter packages, and sort them by name, size or last change
-- **Package Updates**: Compares your packages with the newest version of the flake they were installed from,
-  and shows the version each package would be updated to, or whether it was only rebuilt
-  - Updates are checked in the background, when the dialog is opened, and with the refresh button
-  - Update single packages, or all packages with `nix profile upgrade --all`
-- **Package Search**: Find packages in nixpkgs by name or description and install them with
-  `nix profile add nixpkgs#<package>`
-  - Packages that are already installed by other means are marked, e.g. "In system config" for
-    `environment.systemPackages`, "In user config" for `users.users.<name>.packages` or "In Home Manager"
-  - All packages are loaded once with `nix search`, so the results update while you type.
-    The first search evaluates nixpkgs, which takes a minute or two; later searches use the evaluation cache of Nix.
-- **Progress and Errors**: Installs, updates and removals show the current step next to the package,
-  and the output of Nix can be shown
-  - Unfree packages can be allowed for a single install or update (`NIXPKGS_ALLOW_UNFREE=1 … --impure`)
-  - Packages that contain a file of an installed package can be installed with a lower priority
-
-> [!NOTE]
-> Profiles created with `nix-env` can't be managed with `nix profile`. Entries that weren't
-> installed from a flake, e.g. the `home-manager-path` of Home Manager, are listed but can't be updated.
+- **Package Search**: Search all packages of nixpkgs by name or description while you type,
+  and install them with `nix profile add nixpkgs#<package>`
+- **Already Installed Packages**: Search results mark packages that are already in your profile,
+  your system or user configuration, or Home Manager
+- **Package Updates**: Automatic and manual update checks against the newest revision of each package's flake,
+  showing the new version or whether a package was only rebuilt; update single packages or all at once
+- **Installed Packages**: Version, description, license, disk usage, source flake and revision,
+  and install and update dates of every package, with filtering and sorting
+- **Progress and Errors**: The current download or build step, the output of Nix, cancellation,
+  and one-click fixes for unfree packages and file conflicts
+- **Status at a Glance**: The main window shows the number of packages and available updates,
+  and the tray icon shows the activity while packages are installed, updated or removed
 
 ### 📦 Repository Management
 
@@ -295,7 +379,7 @@ next to "User packages" in the main window, or from the "Tools" menu.
 ### 🎨 User Interface
 
 - **Modern KDE Integration**: Built with Kirigami for native KDE Plasma look and feel
-- **Menu Bar**: File menu with Quit option, Tools menu with Check for Updates
+- **Menu Bar**: File menu with Quit option, Tools menu with Check for Updates, Packages and Find Packages
 - **Action Buttons**: Quick access to system update and update check operations
 - **Terminal Output Panel**: Real-time command output display with syntax highlighting and interactive features
   - Success messages highlighted in green (e.g., "Done. The new configuration is", "Process finished with exit code: 0")
