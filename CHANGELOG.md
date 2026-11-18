@@ -2,12 +2,8 @@
 
 ## 1.6.1
 
-- Add framed screenshots with Plasma window borders and shadows; the screenshot
-  VM now captures decorated windows by default
-
-- Add automatic screenshots of the main window, settings pages, commits,
-  generations, logs and user package dialogs using isolated offline demo data
-- Add capture, reviewed publishing and NixOS Plasma VM screenshot recipes
+- Hide the "Build & Switch" button when nh is used, since a switch with nh
+  already builds as your user before asking for the password
 
 ## 1.6.0
 

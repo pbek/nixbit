@@ -307,6 +307,10 @@ as your user. nh only elevates for the activation and asks for your password in
 the terminal, so no `pkexec` or `sudo` askpass setup is needed. `nh` has to be
 in your `PATH`, for example via `programs.nh.enable = true;` on NixOS.
 
+The **Build & Switch** button is hidden while nh is used, because a switch with
+nh already builds first and only asks for your password once the build
+succeeded. To build on a remote host, select it as the host for the switch mode.
+
 ## Features
 
 ### 🔄 NixOS Generations
@@ -363,7 +367,7 @@ for a walkthrough.
 - **Build Host Management**: Configure multiple build hosts with friendly names and SSH addresses in Settings Dialog
 - **Build Host Selection**: Choose between local or remote build hosts for each rebuild mode independently
 - **Dynamic Button Labels**: Main action button reflects selected mode ("Build System" or "Switch System")
-- **Build & Switch**: Chain build and switch operations - builds remotely first, then switches locally if successful
+- **Build & Switch**: Chain build and switch operations - builds remotely first, then switches locally if successful (hidden when [nh](#using-nh) is used)
 - **Update System**: One-click button to pull repository updates and rebuild the system
 - **Check for Updates**: Button to manually check for repository updates
 - **Process Control**: Pause and resume system update processes during builds (hidden in switch and boot mode due to sudo limitations, unless [nh](#using-nh) is used)

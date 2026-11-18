@@ -1003,6 +1003,8 @@ ApplicationWindow {
                     Layout.preferredWidth: 1
                     text: "Build & Switch"
                     icon.name: "run-build"
+                    // nh already builds as the user and only elevates for the activation
+                    visible: !root.nhUsed
                     enabled: !root.processRunning && !root.gitBusy
                     ToolTip.visible: hovered
                     ToolTip.delay: Kirigami.Units.toolTipDelay
