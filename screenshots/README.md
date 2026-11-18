@@ -14,6 +14,13 @@ The main window provides the primary interface for managing your NixOS system up
 
 ![Nixbit Main Window](mainwindow.webp)
 
+### Using nh
+
+With [nh](../README.md#using-nh), the system is updated in one step that builds
+first and only asks for the password to activate the configuration.
+
+![Nixbit Main Window using nh](mainwindow-nh.webp)
+
 ## System Monitor
 
 Real-time monitoring of CPU, memory, network, and disk I/O during system builds.

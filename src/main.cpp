@@ -150,6 +150,7 @@ int main(int argc, char *argv[]) {
   if (guiParser.isSet("screenshot-scene")) {
     const QString scene = guiParser.value("screenshot-scene");
     const QStringList scenes = {"mainwindow",
+                                "mainwindow-nh",
                                 "monitor",
                                 "settings",
                                 "settings-repository",

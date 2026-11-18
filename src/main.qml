@@ -42,7 +42,14 @@ ApplicationWindow {
 
     // Called only by the isolated screenshot entry point, never normal startup.
     function showScreenshotScene(scene) {
-        if (scene === "monitor") {
+        if (scene === "mainwindow-nh") {
+            // The demo has no embedded terminal, which nh needs outside of screenshots
+            screenshotNhUsed = true;
+            settingsManager.useNh = true;
+            settingsManager.selectedSwitchHost = "Build server";
+            buildHostComboBox.restoreSelectionForMode(rebuildModeComboBox.currentText);
+            processManager.output = "$ nh os switch . --hostname workstation --build-host builder@build-server\n> Building NixOS configuration\nthese 3 derivations will be built:\n  /nix/store/demo-nixos-system-workstation.drv\nbuilding '/nix/store/demo-system-path.drv' on 'ssh://builder@build-server'…\n> Comparing changes\n<<< /run/current-system\n>>> /nix/store/demo-nixos-system-workstation\nVersion changes:\n[U.]  firefox  145.0 -> 145.0.1\n> Activating configuration\n[sudo] password for demo:\nactivating the configuration...\nsetting up /etc...\nreloading user units for demo...\nrestarting sysinit-reactivation.target";
+        } else if (scene === "monitor") {
             processManager.output = processManager.output.split("Build completed successfully.")[0];
             processManager.isRunning = true;
             systemMonitor.active = true;
@@ -76,7 +83,8 @@ ApplicationWindow {
     // Embedded Kwi terminal state (see KwiTerminalPane.qml)
     readonly property bool kwiTerminalAvailable: kwiTerminalLoader.status === Loader.Ready
     readonly property bool kwiTerminalShown: kwiTerminalAvailable && kwiTerminalLoader.item.hasSession
-    readonly property bool nhUsed: processManager !== null && processManager.useNh && processManager.terminalMode && processManager.nhAvailable
+    property bool screenshotNhUsed: false
+    readonly property bool nhUsed: screenshotNhUsed || processManager !== null && processManager.useNh && processManager.terminalMode && processManager.nhAvailable
 
     Binding {
         target: processManager

@@ -15,7 +15,7 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 TEMP_ROOT = "/tmp/opencode" if Path("/tmp/opencode").is_dir() else None
 SCENES = (
-    "mainwindow", "monitor", "settings", "settings-repository", "settings-hosts",
+    "mainwindow", "mainwindow-nh", "monitor", "settings", "settings-repository", "settings-hosts",
     "settings-notifications", "settings-performance", "settings-debug", "about",
     "commits", "generations", "logs", "packages", "packages-details",
     "packages-search", "packages-remove", "packages-progress", "packages-unfree",

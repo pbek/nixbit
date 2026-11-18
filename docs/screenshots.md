@@ -74,6 +74,7 @@ The main README retains its `screenshots/mainwindow.webp` link.
 | Scenes                                                             | Interface                                                                              |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | `mainwindow`, `monitor`                                            | Updates, running revision, generations, user packages, build output and system monitor |
+| `mainwindow-nh`                                                    | Main window while nh is used for rebuilds                                              |
 | `settings`                                                         | General settings                                                                       |
 | `settings-repository`, `settings-hosts`                            | Repository and remote build hosts                                                      |
 | `settings-notifications`, `settings-performance`, `settings-debug` | Remaining settings pages                                                               |
