@@ -1,6 +1,6 @@
 # Nixbit Changelog
 
-## Unreleased
+## 1.6.1
 
 - Add framed screenshots with Plasma window borders and shadows; the screenshot
   VM now captures decorated windows by default
