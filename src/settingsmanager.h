@@ -134,6 +134,7 @@ private:
   QString getSystemHostname() const;
   QString getAutostartFilePath() const;
   bool autostartFileExists() const;
+  void repairAutostartFile();
   bool createAutostartFile();
   bool removeAutostartFile();
   bool shouldForceAutostart() const;

@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## Unreleased
+
+- Fix login autostart by removing the unsupported `--start-hidden` argument
+  from new and existing autostart entries. Nixbit still respects the saved
+  **Start hidden** setting ([#26](https://github.com/pbek/nixbit/issues/26)).
+
 ## 1.6.1
 
 - Hide the "Build & Switch" button when nh is used, since a switch with nh
