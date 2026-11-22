@@ -78,6 +78,11 @@ int main(int argc, char *argv[]) {
         "Run in debug mode with separate settings and data directories");
     parser.addOption(debugOption);
 
+    QCommandLineOption startHiddenOption(
+        QStringList() << "start-hidden",
+        "Start hidden in the system tray");
+    parser.addOption(startHiddenOption);
+
     parser.addOption(QCommandLineOption(
         "screenshot-scene", "Render an isolated demo scene", "scene"));
     parser.addOption(QCommandLineOption(
@@ -89,7 +94,7 @@ int main(int argc, char *argv[]) {
 
     QList<QCommandLineOption> options;
     options << helpOption << versionOption << completionBashOption
-            << completionFishOption << debugOption;
+            << completionFishOption << debugOption << startHiddenOption;
 
     if (parser.isSet(completionBashOption)) {
       Utils::Cli::generateBashCompletionScript(options, "nixbit");
@@ -137,6 +142,7 @@ int main(int argc, char *argv[]) {
 
   QCommandLineParser guiParser;
   guiParser.addOption(QCommandLineOption("debug"));
+  guiParser.addOption(QCommandLineOption("start-hidden"));
   guiParser.addOption(QCommandLineOption(
       "screenshot-scene", "Render an isolated demo scene", "scene"));
   guiParser.addOption(QCommandLineOption(
@@ -462,8 +468,10 @@ int main(int argc, char *argv[]) {
   trayIconManager.show();
 
   // Handle start hidden preference
-  if (settingsManager.startHidden()) {
-    qDebug() << "Starting hidden as per user preference";
+  // Start hidden if the user enabled it in the settings or passed
+  // --start-hidden on the command line
+  if (settingsManager.startHidden() || guiParser.isSet("start-hidden")) {
+    qDebug() << "Starting hidden as per user preference or --start-hidden";
     if (mainWindow) {
       mainWindow->hide();
     }

@@ -25,6 +25,11 @@ void SettingsManager::setStartHidden(bool hidden) {
     saveSettings();
     emit startHiddenChanged();
     qDebug() << "Start hidden preference changed to:" << hidden;
+
+    // Keep the autostart entry in sync with the start hidden preference
+    if (autostartFileExists()) {
+      createAutostartFile();
+    }
   }
 }
 
@@ -289,6 +294,10 @@ void SettingsManager::checkAndCreateAutostart() {
     if (createAutostartFile()) {
       emit autostartEnabledChanged();
     }
+  } else if (autostartFileExists()) {
+    // Rewrite an existing autostart entry so it matches the current start
+    // hidden preference (older versions always added --start-hidden)
+    createAutostartFile();
   }
 }
 
@@ -336,7 +345,7 @@ bool SettingsManager::createAutostartFile() {
               "Name=Nixbit\n"
               "GenericName=NixOS System Updater\n"
               "Comment=Update your NixOS system from a Git repository\n"
-              "Exec=%1 --start-hidden\n"
+              "Exec=%1%2\n"
               "Icon=nixbit\n"
               "Terminal=false\n"
               "Type=Application\n"
@@ -347,7 +356,8 @@ bool SettingsManager::createAutostartFile() {
               "X-KDE-StartupNotify=true\n"
               "X-DBUS-StartupType=Unique\n"
               "X-KDE-autostart-after=panel\n")
-          .arg(execPath);
+          .arg(execPath,
+               m_startHidden ? QStringLiteral(" --start-hidden") : QString());
 
   // Write the file
   QFile file(autostartPath);

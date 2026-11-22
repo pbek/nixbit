@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## 1.6.2
+
+- Fix autostart failing with "Unknown option 'start-hidden'": the `--start-hidden`
+  command line option is now supported, and the autostart entry only uses it when
+  "Start hidden in the system tray" is enabled
+
 ## 1.6.1
 
 - Hide the "Build & Switch" button when nh is used, since a switch with nh
