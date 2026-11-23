@@ -1,6 +1,6 @@
 # Nixbit Changelog
 
-## Unreleased
+## 1.6.2
 
 - Fix login autostart by removing the unsupported `--start-hidden` argument
   from new and existing autostart entries. Nixbit still respects the saved
