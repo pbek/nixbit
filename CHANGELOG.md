@@ -5,6 +5,9 @@
 - Show **Built with local changes** for running systems built from a dirty
   flake checkout, instead of treating them like systems without a revision.
   The generations list labels the base commit as having local changes.
+- Show status icons for **Updates** and **User packages** in the main window,
+  like for **Status** and **Running system**, so their state doesn't depend on
+  the text color alone
 
 ## 1.6.2
 

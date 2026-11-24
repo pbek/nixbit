@@ -395,6 +395,45 @@ ApplicationWindow {
         fallback: "dialog-question"
     }
 
+    // Status icon for the commits of the remote repository that are not pulled yet
+    component UpdatesStatusIndicator: Kirigami.Icon {
+        implicitWidth: Kirigami.Units.iconSizes.small
+        implicitHeight: Kirigami.Units.iconSizes.small
+        source: root.commitsBehind > 0 ? "emblem-information" : root.commitsBehind === 0 ? "emblem-success" : "emblem-question"
+        fallback: "dialog-question"
+    }
+
+    // Status icon for the user packages, shows a spinner while they are changed or checked
+    component PackagesStatusIndicator: Item {
+        readonly property bool busy: packageManager !== null && (packageManager.isBusy || packageManager.isCheckingUpdates)
+
+        implicitWidth: Kirigami.Units.iconSizes.small
+        implicitHeight: Kirigami.Units.iconSizes.small
+
+        BusyIndicator {
+            anchors.centerIn: parent
+            width: Kirigami.Units.iconSizes.smallMedium
+            height: width
+            padding: 0
+            running: parent.busy
+            visible: running
+        }
+
+        // Without packages there is no state to show, the empty space keeps the label aligned
+        Kirigami.Icon {
+            anchors.fill: parent
+            visible: !parent.busy && packageManager !== null && !(packageManager.loaded && root.packageCount === 0)
+            source: {
+                if (!packageManager || !packageManager.loaded)
+                    return packageManager && packageManager.error !== "" ? "emblem-error" : "emblem-question";
+                if (root.packageUpdates > 0)
+                    return "emblem-information";
+                return packageManager.lastUpdateCheck > 0 ? "emblem-success" : "emblem-question";
+            }
+            fallback: "dialog-question"
+        }
+    }
+
     readonly property string latestRevisionShort: gitManager && gitManager.latestFetchedRevision ? gitManager.latestFetchedRevision.substring(0, 7) : ""
     readonly property string updatesDetails: {
         if (commitsBehind > 0) {
@@ -650,6 +689,8 @@ ApplicationWindow {
                                     ToolTip.delay: Kirigami.Units.toolTipDelay
                                     ToolTip.text: root.updatesDetails + (root.commitsBehind > 0 ? " Click the commit count to review them." : "")
 
+                                    UpdatesStatusIndicator {}
+
                                     Label {
                                         id: commitsBehindLabel
                                         readonly property bool linked: root.commitsBehind > 0
@@ -789,13 +830,7 @@ ApplicationWindow {
                                     ToolTip.delay: Kirigami.Units.toolTipDelay
                                     ToolTip.text: "Packages installed for your user with nix profile add, separate from the system configuration." + (packageManager && packageManager.lastUpdateCheck > 0 ? " Checked for updates " + Utils.relativeTime(packageManager.lastUpdateCheck, Date.now()) + "." : "")
 
-                                    BusyIndicator {
-                                        implicitWidth: Kirigami.Units.iconSizes.small
-                                        implicitHeight: implicitWidth
-                                        padding: 0
-                                        running: packageManager !== null && (packageManager.isBusy || packageManager.isCheckingUpdates)
-                                        visible: running
-                                    }
+                                    PackagesStatusIndicator {}
 
                                     Label {
                                         id: packagesLabel
