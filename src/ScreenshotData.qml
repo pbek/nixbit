@@ -178,7 +178,6 @@ QtObject {
         property bool needsActivation: true
         property string summary: "Switch needed"
         property string details: "The running system was built from an earlier configuration revision."
-        property string runningRevisionShort: "c43e7f1"
         property string runningCommit: demo.gitManager.localRevision
         signal statusChanged
         function refresh() {

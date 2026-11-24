@@ -2,9 +2,16 @@
 #include <QRegularExpression>
 
 namespace {
+const auto dirtySuffix = QStringLiteral("-dirty");
+
 bool isFullCommitHash(const QString &revision) {
   static const QRegularExpression commit(QStringLiteral("^[0-9a-f]{40}$"));
   return commit.match(revision).hasMatch();
+}
+
+bool isDirtyRevision(const QString &revision) {
+  return revision.endsWith(dirtySuffix) &&
+         isFullCommitHash(revision.chopped(dirtySuffix.size()));
 }
 } // namespace
 
@@ -76,10 +83,13 @@ void SystemUpdateStatus::setLatestRevision(const QString &revision) {
 SystemUpdateStatus::State
 SystemUpdateStatus::compareRevisions(const QString &running,
                                      const QString &latest) {
+  if (isDirtyRevision(running)) {
+    return State::LocalChanges;
+  }
   if (!isFullCommitHash(latest)) {
     return State::Unknown;
   }
-  // A missing, dirty or abbreviated revision can't prove an exact match
+  // A missing or abbreviated revision can't prove an exact match
   if (!isFullCommitHash(running)) {
     return State::Unverified;
   }
@@ -91,21 +101,15 @@ SystemUpdateStatus::State SystemUpdateStatus::state() const {
 }
 
 QString SystemUpdateStatus::runningRevisionShort() const {
-  QString revision = m_runningRevision;
-  const bool dirty = revision.endsWith(QStringLiteral("-dirty"));
-  if (dirty) {
-    revision.chop(6);
-  }
-  if (revision.isEmpty()) {
-    return QString();
-  }
-  return revision.left(7) + (dirty ? QStringLiteral(" (dirty)") : QString());
+  return runningCommit().left(7) + (isDirtyRevision(m_runningRevision)
+                                        ? QStringLiteral(" (local changes)")
+                                        : QString());
 }
 
 QString SystemUpdateStatus::runningCommit() const {
   QString revision = m_runningRevision;
-  if (revision.endsWith(QStringLiteral("-dirty"))) {
-    revision.chop(6);
+  if (revision.endsWith(dirtySuffix)) {
+    revision.chop(dirtySuffix.size());
   }
   return isFullCommitHash(revision) ? revision : QString();
 }
@@ -116,6 +120,8 @@ QString SystemUpdateStatus::summary() const {
     return QStringLiteral("Up to date");
   case State::NeedsActivation:
     return QStringLiteral("Switch needed");
+  case State::LocalChanges:
+    return QStringLiteral("Built with local changes");
   case State::Unverified:
   case State::Unknown:
     break;
@@ -124,7 +130,7 @@ QString SystemUpdateStatus::summary() const {
 }
 
 QString SystemUpdateStatus::details() const {
-  const QString running = runningRevisionShort();
+  const QString running = runningCommit().left(7);
   const QString latest = m_latestRevision.left(7);
   switch (state()) {
   case State::Current:
@@ -137,13 +143,14 @@ QString SystemUpdateStatus::details() const {
                "commit is %2. Update the system in switch mode to activate "
                "it.")
         .arg(running, latest);
+  case State::LocalChanges:
+    return QStringLiteral(
+               "The running system was built from %1 with uncommitted "
+               "changes. Nixbit can't verify it against a Git commit. "
+               "Commit your configuration changes (including flake.lock, "
+               "if changed) and switch again to get a verifiable generation.")
+        .arg(running);
   case State::Unverified:
-    if (m_runningRevision.endsWith(QStringLiteral("-dirty"))) {
-      return QStringLiteral("The running system was built from %1 with "
-                            "uncommitted changes, so it can't be compared "
-                            "with the latest fetched commit %2.")
-          .arg(m_runningRevision.left(7), latest);
-    }
     return QStringLiteral(
         "The running system has no configuration revision, so it can't be "
         "compared with the latest fetched commit. Set "

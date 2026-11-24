@@ -64,7 +64,8 @@ QVariant GenerationManager::data(const QModelIndex &index, int role) const {
     }
     const bool dirty =
         gen.configurationRevision.endsWith(QStringLiteral("-dirty"));
-    return commit.left(7) + (dirty ? QStringLiteral(" (dirty)") : QString());
+    return commit.left(7) +
+           (dirty ? QStringLiteral(" (local changes)") : QString());
   }
   default:
     return QVariant();

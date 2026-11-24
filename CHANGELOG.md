@@ -1,5 +1,11 @@
 # Nixbit Changelog
 
+## Unreleased
+
+- Show **Built with local changes** for running systems built from a dirty
+  flake checkout, instead of treating them like systems without a revision.
+  The generations list labels the base commit as having local changes.
+
 ## 1.6.2
 
 - Fix login autostart by removing the unsupported `--start-hidden` argument

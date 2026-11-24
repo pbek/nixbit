@@ -712,7 +712,7 @@ ApplicationWindow {
                                 // Commit the running configuration was built from
                                 RevisionChip {
                                     id: runningChip
-                                    text: systemUpdateStatus ? systemUpdateStatus.runningRevisionShort : ""
+                                    text: commit.substring(0, 7)
                                     commit: systemUpdateStatus ? systemUpdateStatus.runningCommit : ""
                                 }
                             }

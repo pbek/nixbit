@@ -145,14 +145,15 @@ void TrayIconManager::updateIcon() {
     m_trayIcon->setToolTip(
         QString("Nixbit - System up to date%1").arg(debugSuffix));
   } else if (commitsBehind == 0) {
-    // Without a configuration revision only the repository can be checked
-    // (muted check badge)
+    // Only the repository can be verified (muted check badge)
     icon = createStatusIcon(snowflakePrimaryColor(), snowflakeSecondaryColor(),
                             QColor(0x7f, 0x8c, 0x8d), Badge::Check);
     m_trayIcon->setToolTip(
-        QString("Nixbit - Repository up to date (running system not "
-                "verified)%1")
-            .arg(debugSuffix));
+        QString("Nixbit - Repository up to date (%1)%2")
+            .arg(m_systemStatus == SystemUpdateStatus::State::LocalChanges
+                     ? QStringLiteral("system built with local changes")
+                     : QStringLiteral("running system not verified"),
+                 debugSuffix));
   } else {
     // Unknown state or error
     qDebug() << "Creating default/unknown icon";

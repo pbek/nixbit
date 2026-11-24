@@ -247,9 +247,22 @@ explanation of the status; the tray icon tooltip shows both commits as well.
 Click a commit hash to open the commit on the Git forge (GitHub, GitLab,
 Codeberg, Forgejo, Gitea, Bitbucket and SourceHut are supported).
 
-Without a revision, or if the system was built with uncommitted changes, Nixbit still works as usual,
-but can only check the repository. The running system is then shown as **Not verified**, and the
-tray icon shows a gray instead of a green check mark when the repository is up to date.
+Without a usable revision, the running system is shown as **Not verified**. If Nix
+records a `-dirty` revision, Nixbit instead shows **Built with local changes**.
+The commit link points to the base commit, not the uncommitted source that was
+built. In either case the tray icon uses a gray check mark when the repository
+is up to date.
+
+For a verifiable build, commit the intended configuration changes, including
+any `flake.lock` changes, before switching. Committing after a switch does not
+change the revision embedded in the existing generation; switch again to record
+the clean revision. With an `nh`-based recipe that passes arguments through to
+`nix build` (such as `nixcfg`'s `just switch`), you can require a clean checkout
+and an up-to-date lock file:
+
+```bash
+just switch '--option allow-dirty false --no-update-lock-file'
+```
 
 ## Privilege Escalation (pkexec / sudo)
 

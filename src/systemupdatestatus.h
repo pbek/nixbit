@@ -13,13 +13,17 @@ class SystemUpdateStatus : public QObject {
   Q_PROPERTY(bool needsActivation READ needsActivation NOTIFY statusChanged)
   Q_PROPERTY(QString summary READ summary NOTIFY statusChanged)
   Q_PROPERTY(QString details READ details NOTIFY statusChanged)
-  Q_PROPERTY(QString runningRevisionShort READ runningRevisionShort NOTIFY
-                 statusChanged)
   // Full commit hash of the running system, without a "-dirty" suffix
   Q_PROPERTY(QString runningCommit READ runningCommit NOTIFY statusChanged)
 
 public:
-  enum class State { Unknown, Unverified, Current, NeedsActivation };
+  enum class State {
+    Unknown,
+    Unverified,
+    LocalChanges,
+    Current,
+    NeedsActivation
+  };
 
   explicit SystemUpdateStatus(
       QObject *parent = nullptr,
