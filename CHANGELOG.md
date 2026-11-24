@@ -1,6 +1,6 @@
 # Nixbit Changelog
 
-## Unreleased
+## 1.6.3
 
 - Show **Built with local changes** for running systems built from a dirty
   flake checkout, instead of treating them like systems without a revision.
